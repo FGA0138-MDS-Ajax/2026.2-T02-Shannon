@@ -5,5 +5,12 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
-    "fastapi>=0.141.1",
+    "fastapi[standard]>=0.141.1",
+    "psycopg[binary]>=3.3.6",
+    "pytest>=9.1.1",
+    "sqlmodel>=0.0.48",
+    "testcontainers[postgres]>=4.15.0",
 ]
+
+[tool.fastapi]
+entrypoint = "app.main:app"

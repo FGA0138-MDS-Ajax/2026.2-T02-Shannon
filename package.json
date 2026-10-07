@@ -1,5 +1,11 @@
 {
-    "name": "habbit",
-    "private": true,
-    "version": "0.1.0"
+  "name": "habbit",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "lint": "biome lint"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.5.15"
+  }
 }
