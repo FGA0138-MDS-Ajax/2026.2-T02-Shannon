@@ -5,7 +5,7 @@ from urllib.parse import urlsplit, urlunsplit
 
 import pytest
 from sqlmodel import SQLModel
-from testcontainers.postgres import PostgresContainer
+from testcontainers.community.postgres import PostgresContainer
 
 from tests.support.db import db_connection
 
