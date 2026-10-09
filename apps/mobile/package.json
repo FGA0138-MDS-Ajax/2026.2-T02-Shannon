@@ -49,7 +49,10 @@
     "storybook:generate": "sb-rn-get-stories --config-path .storybook"
   },
   "jest": {
-    "preset": "jest-expo"
+    "preset": "jest-expo",
+    "testMatch": [
+      "**/__tests__/**/*.test.[jt]s?(x)"
+    ]
   },
   "private": true
 }
