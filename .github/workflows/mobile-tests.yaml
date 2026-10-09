@@ -1,33 +1,43 @@
-name: Testing Habbit Mobile application
+name: Mobile Tests
 
 on:
   push:
+    paths:
+      - "apps/mobile/**"
+      - ".github/workflows/mobile-tests.yaml"
   pull_request:
-    types:
-      - reopened
+    paths:
+      - "apps/mobile/**"
+      - ".github/workflows/mobile-tests.yaml"
   workflow_dispatch:
 
 jobs:
-  e2e:
+  test:
     runs-on: ubuntu-latest
-    name: Unit and Integration tests
-    permissions:
-      contents: read
-      id-token: write
+    name: Unit tests and type check
+    defaults:
+      run:
+        working-directory: apps/mobile
+
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Set up Node.js
-        uses: actions/setup-node@v2
+        uses: actions/setup-node@v4
         with:
           node-version: "22"
 
       - name: Install pnpm
         uses: pnpm/action-setup@v4
-
-      - name: Set up Docker Compose
-        uses: docker/setup-compose-action@v1
+        with:
+          version: 12
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Type check
+        run: npx tsc --noEmit
+
+      - name: Run tests
+        run: pnpm test -- --passWithNoTests

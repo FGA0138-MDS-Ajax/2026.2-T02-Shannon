@@ -3,8 +3,12 @@
   "private": true,
   "version": "0.1.0",
   "scripts": {
-    "lint": "biome lint"
+    "lint": "biome lint",
+    "lint:fix": "biome lint --fix",
+    "format": "biome format --write",
+    "check": "biome check --fix"
   },
+  "packageManager": "pnpm@12.4.0",
   "devDependencies": {
     "@biomejs/biome": "2.5.15"
   }
