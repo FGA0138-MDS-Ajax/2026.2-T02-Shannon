@@ -4,6 +4,7 @@ from typing import Annotated
 from fastapi import Depends
 from sqlmodel import Session, SQLModel, create_engine
 
+from app.auth import models as auth_models  # noqa: F401  registra User no metadata
 from app.config import settings
 
 engine = create_engine(
