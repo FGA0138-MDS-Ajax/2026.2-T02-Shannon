@@ -1,8 +1,20 @@
-# template-repository - Branch Developer
+# Habbit
+Habbit é um sistema de gestão de hábitos desenvolvido para auxiliar os usuários a manterem uma rotina saudável e produtiva. O sistema é composto por um aplicativo mobile e uma API.
 
-Template de Repositório para a matéria de Métodos de Desenvolvimento de Software lecionado pelo professor Ricardo Ajax.
+## Pre-requisitos
+Antes de iniciar o projeto, veja o arquivo [REQUIREMENTS.md](REQUIREMENTS.md) para verificar as dependências necessárias e suas versões recomendadas.
 
-Essa Branch deve ser usada exclusivamente para a versão de desenvolvimento do software antes de ir para produção.
+## Estrutura do Repositório
+O repositório do Habbit está organizado da seguinte forma:
+```
+habbit/
+├── apps/
+│   ├── api/          # Código da API do Habbit
+│   └── mobile/       # Código do aplicativo mobile do Habbit
+├── docs/             # Documentação do projeto
+├── README.md         # Arquivo de documentação principal
+└── REQUIREMENTS.md   # Arquivo com as dependências necessárias e suas versões recomendadas
+```
 
 ## Especificações Técnicas do Repositório
 
