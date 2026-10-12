@@ -22,6 +22,7 @@ TokenType = Literal["access", "refresh"]
 def _create_token(
   user_id: str, token_type: TokenType, duration: timedelta
 ) -> tuple[str, int]:
+  """Generaliza a criação de tokens. Codifica a payload"""
 
   now = datetime.now(UTC)
   iat = int(now.timestamp())
@@ -42,6 +43,7 @@ def _create_token(
 def create_access_token(
   user_id: str, expires_delta: timedelta | None = None
 ) -> tuple[str, int]:
+  """Cria token de acesso. É possível passar um delta personalizado"""
 
   if expires_delta is None:
     duration = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
@@ -52,6 +54,7 @@ def create_access_token(
 
 
 def create_refresh_token(user_id: str, expires_delta: timedelta | None = None) -> str:
+  """Cria token refresh. É possível passar um delta personalizado"""
 
   if expires_delta is None:
     duration = timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
@@ -64,6 +67,8 @@ def create_refresh_token(user_id: str, expires_delta: timedelta | None = None) -
 
 
 def create_token_pair(user_id: str) -> TokenResponse:
+  """Empacota os access e refresh tokens para RESPONSE via JSON"""
+
   access_token, access_exp = create_access_token(user_id)
   refresh_token = create_refresh_token(user_id)
 
@@ -75,6 +80,8 @@ def create_token_pair(user_id: str) -> TokenResponse:
 
 
 def decode_token(token: str, expected_type: TokenType) -> dict[str, Any]:
+  """Decodifica tokens para verificação e validação"""
+
   try:
     payload = jwt.decode(
       token,
