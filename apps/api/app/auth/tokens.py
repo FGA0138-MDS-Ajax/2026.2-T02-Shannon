@@ -67,9 +67,11 @@ def create_token_pair(user_id: str) -> TokenResponse:
   access_token, access_exp = create_access_token(user_id)
   refresh_token = create_refresh_token(user_id)
 
-  return TokenResponse[
-    "access_token":access_token, "refresh_token":refresh_token, "exp":access_exp
-  ]
+  return TokenResponse(
+    access_token=access_token,
+    refresh_token=refresh_token,
+    exp=access_exp,
+  )
 
 
 def decode_token(token: str, expected_type: TokenType) -> dict[str, Any]:
