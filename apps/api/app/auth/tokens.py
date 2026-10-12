@@ -70,3 +70,22 @@ def create_token_pair(user_id: str) -> TokenResponse:
   return TokenResponse[
     "access_token":access_token, "refresh_token":refresh_token, "exp":access_exp
   ]
+
+
+def decode_token(token: str, expected_type: TokenType) -> dict[str, Any]:
+  try:
+    payload = jwt.decode(
+      token,
+      settings.JWT_SECRET_KEY,
+      algorithms=[settings.JWT_ALGORITHM],
+      options={"require": ["exp", "sub"]},
+    )
+  except jwt.ExpiredSignatureError as exc:
+    raise TokenExpiredError from exc
+  except jwt.InvalidTokenError as exc:
+    raise TokenInvalidError from exc
+
+  if payload.get("type") != expected_type:
+    raise TokenInvalidError
+
+  return payload
