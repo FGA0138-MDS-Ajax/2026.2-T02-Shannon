@@ -18,9 +18,10 @@ class TokenExpiredError(Exception):
 TokenType = Literal["access", "refresh"]
 
 
-def _generate_token(
+def _create_token(
   user_id: str, token_type: TokenType, duration: timedelta
 ) -> tuple[str, int]:
+
   now = datetime.now(UTC)
   iat = int(now.timestamp())
   exp = int((now + duration).timestamp())
@@ -35,3 +36,27 @@ def _generate_token(
     jwt.encode(payload, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM),
     exp,
   )
+
+
+def create_access_token(
+  user_id: str, expires_delta: timedelta | None = None
+) -> tuple[str, int]:
+
+  if expires_delta is None:
+    duration = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+  else:
+    duration = expires_delta
+
+  return _create_token(user_id=user_id, token_type="access", duration=duration)
+
+
+def create_refresh_token(user_id: str, expires_delta: timedelta | None = None) -> str:
+
+  if expires_delta is None:
+    duration = timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+  else:
+    duration = expires_delta
+
+  token, _ = _create_token(user_id=user_id, token_type="refresh", duration=duration)
+
+  return token
