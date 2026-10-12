@@ -3,6 +3,10 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
   DATABASE_URL: str
+  ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
+  REFRESH_TOKEN_EXPIRE_DAYS: int = 7
+  JWT_ALGORITHM: str = "HS256"
+  JWT_SECRET_KEY: str
 
   @property
   def database_url_sync(self) -> str:

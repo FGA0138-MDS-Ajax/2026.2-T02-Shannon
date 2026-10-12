@@ -10,6 +10,7 @@ dependencies = [
     "psycopg[binary]>=3.3.6",
     "sqlmodel>=0.0.48",
     "bcrypt>=5.0.0",
+    "pyjwt>=2.15.1",
 ]
 
 [dependency-groups]
