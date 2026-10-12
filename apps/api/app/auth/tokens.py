@@ -1,6 +1,6 @@
 from datetime import UTC, datetime, timedelta
 from typing import Any, Literal
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import jwt
 
@@ -20,20 +20,28 @@ TokenType = Literal["access", "refresh"]
 
 
 def _create_token(
-  user_id: str, token_type: TokenType, duration: timedelta
+  user_id: str,
+  token_type: TokenType,
+  duration: timedelta,
+  sid: str | None = None,
+  jti: str | None = None,
 ) -> tuple[str, int]:
   """Generaliza a criação de tokens. Codifica a payload"""
 
   now = datetime.now(UTC)
   iat = int(now.timestamp())
   exp = int((now + duration).timestamp())
+  jti = jti if jti is not None else str(uuid4())
   payload = {
     "sub": user_id,
     "iat": iat,
     "exp": exp,
     "type": token_type,
-    "jti": str(uuid4()),
+    "jti": jti,
   }
+  if sid is not None:
+    payload["sid"] = sid
+
   return (
     jwt.encode(payload, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM),
     exp,
@@ -53,7 +61,9 @@ def create_access_token(
   return _create_token(user_id=user_id, token_type="access", duration=duration)
 
 
-def create_refresh_token(user_id: str, expires_delta: timedelta | None = None) -> str:
+def create_refresh_token(
+  user_id: str, session_id: str, jti: str, expires_delta: timedelta | None = None
+) -> str:
   """Cria token refresh. É possível passar um delta personalizado"""
 
   if expires_delta is None:
@@ -61,16 +71,18 @@ def create_refresh_token(user_id: str, expires_delta: timedelta | None = None) -
   else:
     duration = expires_delta
 
-  token, _ = _create_token(user_id=user_id, token_type="refresh", duration=duration)
+  token, _ = _create_token(
+    user_id=user_id, token_type="refresh", sid=session_id, jti=jti, duration=duration
+  )
 
   return token
 
 
-def create_token_pair(user_id: str) -> TokenResponse:
+def create_token_pair(user_id: str, session_id: str, refresh_jti: str) -> TokenResponse:
   """Empacota os access e refresh tokens para RESPONSE via JSON"""
 
   access_token, access_exp = create_access_token(user_id)
-  refresh_token = create_refresh_token(user_id)
+  refresh_token = create_refresh_token(user_id, session_id, refresh_jti)
 
   return TokenResponse(
     access_token=access_token,
@@ -96,5 +108,14 @@ def decode_token(token: str, expected_type: TokenType) -> dict[str, Any]:
 
   if payload.get("type") != expected_type:
     raise TokenInvalidError
+
+  if expected_type == "refresh":
+    if "sid" not in payload or "jti" not in payload:
+      raise TokenInvalidError
+    try:
+      UUID(payload.get("sid"))
+      UUID(payload.get("jti"))
+    except (ValueError, TypeError, AttributeError) as exc:
+      raise TokenInvalidError from exc
 
   return payload
