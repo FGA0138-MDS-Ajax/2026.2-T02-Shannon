@@ -1,9 +1,10 @@
 from datetime import UTC, datetime, timedelta
-from typing import Literal
+from typing import Any, Literal
 from uuid import uuid4
 
 import jwt
 
+from app.auth.schemas import TokenResponse
 from app.config import settings
 
 
@@ -60,3 +61,12 @@ def create_refresh_token(user_id: str, expires_delta: timedelta | None = None) -
   token, _ = _create_token(user_id=user_id, token_type="refresh", duration=duration)
 
   return token
+
+
+def create_token_pair(user_id: str) -> TokenResponse:
+  access_token, access_exp = create_access_token(user_id)
+  refresh_token = create_refresh_token(user_id)
+
+  return TokenResponse[
+    "access_token":access_token, "refresh_token":refresh_token, "exp":access_exp
+  ]
