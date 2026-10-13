@@ -38,4 +38,14 @@ def run_before(connection_url: str) -> Iterator[None]:
 
   SQLModel.metadata.create_all(engine)
 
-  yield
+  try:
+    yield
+  finally:
+    tables = ", ".join(
+      engine.dialect.identifier_preparer.format_table(table)
+      for table in SQLModel.metadata.sorted_tables
+    )
+    if tables:
+      with engine.begin() as connection:
+        connection.exec_driver_sql(f"TRUNCATE TABLE {tables} RESTART IDENTITY CASCADE")
+    engine.dispose()
