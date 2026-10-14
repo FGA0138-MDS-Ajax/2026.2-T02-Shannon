@@ -30,3 +30,14 @@ pnpm install
 ```
 
 Mais detalhes em [apps/mobile/README.md](apps/mobile/README.md).
+
+
+### Erro de caminho no interpretador do UV
+
+Roda esse comando:
+
+```bash
+uv run python -c "import sys; print(sys.executable)"
+```
+
+Pega o caminho, abre o Select Interprector do VSCode com Ctrl + Shift + P, selecione a opção de colocar o caminho e cola o caminho copiado. 
