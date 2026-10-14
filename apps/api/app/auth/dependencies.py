@@ -19,6 +19,8 @@ security = HTTPBearer(auto_error=False)
 def get_current_user(
   db: SessionDep, credentials: HTTPAuthorizationCredentials | None = Depends(security)
 ) -> User:
+  """Valida credenciais da REQUEST do front e, se passar, as utiliza para buscar o
+  usuário no banco de dados"""
   if credentials is None:
     raise unauthorized_exception(MSG_NOT_AUTHENTICATED)
 

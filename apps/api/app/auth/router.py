@@ -27,7 +27,8 @@ def refresh(token_refresh: TokenRefreshRequest, db: SessionDep):
   except TokenExpiredError:
     raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Token expirado.") from None
 
+
 @session_router.get("/me", status_code=status.HTTP_200_OK, response_model=UserPublic)
 def get_me(current_user: User = Depends(get_current_user)) -> User:
-  """"""
+  """Devolve os dados do usuário autenticado"""
   return current_user
