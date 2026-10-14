@@ -2,7 +2,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from app.auth.router import auth_router
+from app.auth.router import auth_router, session_router
 from app.database import create_db_and_tables
 
 
@@ -16,6 +16,7 @@ app = FastAPI(lifespan=lifespan)
 
 # Routers
 
+app.include_router(session_router)
 app.include_router(auth_router)
 
 

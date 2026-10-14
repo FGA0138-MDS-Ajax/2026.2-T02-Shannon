@@ -1,11 +1,16 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, Depends
 
 from app.auth import service
 from app.auth.schemas import TokenRefreshRequest, TokenResponse
 from app.auth.tokens import TokenExpiredError, TokenInvalidError
+from app.auth.dependencies import get_current_user
+from app.auth.schemas import UserPublic
+from app.auth.models import User
 from app.database import SessionDep
 
+
 auth_router = APIRouter(prefix="/auth", tags=["auth"])
+session_router = APIRouter(prefix="/session", tags=["session"])
 
 
 @auth_router.post(
@@ -21,3 +26,8 @@ def refresh(token_refresh: TokenRefreshRequest, db: SessionDep):
 
   except TokenExpiredError:
     raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Token expirado.") from None
+
+@session_router.get("/me", status_code=status.HTTP_200_OK, response_model=UserPublic)
+def get_me(current_user: User = Depends(get_current_user)) -> User:
+  """"""
+  return current_user
