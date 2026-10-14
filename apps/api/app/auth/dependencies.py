@@ -1,23 +1,27 @@
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from fastapi import Depends
+from typing import Annotated
+from typing import Annotated
 from uuid import UUID
 
+from fastapi import Depends
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+
 from app.auth.exceptions import (
-  unauthorized_exception,
   MSG_NOT_AUTHENTICATED,
   MSG_TOKEN_EXPIRED,
   MSG_TOKEN_INVALID,
+  unauthorized_exception,
 )
 from app.auth.models import User
-from app.auth.tokens import TokenExpiredError, TokenInvalidError, decode_token
 from app.auth.repository import get_user_by_id
+from app.auth.tokens import TokenExpiredError, TokenInvalidError, decode_token
 from app.database import SessionDep
 
 security = HTTPBearer(auto_error=False)
 
 
 def get_current_user(
-  db: SessionDep, credentials: HTTPAuthorizationCredentials | None = Depends(security)
+  db: SessionDep,
+  credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(security)],
 ) -> User:
   """Valida credenciais da REQUEST do front e, se passar, as utiliza para buscar o
   usuário no banco de dados"""

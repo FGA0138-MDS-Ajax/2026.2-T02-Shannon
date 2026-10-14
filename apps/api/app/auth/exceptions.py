@@ -1,6 +1,5 @@
 from fastapi import HTTPException, status
 
-
 MSG_NOT_AUTHENTICATED = "Não autenticado."
 MSG_TOKEN_EXPIRED = "Token expirado."
 MSG_TOKEN_INVALID = "Token inválido."
