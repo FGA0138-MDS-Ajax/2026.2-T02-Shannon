@@ -4,13 +4,40 @@ from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.auth import service
 from app.auth.dependencies import get_current_user
+from app.auth.exceptions import (
+  MSG_EMAIL_TAKEN,
+  MSG_USERNAME_TAKEN,
+  EmailTakenError,
+  UsernameTakenError,
+)
 from app.auth.models import User
-from app.auth.schemas import TokenRefreshRequest, TokenResponse, UserPublic
+from app.auth.schemas import (
+  SignupRequest,
+  SignupResponse,
+  TokenRefreshRequest,
+  TokenResponse,
+  UserPublic,
+)
 from app.auth.tokens import TokenExpiredError, TokenInvalidError
 from app.database import SessionDep
 
 auth_router = APIRouter(prefix="/auth", tags=["auth"])
 session_router = APIRouter(prefix="/session", tags=["session"])
+
+
+@auth_router.post(
+  "/signup", status_code=status.HTTP_201_CREATED, response_model=SignupResponse
+)
+def signup(data: SignupRequest, db: SessionDep) -> SignupResponse:
+  """Cria a conta e já devolve o usuário autenticado com o par de tokens."""
+  try:
+    return service.register_user(db, data)
+
+  except UsernameTakenError:
+    raise HTTPException(status.HTTP_409_CONFLICT, MSG_USERNAME_TAKEN) from None
+
+  except EmailTakenError:
+    raise HTTPException(status.HTTP_409_CONFLICT, MSG_EMAIL_TAKEN) from None
 
 
 @auth_router.post(
