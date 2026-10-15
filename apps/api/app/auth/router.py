@@ -1,7 +1,5 @@
 from typing import Annotated
 
-from typing import Annotated
-
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.auth import service
