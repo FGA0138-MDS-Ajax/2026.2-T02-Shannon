@@ -4,6 +4,9 @@ from uuid import UUID, uuid4
 from app.auth import repository, tokens
 from app.auth.tokens import TokenInvalidError
 from app.config import settings
+from app.auth.exceptions import InvalidUser
+from app.auth import security
+# from app.auth import session_service
 
 
 def refresh_session(db, refresh_token: str):
@@ -37,3 +40,28 @@ def refresh_session(db, refresh_token: str):
     repository.delete_session(db, sid)
     db.commit()
     raise TokenInvalidError
+
+
+def login(db, username, password):
+
+  if "@" in username:
+
+    user = repository.get_user_by_email(db, username)
+
+  else : 
+
+    user = repository.get_user_by_username(db, username)
+
+  if user is None:
+
+    raise InvalidUser
+
+  response_verify = security.verify_password(password, user.password_hash)
+
+  if response_verify:
+
+    return #session_service.start_service(db, user.id)
+
+  else:
+
+    raise InvalidUser

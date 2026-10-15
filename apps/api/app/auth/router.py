@@ -5,9 +5,10 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from app.auth import service
 from app.auth.dependencies import get_current_user
 from app.auth.models import User
-from app.auth.schemas import TokenRefreshRequest, TokenResponse, UserPublic
+from app.auth.schemas import TokenRefreshRequest, TokenResponse, UserPublic, LoginRequest
 from app.auth.tokens import TokenExpiredError, TokenInvalidError
 from app.database import SessionDep
+from app.auth.exceptions import InvalidUser
 
 auth_router = APIRouter(prefix="/auth", tags=["auth"])
 session_router = APIRouter(prefix="/session", tags=["session"])
@@ -26,6 +27,16 @@ def refresh(token_refresh: TokenRefreshRequest, db: SessionDep):
 
   except TokenExpiredError:
     raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Token expirado.") from None
+
+
+@session_router.post("/login", status.HTTP_200_OK, response_model = TokenResponse)
+def login(db : SessionDep , dados : LoginRequest):
+
+  try :
+    return service.login(db, dados.login, dados.password)
+
+  except InvalidUser:
+    raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Usuário ou senha inválidos.") from None
 
 
 @session_router.get("/me", status_code=status.HTTP_200_OK, response_model=UserPublic)

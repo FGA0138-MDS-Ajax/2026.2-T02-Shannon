@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class UserPublic(BaseModel):
@@ -26,3 +26,18 @@ class TokenRefreshRequest(BaseModel):
   """corpo do POST /auth/refresh."""
 
   refresh_token: str = Field(min_length=1)
+
+
+class LoginRequest(BaseModel):
+
+  login : str = Field(min_length=1)
+  password : str = Field(min_length=1)
+
+  @field_validator("login", mode = "before")
+  @classmethod
+  def normalizar_login(cls, input : str):
+
+    return input.strip().lower()
+
+
+  
