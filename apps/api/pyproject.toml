@@ -11,6 +11,7 @@ dependencies = [
     "sqlmodel>=0.0.48",
     "bcrypt>=5.0.0",
     "pyjwt>=2.15.1",
+    "email-validator>=2.3.0",
 ]
 
 [dependency-groups]
