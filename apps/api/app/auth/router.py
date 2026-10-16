@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 
 from app.auth import service
 from app.auth.dependencies import get_current_user
@@ -12,6 +12,7 @@ from app.auth.exceptions import (
 )
 from app.auth.models import User
 from app.auth.schemas import (
+  LogoutRequest,
   SignupRequest,
   SignupResponse,
   TokenRefreshRequest,
@@ -53,6 +54,13 @@ def refresh(token_refresh: TokenRefreshRequest, db: SessionDep):
 
   except TokenExpiredError:
     raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Token expirado.") from None
+
+
+@auth_router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
+def logout(data: LogoutRequest, db: SessionDep) -> Response:
+  """Encerra a sessão do refresh token. Responde sempre 204, sem corpo."""
+  service.logout_session(db, data.refresh_token)
+  return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @session_router.get("/me", status_code=status.HTTP_200_OK, response_model=UserPublic)
