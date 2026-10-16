@@ -23,3 +23,7 @@ def unauthorized_exception(message: str) -> HTTPException:
     headers={"WWW-Authenticate": "Bearer"},
   )
   return exception
+
+
+class InvalidCredentialsError(Exception):
+  """Usuário ou senha inválidos."""

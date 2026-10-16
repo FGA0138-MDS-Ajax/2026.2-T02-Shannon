@@ -42,6 +42,19 @@ class TokenRefreshRequest(BaseModel):
   refresh_token: str = Field(min_length=1)
 
 
+class LoginRequest(BaseModel):
+  """corpo do POST /auth/login. `login` aceita username ou e-mail."""
+
+  login: str = Field(min_length=1)
+  password: str = Field(min_length=1)
+
+  @field_validator("login", mode="before")
+  @classmethod
+  def _normalize_login(cls, value: object) -> object:
+    """Normaliza igual ao cadastro."""
+    return normalize_identifier(value)
+
+
 class SignupRequest(BaseModel):
   """corpo do POST /auth/signup. chega ao serviço já normalizado."""
 
@@ -53,11 +66,13 @@ class SignupRequest(BaseModel):
   @field_validator("username", "email", mode="before")
   @classmethod
   def _normalize_identifier(cls, value: object) -> object:
+    """Remove espaços nas pontas e passa para minúsculas."""
     return normalize_identifier(value)
 
   @field_validator("name", mode="before")
   @classmethod
   def _strip_name(cls, value: object) -> object:
+    """Remove espaços nas pontas do nome."""
     if isinstance(value, str):
       return value.strip()
     return value
@@ -65,6 +80,7 @@ class SignupRequest(BaseModel):
   @field_validator("password")
   @classmethod
   def _password_max_bytes(cls, value: str) -> str:
+    """Recusa senhas acima de 72 bytes."""
     # limite do bcrypt; a mensagem nunca inclui a senha
     if len(value.encode("utf-8")) > PASSWORD_MAX_BYTES:
       raise ValueError(f"A senha deve ter no máximo {PASSWORD_MAX_BYTES} bytes.")

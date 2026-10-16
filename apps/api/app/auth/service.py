@@ -4,10 +4,19 @@ from uuid import UUID, uuid4
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session
 
-from app.auth import repository, tokens
-from app.auth.exceptions import EmailTakenError, UsernameTakenError
+from app.auth import repository, security, tokens
+from app.auth.exceptions import (
+  EmailTakenError,
+  InvalidCredentialsError,
+  UsernameTakenError,
+)
 from app.auth.models import User
-from app.auth.schemas import SignupRequest, SignupResponse, UserPublic
+from app.auth.schemas import (
+  SignupRequest,
+  SignupResponse,
+  TokenResponse,
+  UserPublic,
+)
 from app.auth.security import hash_password
 from app.auth.session_service import start_session
 from app.auth.tokens import TokenInvalidError
@@ -51,7 +60,7 @@ def register_user(db: Session, data: SignupRequest) -> SignupResponse:
   return SignupResponse(user=UserPublic.model_validate(user), token=token)
 
 
-def refresh_session(db, refresh_token: str):
+def refresh_session(db: Session, refresh_token: str) -> TokenResponse:
   """Renova o par de tokens trocando o jti da sessão.
 
   Se o refresh não for o atual da sessão (reuso), apaga a sessão e
@@ -82,3 +91,33 @@ def refresh_session(db, refresh_token: str):
     repository.delete_session(db, sid)
     db.commit()
     raise TokenInvalidError
+
+
+_DUMMY_HASH = hash_password("senha-ficticia-para-igualar-tempo")
+
+
+def login(db: Session, username: str, password: str) -> TokenResponse:
+  """Autentica por username ou e-mail e cria uma sessão nova.
+
+  Levanta `InvalidCredentialsError` se o usuário não existir ou a senha
+  estiver errada.
+  """
+  if "@" in username:
+    user = repository.get_user_by_email(db, username)
+
+  else:
+    user = repository.get_user_by_username(db, username)
+
+  if user is None:
+    security.verify_password(password, _DUMMY_HASH)
+    raise InvalidCredentialsError
+
+  response_verify = security.verify_password(password, user.password_hash)
+
+  if response_verify:
+    token = start_session(db, user.id)
+    db.commit()
+    return token
+
+  else:
+    raise InvalidCredentialsError

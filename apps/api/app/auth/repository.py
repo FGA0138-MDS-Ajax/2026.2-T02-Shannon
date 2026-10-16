@@ -7,10 +7,12 @@ from app.auth.models import AuthSession, User
 
 
 def get_user_by_id(db: Session, user_id: UUID) -> User | None:
+  """Busca o usuário pelo id."""
   return db.get(User, user_id)
 
 
 def get_user_by_username(db: Session, username: str) -> User | None:
+  """Espera `username` já normalizado (minúsculas, sem espaços nas pontas)."""
   return db.exec(select(User).where(User.username == username)).first()
 
 
