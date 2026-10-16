@@ -1,11 +1,10 @@
-# Testes funcionais de validação e serialização dos schemas
+from types import SimpleNamespace
+from uuid import uuid4
 
 import pytest
 from pydantic import ValidationError
 
 from app.auth.schemas import TokenRefreshRequest, TokenResponse, UserPublic
-from types import SimpleNamespace
-from uuid import uuid4
 
 
 # Teste 1: verifica se UserPublic não expõe o hash da senha

@@ -2,38 +2,10 @@ from datetime import timedelta
 from uuid import uuid4
 
 import pytest
-from fastapi.testclient import TestClient
 from sqlmodel import Session
 
 from app.auth.models import User
 from app.auth.tokens import create_access_token, create_refresh_token
-from app.database import get_session
-from app.main import app
-from tests.support.db import db_connection
-
-
-@pytest.fixture
-def test_engine(connection_url):
-  """Cria um engine conectado ao banco de dados de teste."""
-  engine = db_connection(connection_url)
-  yield engine
-  engine.dispose()
-
-
-@pytest.fixture
-def client(test_engine):
-  """Cria um cliente HTTP que utiliza o banco de teste."""
-
-  def override_get_session():
-    with Session(test_engine) as session:
-      yield session
-
-  app.dependency_overrides[get_session] = override_get_session
-
-  test_client = TestClient(app)
-  yield test_client
-
-  app.dependency_overrides.clear()
 
 
 @pytest.fixture
