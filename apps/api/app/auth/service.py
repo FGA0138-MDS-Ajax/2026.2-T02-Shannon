@@ -19,7 +19,7 @@ from app.auth.schemas import (
 )
 from app.auth.security import hash_password
 from app.auth.session_service import start_session
-from app.auth.tokens import TokenInvalidError
+from app.auth.tokens import TokenExpiredError, TokenInvalidError
 from app.config import settings
 
 
@@ -121,3 +121,19 @@ def login(db: Session, username: str, password: str) -> TokenResponse:
 
   else:
     raise InvalidCredentialsError
+
+
+def logout_session(db: Session, refresh_token: str) -> None:
+  """Encerra a sessão do refresh token. Nunca falha (logout é idempotente).
+
+  Token inválido ou expirado não apaga nada. A sessão é apagada pelo `sid`,
+  sem conferir o `jti`: um refresh antigo da mesma sessão também a encerra.
+  """
+  try:
+    payload = tokens.decode_token(refresh_token, "refresh")
+    sid = UUID(payload["sid"])
+  except (TokenExpiredError, TokenInvalidError, KeyError, ValueError, TypeError):
+    return
+
+  repository.delete_session(db, sid)
+  db.commit()

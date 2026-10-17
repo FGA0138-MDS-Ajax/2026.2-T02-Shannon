@@ -39,7 +39,15 @@ class TokenResponse(BaseModel):
 class TokenRefreshRequest(BaseModel):
   """corpo do POST /auth/refresh."""
 
-  refresh_token: str = Field(min_length=1)
+  refresh_token: str = Field(min_length=1, max_length=2048)
+
+  @field_validator("refresh_token", mode="before")
+  @classmethod
+  def _strip_token(cls, token: object) -> object:
+
+    if isinstance(token, str):
+      return token.strip()
+    return token
 
 
 class LoginRequest(BaseModel):
@@ -53,6 +61,20 @@ class LoginRequest(BaseModel):
   def _normalize_login(cls, value: object) -> object:
     """Normaliza igual ao cadastro."""
     return normalize_identifier(value)
+
+
+class LogoutRequest(BaseModel):
+  """corpo do POST /auth/logout."""
+
+  refresh_token: str = Field(min_length=1, max_length=2048)
+
+  @field_validator("refresh_token", mode="before")
+  @classmethod
+  def _strip_token(cls, token: object) -> object:
+
+    if isinstance(token, str):
+      return token.strip()
+    return token
 
 
 class SignupRequest(BaseModel):
