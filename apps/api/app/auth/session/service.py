@@ -3,8 +3,9 @@ from uuid import UUID, uuid4
 
 from sqlmodel import Session
 
-from app.auth import repository, tokens
+from app.auth import tokens
 from app.auth.schemas import TokenResponse
+from app.auth.session import repository
 from app.config import settings
 
 

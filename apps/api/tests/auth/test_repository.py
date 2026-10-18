@@ -5,14 +5,17 @@ from uuid import uuid4
 
 from sqlmodel import Session
 
-from app.auth.models import AuthSession, User
+from app.auth.models import User
 from app.auth.repository import (
-  create_session,
-  delete_session,
-  delete_user_sessions,
   get_user_by_email,
   get_user_by_id,
   get_user_by_username,
+)
+from app.auth.session.models import AuthSession
+from app.auth.session.repository import (
+  create_session,
+  delete_session,
+  delete_user_sessions,
   rotate_session,
 )
 from tests.support.db import db_connection

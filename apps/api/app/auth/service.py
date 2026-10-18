@@ -4,7 +4,8 @@ from uuid import UUID, uuid4
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session
 
-from app.auth import repository, security, tokens
+from app.auth import repository as auth_repository
+from app.auth import security, tokens
 from app.auth.exceptions import (
   EmailTakenError,
   InvalidCredentialsError,
@@ -18,16 +19,17 @@ from app.auth.schemas import (
   UserPublic,
 )
 from app.auth.security import hash_password
-from app.auth.session_service import start_session
+from app.auth.session import repository as session_repository
+from app.auth.session.service import start_session
 from app.auth.tokens import TokenExpiredError, TokenInvalidError
 from app.config import settings
 
 
 def _ensure_available(db: Session, username: str, email: str) -> None:
   """Levanta `UsernameTakenError` ou `EmailTakenError` se já estiverem em uso."""
-  if repository.get_user_by_username(db, username) is not None:
+  if auth_repository.get_user_by_username(db, username) is not None:
     raise UsernameTakenError
-  if repository.get_user_by_email(db, email) is not None:
+  if auth_repository.get_user_by_email(db, email) is not None:
     raise EmailTakenError
 
 
@@ -76,7 +78,7 @@ def refresh_session(db: Session, refresh_token: str) -> TokenResponse:
     days=settings.REFRESH_TOKEN_EXPIRE_DAYS
   )
 
-  user_id = repository.rotate_session(db, sid, jti, new_jti, new_expires_at)
+  user_id = session_repository.rotate_session(db, sid, jti, new_jti, new_expires_at)
 
   if user_id:
     user_id_str = str(user_id)
@@ -88,7 +90,7 @@ def refresh_session(db: Session, refresh_token: str) -> TokenResponse:
     return token_response
 
   else:
-    repository.delete_session(db, sid)
+    session_repository.delete_session(db, sid)
     db.commit()
     raise TokenInvalidError
 
@@ -103,10 +105,10 @@ def login(db: Session, username: str, password: str) -> TokenResponse:
   estiver errada.
   """
   if "@" in username:
-    user = repository.get_user_by_email(db, username)
+    user = auth_repository.get_user_by_email(db, username)
 
   else:
-    user = repository.get_user_by_username(db, username)
+    user = auth_repository.get_user_by_username(db, username)
 
   if user is None:
     security.verify_password(password, _DUMMY_HASH)
@@ -135,5 +137,5 @@ def logout_session(db: Session, refresh_token: str) -> None:
   except (TokenExpiredError, TokenInvalidError, KeyError, ValueError, TypeError):
     return
 
-  repository.delete_session(db, sid)
+  session_repository.delete_session(db, sid)
   db.commit()
