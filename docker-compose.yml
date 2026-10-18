@@ -23,6 +23,8 @@ services:
     container_name: habbit-api
     ports:
       - "8000:8000"
+    env_file:
+      - ./apps/api/.env
     environment:
       DATABASE_URL: "postgres://habbit:habbit@postgresql:5432/habbit"
     depends_on:
