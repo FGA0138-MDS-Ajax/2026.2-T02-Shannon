@@ -3,7 +3,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
 
-from app.habit.models import HabitStatus
+from app.habits.models import HabitStatus
 
 
 class HabitPublic(BaseModel):
