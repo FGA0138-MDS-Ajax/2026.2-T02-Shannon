@@ -5,7 +5,7 @@ from uuid import UUID, uuid4
 from fastapi.testclient import TestClient
 from sqlmodel import Session
 
-from app.auth.models import AuthSession
+from app.auth.session.models import AuthSession
 from app.auth.tokens import decode_token
 
 

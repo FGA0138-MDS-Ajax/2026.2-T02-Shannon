@@ -35,13 +35,14 @@ def test_create_access_token_contains_required_claims():
 
 # Teste 2: confirma que o token de acesso expira em aproximadamente 15 minutos,
 # considerando a diferença entre o horário atual e o claim `exp`.
-def test_create_access_token_expires_in_about_15_minutes():
+def test_create_access_token_expires_in_expected_duration():
   token, exp = create_access_token("usuario-teste")
 
   now = int(datetime.now(UTC).timestamp())
   diferenca = exp - now
 
-  assert 14 * 60 <= diferenca <= 15 * 60
+  expected = settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
+  assert expected - 60 <= diferenca <= expected
 
 
 # Teste 3: confirma que o token de atualização contém o usuário, o tipo,
@@ -61,7 +62,8 @@ def test_create_refresh_token_has_correct_type_and_expiration():
   assert payload["sid"] == session_id
   assert payload["jti"] == jti
   assert isinstance(payload["exp"], int)
-  assert 6 * 24 * 60 * 60 <= diferenca <= 7 * 24 * 60 * 60
+  expected = settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60
+  assert expected - 60 <= diferenca <= expected
 
 
 # Teste 4: confirma que a criação do par retorna um TokenResponse com os dois
