@@ -7,7 +7,7 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import Session
 
-from app.auth.models import AuthSession
+from app.auth.session.models import AuthSession
 from app.auth.tokens import (
   create_access_token,
   create_refresh_token,
@@ -57,7 +57,7 @@ def test_refresh_returns_new_token_pair(
   assert isinstance(new_tokens["exp"], int)
 
   me_response = client.get(
-    "/session/me",
+    "/auth/session/me",
     headers={"Authorization": f"Bearer {new_tokens['access_token']}"},
   )
 

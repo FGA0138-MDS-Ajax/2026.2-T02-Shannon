@@ -2,8 +2,10 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from app.auth.router import auth_router, session_router
+from app.auth.router import auth_router
+from app.check_ins.router import check_ins_router
 from app.database import create_db_and_tables
+from app.habit.router import habit_router
 
 
 @asynccontextmanager
@@ -16,8 +18,9 @@ app = FastAPI(lifespan=lifespan)
 
 # Routers
 
-app.include_router(session_router)
 app.include_router(auth_router)
+app.include_router(habit_router)
+app.include_router(check_ins_router)
 
 
 @app.get("/")

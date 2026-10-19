@@ -1,9 +1,6 @@
-from typing import Annotated
-
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, HTTPException, Response, status
 
 from app.auth import service
-from app.auth.dependencies import get_current_user
 from app.auth.exceptions import (
   MSG_EMAIL_TAKEN,
   MSG_USERNAME_TAKEN,
@@ -11,7 +8,6 @@ from app.auth.exceptions import (
   InvalidCredentialsError,
   UsernameTakenError,
 )
-from app.auth.models import User
 from app.auth.schemas import (
   LoginRequest,
   LogoutRequest,
@@ -19,13 +15,14 @@ from app.auth.schemas import (
   SignupResponse,
   TokenRefreshRequest,
   TokenResponse,
-  UserPublic,
 )
+from app.auth.session.router import session_router
 from app.auth.tokens import TokenExpiredError, TokenInvalidError
 from app.database import SessionDep
 
 auth_router = APIRouter(prefix="/auth", tags=["auth"])
-session_router = APIRouter(prefix="/session", tags=["session"])
+
+auth_router.include_router(session_router)
 
 
 @auth_router.post(
@@ -77,9 +74,3 @@ def logout(data: LogoutRequest, db: SessionDep) -> Response:
   """Encerra a sessão do refresh token. Responde sempre 204, sem corpo."""
   service.logout_session(db, data.refresh_token)
   return Response(status_code=status.HTTP_204_NO_CONTENT)
-
-
-@session_router.get("/me", status_code=status.HTTP_200_OK, response_model=UserPublic)
-def get_me(current_user: Annotated[User, Depends(get_current_user)]) -> User:
-  """Devolve os dados do usuário autenticado."""
-  return current_user

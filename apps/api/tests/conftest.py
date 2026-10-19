@@ -76,4 +76,3 @@ def client(test_engine) -> Iterator[TestClient]:
   yield test_client
 
   app.dependency_overrides.clear()
-
