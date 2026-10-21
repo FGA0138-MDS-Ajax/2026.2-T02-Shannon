@@ -3,6 +3,7 @@
   "main": "expo-router/entry",
   "version": "1.0.0",
   "dependencies": {
+    "@expo-google-fonts/libre-baskerville": "^0.4.3",
     "@expo/ui": "~57.0.20",
     "axios": "^1.20.0",
     "expo": "~57.0.25",

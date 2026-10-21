@@ -1,5 +1,4 @@
 import * as SecureStore from "expo-secure-store";
-// é onde será guardado os tokens, criptografados
 
 //Formato do tokens guardados
 // Quando o access token vence, em segundos desde 1970 (campo `exp` da API).
