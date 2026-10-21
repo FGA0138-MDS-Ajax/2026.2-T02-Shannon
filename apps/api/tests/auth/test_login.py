@@ -6,7 +6,7 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import Session, select
 
-from app.auth.models import AuthSession
+from app.auth.session.models import AuthSession
 from app.auth.tokens import decode_token
 
 

@@ -39,7 +39,7 @@ def access_token(user):
 # usuário.
 def test_get_session_me_returns_authenticated_user(client, user, access_token):
   response = client.get(
-    "/session/me",
+    "/auth/session/me",
     headers={"Authorization": f"Bearer {access_token}"},
   )
 
@@ -58,7 +58,7 @@ def test_get_session_me_returns_authenticated_user(client, user, access_token):
 # teste 2: confirma que a resposta não expõe a senha nem seu hash.
 def test_get_session_me_does_not_return_password_hash(client, access_token):
   response = client.get(
-    "/session/me",
+    "/auth/session/me",
     headers={"Authorization": f"Bearer {access_token}"},
   )
 
@@ -98,11 +98,11 @@ def test_get_session_me_returns_the_correct_user(client, test_engine):
   token_b, _ = create_access_token(str(user_b.id))
 
   response_a = client.get(
-    "/session/me",
+    "/auth/session/me",
     headers={"Authorization": f"Bearer {token_a}"},
   )
   response_b = client.get(
-    "/session/me",
+    "/auth/session/me",
     headers={"Authorization": f"Bearer {token_b}"},
   )
 
@@ -115,7 +115,7 @@ def test_get_session_me_returns_the_correct_user(client, test_engine):
 
 # teste 4: confirma que uma requisição sem credenciais é rejeitada com HTTP 401.
 def test_get_session_me_without_authorization_returns_401(client):
-  response = client.get("/session/me")
+  response = client.get("/auth/session/me")
 
   assert response.status_code == 401
   assert response.headers.get("WWW-Authenticate") == "Bearer"
@@ -126,7 +126,7 @@ def test_get_session_me_without_authorization_returns_401(client):
 # HTTP 401.
 def test_get_session_me_without_bearer_scheme_returns_401(client, access_token):
   response = client.get(
-    "/session/me",
+    "/auth/session/me",
     headers={"Authorization": access_token},
   )
 
@@ -143,7 +143,7 @@ def test_get_session_me_with_expired_token_returns_401(client, user):
   )
 
   response = client.get(
-    "/session/me",
+    "/auth/session/me",
     headers={"Authorization": f"Bearer {expired_token}"},
   )
 
@@ -162,7 +162,7 @@ def test_get_session_me_with_expired_token_returns_401(client, user):
 )
 def test_get_session_me_with_invalid_token_returns_401(client, token):
   response = client.get(
-    "/session/me",
+    "/auth/session/me",
     headers={"Authorization": f"Bearer {token}"},
   )
 
@@ -178,7 +178,7 @@ def test_get_session_me_rejects_refresh_token(client, user):
   )
 
   response = client.get(
-    "/session/me",
+    "/auth/session/me",
     headers={"Authorization": f"Bearer {refresh_token}"},
   )
 
@@ -194,7 +194,7 @@ def test_get_session_me_with_nonexistent_user_returns_401(client):
   token, _ = create_access_token(str(nonexistent_user_id))
 
   response = client.get(
-    "/session/me",
+    "/auth/session/me",
     headers={"Authorization": f"Bearer {token}"},
   )
 
