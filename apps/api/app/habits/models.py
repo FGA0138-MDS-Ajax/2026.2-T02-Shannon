@@ -11,6 +11,30 @@ class HabitStatus(StrEnum):
   FINISHED = "finished"
 
 
+class HabitCategory(StrEnum):
+  """Categorias fixas de hábito. A coluna é VARCHAR, sem ENUM nativo no banco.
+
+  A ordem é a de exibição: `outros` fica por último.
+  """
+
+  MUSCULACAO = "musculacao"
+  CORRIDA = "corrida"
+  CICLISMO = "ciclismo"
+  NATACAO = "natacao"
+  CARDIO = "cardio"
+  ESPORTES = "esportes"
+  ALIMENTACAO = "alimentacao"
+  SONO = "sono"
+  ESTUDOS = "estudos"
+  LEITURA = "leitura"
+  MENTE = "mente"
+  RELIGIAO = "religiao"
+  PRODUTIVIDADE = "produtividade"
+  FINANCAS = "financas"
+  ARTE = "arte"
+  OUTROS = "outros"
+
+
 STATUS_FINISHED_AT_CHECK = (
   f"(status = '{HabitStatus.ACTIVE.name}' AND finished_at IS NULL) OR "
   f"(status = '{HabitStatus.FINISHED.name}' AND finished_at IS NOT NULL)"
@@ -26,7 +50,7 @@ class Habit(SQLModel, table=True):
   id: UUID = Field(default_factory=uuid4, primary_key=True)
   name: str = Field(max_length=100, nullable=False)
   description: str | None = Field(max_length=500, nullable=True, default=None)
-  category: str | None = Field(max_length=100, nullable=True, default=None)
+  category: str = Field(max_length=50, nullable=False)
   is_public: bool = Field(default=False, nullable=False)
   status: HabitStatus = Field(default=HabitStatus.ACTIVE, nullable=False, index=True)
   author_user_id: UUID = Field(

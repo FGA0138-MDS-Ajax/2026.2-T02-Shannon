@@ -7,7 +7,7 @@ from sqlmodel import Session
 from app.auth.models import User
 from app.habits.exceptions import HabitForbiddenError, HabitNotFoundError
 from app.habits.models import Habit
-from app.habits.repository import get_habit_by_id
+from app.habits.repository import get_habit_by_id, list_check_in_eligible_habits
 
 APP_TIMEZONE = ZoneInfo("America/Sao_Paulo")
 
@@ -21,6 +21,14 @@ def today() -> date:
   return datetime.now(APP_TIMEZONE).date()
 
 
+def can_view_habit(habit: Habit, user: User) -> bool:
+  """Diz se o usuário pode ver o hábito: é o autor ou o hábito é público.
+
+  Não consulta o banco.
+  """
+  return habit.author_user_id == user.id or habit.is_public
+
+
 def get_visible_habit(db: Session, habit_id: UUID, user: User) -> Habit:
   """Devolve o hábito se o usuário for o autor ou se ele for público.
 
@@ -28,10 +36,7 @@ def get_visible_habit(db: Session, habit_id: UUID, user: User) -> Habit:
   """
   habit = get_habit_by_id(db, habit_id)
 
-  if habit is None:
-    raise HabitNotFoundError
-
-  if habit.author_user_id != user.id and not habit.is_public:
+  if habit is None or not can_view_habit(habit, user):
     raise HabitNotFoundError
 
   return habit
@@ -49,3 +54,8 @@ def get_owned_habit(db: Session, habit_id: UUID, user: User) -> Habit:
     raise HabitForbiddenError
 
   return habit
+
+
+def get_check_in_eligible_habits(db: Session, user: User) -> list[Habit]:
+  """Hábitos em que o usuário pode fazer check-in: os dele que estão ativos."""
+  return list_check_in_eligible_habits(db, user.id)

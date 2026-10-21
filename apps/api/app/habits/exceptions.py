@@ -1,6 +1,6 @@
 MSG_HABIT_NOT_FOUND = "Hábito não encontrado."
 MSG_HABIT_FORBIDDEN = "Apenas o autor pode alterar este hábito."
-MSG_HABIT_FINISHED = "Hábito já encerrado."
+MSG_HABIT_FINISHED = "Hábito encerrado não aceita check-ins."
 
 
 class HabitNotFoundError(Exception):
@@ -12,4 +12,4 @@ class HabitForbiddenError(Exception):
 
 
 class HabitFinishedError(Exception):
-  """Hábito encerrado."""
+  """Check-in recusado porque o hábito está encerrado (HAB-4)."""
