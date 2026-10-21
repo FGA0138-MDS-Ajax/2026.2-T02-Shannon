@@ -13,9 +13,9 @@ from testcontainers.community.postgres import PostgresContainer
 
 from app.auth.models import User
 from app.auth.tokens import create_access_token
-from app.checkins.models import CheckIn
+from app.checkins.models import CheckIn, CheckInHabit
 from app.database import get_session
-from app.habits.models import Habit, HabitStatus
+from app.habits.models import Habit, HabitCategory, HabitStatus
 from app.habits.service import today
 from app.main import app
 from tests.support.db import db_connection
@@ -167,6 +167,7 @@ def habit_factory(test_engine: Engine, user: User) -> HabitFactory:
       fields["status"] = HabitStatus.FINISHED
       fields["finished_at"] = finished_at or today()
     fields.setdefault("name", "Hábito de teste")
+    fields.setdefault("category", HabitCategory.OUTROS)
     fields.setdefault("created_at", today())
     return _save(
       test_engine,
@@ -182,23 +183,38 @@ def habit_factory(test_engine: Engine, user: User) -> HabitFactory:
 
 @pytest.fixture
 def check_in_factory(test_engine: Engine) -> CheckInFactory:
-  """Fábrica que grava check-ins direto no banco.
+  """Fábrica que grava check-ins e seus vínculos direto no banco.
 
-  Por padrão o check-in é do autor do hábito. Exemplos:
+  Aceita um hábito ou uma lista. Por padrão o check-in é do autor do primeiro
+  hábito. Exemplos:
     check_in_factory(habit)
+    check_in_factory([habit_a, habit_b], title="Treino de perna")
     check_in_factory(habit, user=other_user, duration=timedelta(minutes=30))
   """
 
   def create(
-    habit: Habit,
+    habits: Habit | list[Habit],
     *,
     user: User | None = None,
+    title: str = "Check-in de teste",
+    description: str | None = None,
     duration: timedelta | None = None,
   ) -> CheckIn:
-    user_id = user.id if user is not None else habit.author_user_id
-    return _save(
-      test_engine,
-      CheckIn(habit_id=habit.id, user_id=user_id, duration=duration),
+    habits = habits if isinstance(habits, list) else [habits]
+    if not habits:
+      raise ValueError("check_in_factory precisa de pelo menos um hábito.")
+    user_id = user.id if user is not None else habits[0].author_user_id
+    check_in = CheckIn(
+      user_id=user_id, title=title, description=description, duration=duration
     )
+    with Session(test_engine) as session:
+      session.add(check_in)
+      session.flush()
+      session.add_all(
+        CheckInHabit(check_in_id=check_in.id, habit_id=habit.id) for habit in habits
+      )
+      session.commit()
+      session.refresh(check_in)
+    return check_in
 
   return create
