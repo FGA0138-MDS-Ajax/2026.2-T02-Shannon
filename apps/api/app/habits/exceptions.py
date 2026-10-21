@@ -13,3 +13,7 @@ class HabitForbiddenError(Exception):
 
 class HabitFinishedError(Exception):
   """Check-in recusado porque o hábito está encerrado (HAB-4)."""
+
+
+class HabitAlreadyFinishedError(Exception):
+  """Tentativa de encerrar um hábito que já está encerrado."""
