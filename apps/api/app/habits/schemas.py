@@ -37,8 +37,6 @@ HabitName = Annotated[
   str, StringConstraints(strip_whitespace=True, min_length=1, max_length=100)
 ]
 
-# O BeforeValidator fica fora do `| None` para que strings vazias ou de espaços
-# sejam convertidas em None antes da validação do tipo, evitando erro 422.
 HabitDescription = Annotated[
   Annotated[str, StringConstraints(strip_whitespace=True, max_length=500)] | None,
   BeforeValidator(_blank_to_none),

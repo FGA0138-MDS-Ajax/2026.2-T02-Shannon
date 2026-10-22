@@ -108,8 +108,6 @@ def create_habit(
 def list_habits(
   db: SessionDep,
   user: Annotated[User, Depends(get_current_user)],
-  # O parâmetro se chama status_filter com alias="status" para não sombrear
-  # o módulo status importado do FastAPI.
   status_filter: Annotated[HabitStatus | None, Query(alias="status")] = None,
 ) -> list[HabitPublic]:
   """Lista os hábitos do usuário logado, com filtro opcional por status."""
