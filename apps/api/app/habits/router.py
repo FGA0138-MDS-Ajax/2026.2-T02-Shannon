@@ -11,9 +11,11 @@ from app.habits.exceptions import (
   MSG_HABIT_ALREADY_FINISHED,
   MSG_HABIT_FORBIDDEN,
   MSG_HABIT_NOT_FOUND,
+  MSG_TARGET_END_DATE_BEFORE_CREATED,
   HabitAlreadyFinishedError,
   HabitForbiddenError,
   HabitNotFoundError,
+  TargetEndDateBeforeCreatedError,
 )
 from app.habits.models import HabitStatus
 from app.habits.responses import (
@@ -22,8 +24,9 @@ from app.habits.responses import (
   RESPONSES_DELETE,
   RESPONSES_FINISH,
   RESPONSES_GET_BY_ID,
+  RESPONSES_UPDATE,
 )
-from app.habits.schemas import HabitCreate, HabitPublic
+from app.habits.schemas import HabitCreate, HabitPublic, HabitUpdate
 
 habit_router = APIRouter(prefix="/habits", tags=["habits"])
 
@@ -142,3 +145,35 @@ def delete_habit(
   except HabitForbiddenError:
     raise HTTPException(status.HTTP_403_FORBIDDEN, MSG_HABIT_FORBIDDEN) from None
   return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@habit_router.patch(
+  "/{habit_id}",
+  response_model=HabitPublic,
+  status_code=status.HTTP_200_OK,
+  summary="Editar hábito",
+  description=(
+    "Edita um hábito do usuário logado. Só os campos enviados mudam; `{}` não"
+    " altera nada. `name`, `category` e `is_public` não aceitam `null`;"
+    " `description` e `target_end_date` enviados como `null` são apagados."
+    " `status` e `finished_at` só mudam pela rota de encerrar."
+  ),
+  responses=RESPONSES_UPDATE,
+)
+def update_habit(
+  db: SessionDep,
+  habit_id: UUID,
+  data: HabitUpdate,
+  user: Annotated[User, Depends(get_current_user)],
+) -> HabitPublic:
+  """Edita os campos enviados de um hábito do autor."""
+  try:
+    return service.update_habit(db, habit_id, user, data)
+  except HabitNotFoundError:
+    raise HTTPException(status.HTTP_404_NOT_FOUND, MSG_HABIT_NOT_FOUND) from None
+  except HabitForbiddenError:
+    raise HTTPException(status.HTTP_403_FORBIDDEN, MSG_HABIT_FORBIDDEN) from None
+  except TargetEndDateBeforeCreatedError:
+    raise HTTPException(
+      status.HTTP_422_UNPROCESSABLE_ENTITY, MSG_TARGET_END_DATE_BEFORE_CREATED
+    ) from None

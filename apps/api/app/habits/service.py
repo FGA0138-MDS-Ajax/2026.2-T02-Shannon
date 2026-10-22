@@ -10,10 +10,11 @@ from app.habits.exceptions import (
   HabitAlreadyFinishedError,
   HabitForbiddenError,
   HabitNotFoundError,
+  TargetEndDateBeforeCreatedError,
 )
 from app.habits.models import Habit, HabitStatus
 from app.habits.repository import get_habit_by_id, list_check_in_eligible_habits
-from app.habits.schemas import HabitCreate
+from app.habits.schemas import HabitCreate, HabitUpdate
 
 APP_TIMEZONE = ZoneInfo("America/Sao_Paulo")
 
@@ -113,3 +114,23 @@ def delete_habit(db: Session, habit_id: UUID, user: User) -> None:
 
   habits_repository.delete_habit(db, habit)
   db.commit()
+
+
+def update_habit(db: Session, habit_id: UUID, user: User, data: HabitUpdate) -> Habit:
+  """Edita só os campos enviados de um hábito do autor.
+
+  Levanta `TargetEndDateBeforeCreatedError` se `target_end_date` vier antes do
+  `created_at` gravado; por depender do banco, essa regra fica aqui, não no schema.
+  """
+  habit = get_owned_habit(db, habit_id, user)
+  changes = data.model_dump(exclude_unset=True)
+
+  target_end_date = changes.get("target_end_date")
+  if target_end_date is not None and target_end_date < habit.created_at:
+    raise TargetEndDateBeforeCreatedError
+
+  habits_repository.update_habit(db, habit, changes)
+  db.commit()
+  db.refresh(habit)
+
+  return habit

@@ -4,7 +4,9 @@ from app.habits.exceptions import (
   MSG_HABIT_ALREADY_FINISHED,
   MSG_HABIT_FORBIDDEN,
   MSG_HABIT_NOT_FOUND,
+  MSG_TARGET_END_DATE_BEFORE_CREATED,
 )
+from app.habits.schemas import MSG_HABIT_NAME_NULL
 
 RESPONSES_422_CREATE = {
   status.HTTP_422_UNPROCESSABLE_ENTITY: {
@@ -116,4 +118,50 @@ RESPONSES_DELETE = {
   status.HTTP_403_FORBIDDEN: _RESPONSE_403_OWNED,
   status.HTTP_404_NOT_FOUND: _RESPONSE_404_OWNED,
   status.HTTP_422_UNPROCESSABLE_ENTITY: _RESPONSE_422_PATH,
+}
+
+RESPONSES_UPDATE = {
+  status.HTTP_401_UNAUTHORIZED: _RESPONSE_401,
+  status.HTTP_403_FORBIDDEN: _RESPONSE_403_OWNED,
+  status.HTTP_404_NOT_FOUND: _RESPONSE_404_OWNED,
+  status.HTTP_422_UNPROCESSABLE_ENTITY: {
+    "description": (
+      "Dados inválidos. Erros do corpo vêm no formato do Pydantic (lista em"
+      " `detail`); a data final anterior à criação vem com `detail` em texto."
+    ),
+    "content": {
+      "application/json": {
+        "examples": {
+          "campo_nulo": {
+            "summary": "`name`, `category` ou `is_public` enviados como null",
+            "value": {
+              "detail": [
+                {
+                  "loc": ["body"],
+                  "msg": f"Value error, {MSG_HABIT_NAME_NULL}",
+                  "type": "value_error",
+                }
+              ]
+            },
+          },
+          "categoria_invalida": {
+            "summary": "Categoria vazia ou fora da lista",
+            "value": {
+              "detail": [
+                {
+                  "loc": ["body", "category"],
+                  "msg": "Input should be 'musculacao', 'corrida', ...",
+                  "type": "enum",
+                }
+              ]
+            },
+          },
+          "data_final_antes_da_criacao": {
+            "summary": "`target_end_date` anterior ao `created_at`",
+            "value": {"detail": MSG_TARGET_END_DATE_BEFORE_CREATED},
+          },
+        }
+      }
+    },
+  },
 }
