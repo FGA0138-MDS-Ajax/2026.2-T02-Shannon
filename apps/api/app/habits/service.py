@@ -5,9 +5,11 @@ from zoneinfo import ZoneInfo
 from sqlmodel import Session
 
 from app.auth.models import User
+from app.habits import repository as habits_repository
 from app.habits.exceptions import HabitForbiddenError, HabitNotFoundError
-from app.habits.models import Habit
+from app.habits.models import Habit, HabitStatus
 from app.habits.repository import get_habit_by_id, list_check_in_eligible_habits
+from app.habits.schemas import HabitCreate
 
 APP_TIMEZONE = ZoneInfo("America/Sao_Paulo")
 
@@ -59,3 +61,29 @@ def get_owned_habit(db: Session, habit_id: UUID, user: User) -> Habit:
 def get_check_in_eligible_habits(db: Session, user: User) -> list[Habit]:
   """Hábitos em que o usuário pode fazer check-in: os dele que estão ativos."""
   return list_check_in_eligible_habits(db, user.id)
+
+
+def create_habit(db: Session, user: User, data: HabitCreate) -> Habit:
+  habit = Habit(
+    id=None,
+    name=data.name,
+    description=data.description,
+    category=data.category,
+    is_public=data.is_public,
+    status=HabitStatus.ACTIVE,
+    author_user_id=user.id,
+    created_at=today(),
+    target_end_date=data.target_end_date,
+  )
+
+  habits_repository.create_habit(db, habit)
+  db.commit()
+  db.refresh(habit)
+
+  return habit
+
+
+def list_my_habits(
+  db: Session, user: User, status: HabitStatus | None = None
+) -> list[Habit]:
+  return habits_repository.list_habits_by_author(db, author_id=user.id, status=status)

@@ -68,7 +68,7 @@ class HabitCreate(BaseModel):
 
   @field_validator("target_end_date")
   @classmethod
-  def validate_target_end_date(valor: date | None) -> None:
+  def validate_target_end_date(cls, valor: date | None) -> None:
     if valor is None:
       return None
 
