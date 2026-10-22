@@ -36,7 +36,7 @@ def _blank_to_none(value: object) -> object:
 CategoryInput = Annotated[HabitCategory, BeforeValidator(_normalize_category)]
 
 HabitName = Annotated[
-  str, NoNul, StringConstraints(strip_whitespace=True, min_length=1, max_length=100)
+  str, StringConstraints(strip_whitespace=True, min_length=1, max_length=100), NoNul
 ]
 
 HabitDescription = Annotated[

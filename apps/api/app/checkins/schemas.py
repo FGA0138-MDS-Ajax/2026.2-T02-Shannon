@@ -50,7 +50,7 @@ def _blank_to_none(value: object) -> object:
 
 
 CheckInTitle = Annotated[
-  str, NoNul, StringConstraints(strip_whitespace=True, min_length=1, max_length=150)
+  str, StringConstraints(strip_whitespace=True, min_length=1, max_length=150), NoNul
 ]
 # O BeforeValidator fica fora do `| None`: dentro do ramo `str`, o `None` gerado
 # seria recusado. Uso: `description: CheckInDescription = None`.
