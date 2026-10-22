@@ -13,5 +13,7 @@ def _reject_nul(value: object) -> object:
   return value
 
 
-# Uso: `Annotated[str, NoNul, ...]` em todo campo de texto que chega ao banco.
+# Uso: `Annotated[str, StringConstraints(...), NoNul]` em todo campo de texto que
+# chega ao banco. Fica depois do `StringConstraints`: antes dele, o Pydantic
+# confere o `min_length` antes de tirar os espaços e aceita `"   "` como `""`.
 NoNul = BeforeValidator(_reject_nul)
