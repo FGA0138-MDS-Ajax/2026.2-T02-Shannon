@@ -11,6 +11,8 @@ from pydantic import (
   model_validator,
 )
 
+from app.habits.models import HabitCategory
+
 # dias, horas, minutos e segundos (ex.: PT30M, PT1H15M, P1DT2H, PT0.5S).
 ISO_8601_DURATION = re.compile(
   r"P(?!$)(?:\d+D)?(?:T(?=\d)(?:\d+H)?(?:\d+M)?(?:\d+(?:\.\d+)?S)?)?"
@@ -84,4 +86,57 @@ class CheckInUpdate(BaseModel):
     """Recusa `title` enviado explicitamente como `null`."""
     if "title" in self.model_fields_set and self.title is None:
       raise ValueError(MSG_TITLE_NULL)
+    return self
+
+
+class CategoryCount(BaseModel):
+  """Representa uma categoria de hábitos e a quantidade de hábitos nela."""
+
+  name: HabitCategory
+  habit_count: int
+
+
+class CheckInCategoriesResponse(BaseModel):
+  """Resposta com a contagem de hábitos organizada por categoria."""
+
+  categories: list[CategoryCount]
+
+
+class GroupSummary(BaseModel):
+  """Identifica um grupo associado a uma opção de hábito."""
+
+  id: UUID
+  name: str
+
+
+class HabitOption(BaseModel):
+  """Representa um hábito disponível para seleção em um check-in."""
+
+  id: UUID
+  name: str
+  category: HabitCategory
+  group: GroupSummary | None = None
+  preselected: bool
+
+
+class HabitOptionsPage(BaseModel):
+  """Página de hábitos disponíveis e indicação de que há mais resultados."""
+
+  items: list[HabitOption]
+  page: int
+  has_more: bool
+
+
+class HabitOptionsQuery(BaseModel):
+  """Filtros e paginação para consultar hábitos disponíveis."""
+
+  category: HabitCategory | None = None
+  exclude_category: HabitCategory | None = None
+  page: int = Field(default=1, ge=1)
+  page_size: int = Field(default=20, ge=1, le=20)
+
+  @model_validator(mode="after")
+  def _one_mode(self) -> Self:
+    if (self.category is None) == (self.exclude_category is None):
+      raise ValueError("Informe category ou exclude_category, apenas um.")
     return self
