@@ -24,7 +24,7 @@ from tests.support.db import db_connection
 @pytest.fixture(scope="session")
 def postgres_container() -> Iterator[PostgresContainer]:
   """Start one disposable PostgreSQL container for integration tests."""
-  with PostgresContainer("postgres:16") as container:
+  with PostgresContainer("postgres:17") as container:
     yield container
 
 
