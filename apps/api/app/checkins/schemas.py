@@ -1,15 +1,22 @@
 import re
 from datetime import datetime, timedelta
-from typing import Annotated
+from typing import Annotated, Self
 from uuid import UUID
 
-from pydantic import BaseModel, BeforeValidator, Field, StringConstraints
+from pydantic import (
+  BaseModel,
+  BeforeValidator,
+  Field,
+  StringConstraints,
+  model_validator,
+)
 
 # dias, horas, minutos e segundos (ex.: PT30M, PT1H15M, P1DT2H, PT0.5S).
 ISO_8601_DURATION = re.compile(
   r"P(?!$)(?:\d+D)?(?:T(?=\d)(?:\d+H)?(?:\d+M)?(?:\d+(?:\.\d+)?S)?)?"
 )
 MSG_DURATION_FORMAT = "A duração deve estar no formato ISO 8601 (ex.: PT30M)."
+MSG_TITLE_NULL = "O título não pode ser nulo."
 
 
 def _require_iso8601(value: object) -> object:
@@ -59,3 +66,22 @@ class CheckInPublic(BaseModel):
   created_at: datetime
   duration: timedelta | None
   habit_ids: list[UUID]
+
+
+class CheckInUpdate(BaseModel):
+  """Corpo do `PATCH /check-ins/{check_in_id}`: só os campos enviados mudam.
+
+  `title: null` é recusado. `description` vazia e `duration: null` apagam o
+  valor. `habit_ids`, `user_id` e `created_at` enviados no corpo são ignorados.
+  """
+
+  title: CheckInTitle | None = None
+  description: CheckInDescription = None
+  duration: PositiveDuration | None = None
+
+  @model_validator(mode="after")
+  def reject_null_title(self) -> Self:
+    """Recusa `title` enviado explicitamente como `null`."""
+    if "title" in self.model_fields_set and self.title is None:
+      raise ValueError(MSG_TITLE_NULL)
+    return self
