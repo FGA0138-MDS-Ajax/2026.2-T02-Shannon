@@ -64,16 +64,11 @@ def get_check_in_eligible_habits(db: Session, user: User) -> list[Habit]:
 
 
 def create_habit(db: Session, user: User, data: HabitCreate) -> Habit:
+  """Cria um novo hábito associado ao usuário logado, persiste e atualiza no banco."""
   habit = Habit(
-    id=None,
-    name=data.name,
-    description=data.description,
-    category=data.category,
-    is_public=data.is_public,
-    status=HabitStatus.ACTIVE,
+    **data.model_dump(),
     author_user_id=user.id,
     created_at=today(),
-    target_end_date=data.target_end_date,
   )
 
   habits_repository.create_habit(db, habit)
@@ -86,4 +81,5 @@ def create_habit(db: Session, user: User, data: HabitCreate) -> Habit:
 def list_my_habits(
   db: Session, user: User, status: HabitStatus | None = None
 ) -> list[Habit]:
-  return habits_repository.list_habits_by_author(db, author_id=user.id, status=status)
+  """Lista os hábitos pertencentes ao usuário logado, com filtro opcional de status."""
+  return habits_repository.list_habits_by_author(db, user_id=user.id, status=status)
