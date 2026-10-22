@@ -12,73 +12,15 @@ from app.checkins.exceptions import (
   CheckInForbiddenError,
   CheckInNotFoundError,
 )
-from app.checkins.schemas import MSG_TITLE_NULL, CheckInPublic, CheckInUpdate
+from app.checkins.responses import (
+  RESPONSES_DELETE,
+  RESPONSES_GET_BY_ID,
+  RESPONSES_UPDATE,
+)
+from app.checkins.schemas import CheckInPublic, CheckInUpdate
 from app.database import SessionDep
 
 check_ins_router = APIRouter(tags=["check-ins"])
-
-_RESPONSE_403 = {
-  "description": "Quem vê o check-in, mas não foi quem o fez.",
-  "content": {"application/json": {"example": {"detail": MSG_CHECK_IN_FORBIDDEN}}},
-}
-
-_RESPONSE_404 = {
-  "description": (
-    "Check-in inexistente ou sem nenhum hábito ligado visível ao usuário."
-  ),
-  "content": {"application/json": {"example": {"detail": MSG_CHECK_IN_NOT_FOUND}}},
-}
-
-_RESPONSE_422_PATH = {
-  "description": "Identificador do check-in inválido (não é um UUID).",
-  "content": {
-    "application/json": {
-      "example": {
-        "detail": [
-          {
-            "loc": ["path", "check_in_id"],
-            "msg": "Input should be a valid UUID",
-            "type": "uuid_parsing",
-          }
-        ]
-      }
-    }
-  },
-}
-
-_RESPONSE_422_UPDATE = {
-  "description": "Dados inválidos, como `title` nulo ou duração fora do padrão.",
-  "content": {
-    "application/json": {
-      "example": {
-        "detail": [
-          {
-            "loc": ["body"],
-            "msg": f"Value error, {MSG_TITLE_NULL}",
-            "type": "value_error",
-          }
-        ]
-      }
-    }
-  },
-}
-
-_RESPONSES_GET_BY_ID = {
-  status.HTTP_404_NOT_FOUND: _RESPONSE_404,
-  status.HTTP_422_UNPROCESSABLE_ENTITY: _RESPONSE_422_PATH,
-}
-
-_RESPONSES_UPDATE = {
-  status.HTTP_403_FORBIDDEN: _RESPONSE_403,
-  status.HTTP_404_NOT_FOUND: _RESPONSE_404,
-  status.HTTP_422_UNPROCESSABLE_ENTITY: _RESPONSE_422_UPDATE,
-}
-
-_RESPONSES_DELETE = {
-  status.HTTP_403_FORBIDDEN: _RESPONSE_403,
-  status.HTTP_404_NOT_FOUND: _RESPONSE_404,
-  status.HTTP_422_UNPROCESSABLE_ENTITY: _RESPONSE_422_PATH,
-}
 
 
 @check_ins_router.get(
@@ -90,7 +32,7 @@ _RESPONSES_DELETE = {
     "Devolve o check-in se o usuário o fez ou vê algum hábito ligado a ele."
     " Quem não fez o check-in recebe só os `habit_ids` que pode ver."
   ),
-  responses=_RESPONSES_GET_BY_ID,
+  responses=RESPONSES_GET_BY_ID,
 )
 def get_check_in(
   db: SessionDep,
@@ -114,7 +56,7 @@ def get_check_in(
     " check-in de quem o fez. `description` vazia e `duration` nula apagam o"
     " valor; `title` nulo é recusado. Permitido também em hábito encerrado."
   ),
-  responses=_RESPONSES_UPDATE,
+  responses=RESPONSES_UPDATE,
 )
 def update_check_in(
   db: SessionDep,
@@ -139,7 +81,7 @@ def update_check_in(
     "Exclui definitivamente o check-in de quem o fez, junto com os vínculos"
     " com os hábitos. Permitido também em hábito encerrado."
   ),
-  responses=_RESPONSES_DELETE,
+  responses=RESPONSES_DELETE,
 )
 def delete_check_in(
   db: SessionDep,

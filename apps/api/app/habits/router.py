@@ -9,70 +9,14 @@ from app.database import SessionDep
 from app.habits import service
 from app.habits.exceptions import MSG_HABIT_NOT_FOUND, HabitNotFoundError
 from app.habits.models import HabitStatus
+from app.habits.responses import (
+  RESPONSES_422_CREATE,
+  RESPONSES_422_LIST,
+  RESPONSES_GET_BY_ID,
+)
 from app.habits.schemas import HabitCreate, HabitPublic
 
 habit_router = APIRouter(prefix="/habits", tags=["habits"])
-
-_RESPONSES_422_CREATE = {
-  status.HTTP_422_UNPROCESSABLE_ENTITY: {
-    "description": "Erro de validação nos dados enviados.",
-    "content": {
-      "application/json": {
-        "example": {
-          "detail": [
-            {
-              "loc": ["body", "category"],
-              "msg": "Field required",
-              "type": "missing",
-            }
-          ]
-        }
-      }
-    },
-  }
-}
-
-_RESPONSES_422_LIST = {
-  status.HTTP_422_UNPROCESSABLE_ENTITY: {
-    "description": "Parâmetro de consulta com valor inválido.",
-    "content": {
-      "application/json": {
-        "example": {
-          "detail": [
-            {
-              "loc": ["query", "status"],
-              "msg": "Input should be 'active' or 'finished'",
-              "type": "enum",
-            }
-          ]
-        }
-      }
-    },
-  }
-}
-
-_RESPONSES_GET_BY_ID = {
-  status.HTTP_404_NOT_FOUND: {
-    "description": "Hábito não encontrado ou privado de outro usuário.",
-    "content": {"application/json": {"example": {"detail": MSG_HABIT_NOT_FOUND}}},
-  },
-  status.HTTP_422_UNPROCESSABLE_ENTITY: {
-    "description": "Identificador do hábito inválido (não é um UUID).",
-    "content": {
-      "application/json": {
-        "example": {
-          "detail": [
-            {
-              "loc": ["path", "habit_id"],
-              "msg": "Input should be a valid UUID",
-              "type": "uuid_parsing",
-            }
-          ]
-        }
-      }
-    },
-  },
-}
 
 
 @habit_router.post(
@@ -83,7 +27,7 @@ _RESPONSES_GET_BY_ID = {
   description=(
     "Cria um novo hábito para o usuário logado com status ativo e data de criação hoje."
   ),
-  responses=_RESPONSES_422_CREATE,
+  responses=RESPONSES_422_CREATE,
 )
 def create_habit(
   db: SessionDep,
@@ -103,7 +47,7 @@ def create_habit(
     "Lista todos os hábitos do usuário logado ordenados por data de criação"
     " decrescente e nome."
   ),
-  responses=_RESPONSES_422_LIST,
+  responses=RESPONSES_422_LIST,
 )
 def list_habits(
   db: SessionDep,
@@ -123,7 +67,7 @@ def list_habits(
     "Consulta um hábito por id. Retorna 404 caso o hábito não exista ou seja"
     " privado de outro usuário."
   ),
-  responses=_RESPONSES_GET_BY_ID,
+  responses=RESPONSES_GET_BY_ID,
 )
 def get_habit(
   db: SessionDep,
