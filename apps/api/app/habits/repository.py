@@ -60,6 +60,8 @@ def create_habit(db: Session, habit: Habit) -> Habit:
   db.add(habit)
   db.flush()
   return habit
+
+
 def count_eligible_habits_by_category(
   db: Session, user_id: UUID
 ) -> list[tuple[str, int]]:
