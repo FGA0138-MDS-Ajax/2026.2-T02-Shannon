@@ -19,6 +19,7 @@ from app.checkins.responses import (
   RESPONSES_CREATE,
   RESPONSES_DELETE,
   RESPONSES_GET_BY_ID,
+  RESPONSES_HABIT_CHECK_INS,
   RESPONSES_HABIT_OPTIONS,
   RESPONSES_UPDATE,
 )
@@ -31,6 +32,7 @@ from app.checkins.schemas import (
   HabitOptionsQuery,
 )
 from app.database import SessionDep
+from app.habits.exceptions import MSG_HABIT_NOT_FOUND, HabitNotFoundError
 
 check_ins_router = APIRouter(tags=["check-ins"])
 
@@ -177,3 +179,29 @@ def delete_check_in(
   except CheckInForbiddenError:
     raise HTTPException(status.HTTP_403_FORBIDDEN, MSG_CHECK_IN_FORBIDDEN) from None
   return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@check_ins_router.get(
+  "/habits/{habit_id}/check-ins",
+  response_model=list[CheckInPublic],
+  status_code=status.HTTP_200_OK,
+  summary="Histórico de check-ins do hábito",
+  description=(
+    "Lista os check-ins que contam para o hábito, do mais recente ao mais"
+    " antigo. Qualquer usuário que possa ver o hábito (autor ou hábito"
+    " público) consulta o histórico. Quem não fez o check-in recebe só os"
+    " `habit_ids` que pode ver. Hábito encerrado também lista. Sem check-ins,"
+    " devolve `[]`."
+  ),
+  responses=RESPONSES_HABIT_CHECK_INS,
+)
+def list_habit_check_ins(
+  db: SessionDep,
+  habit_id: UUID,
+  user: Annotated[User, Depends(get_current_user)],
+) -> list[CheckInPublic]:
+  """Lista o histórico de check-ins de um hábito visível ao usuário."""
+  try:
+    return service.list_habit_check_ins(db, habit_id, user)
+  except HabitNotFoundError:
+    raise HTTPException(status.HTTP_404_NOT_FOUND, MSG_HABIT_NOT_FOUND) from None

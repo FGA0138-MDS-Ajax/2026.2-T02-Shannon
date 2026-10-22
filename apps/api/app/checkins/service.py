@@ -31,7 +31,11 @@ from app.habits.repository import (
   list_eligible_habits_page,
   list_habits_by_ids,
 )
-from app.habits.service import can_view_habit, get_check_in_eligible_habits
+from app.habits.service import (
+  can_view_habit,
+  get_check_in_eligible_habits,
+  get_visible_habit,
+)
 
 
 def build_check_ins_public(
@@ -254,3 +258,16 @@ def delete_check_in(db: Session, check_in_id: UUID, user: User) -> None:
 
   checkins_repository.delete_check_in(db, check_in)
   db.commit()
+
+
+def list_habit_check_ins(
+  db: Session, habit_id: UUID, user: User
+) -> list[CheckInPublic]:
+  """Histórico de check-ins de um hábito que o usuário pode ver.
+
+  Levanta `HabitNotFoundError` se o hábito não existir ou for privado de outra
+  pessoa. Hábito encerrado continua listando.
+  """
+  get_visible_habit(db, habit_id, user)
+  check_ins = checkins_repository.list_check_ins_by_habit(db, habit_id)
+  return build_check_ins_public(db, check_ins, user)
