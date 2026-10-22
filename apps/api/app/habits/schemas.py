@@ -1,5 +1,5 @@
 from datetime import date
-from typing import Annotated, Any
+from typing import Annotated
 from uuid import UUID
 
 from pydantic import (
@@ -24,25 +24,30 @@ def _normalize_category(value: object) -> object:
   return value
 
 
-def _blank_to_none(valor: Any) -> None | Any:
-  valor = str(valor)
-  if not valor.strip():
+def _blank_to_none(value: object) -> object:
+  """Converte strings vazias ou compostas apenas por espaços em None."""
+  if isinstance(value, str) and not value.strip():
     return None
-  return valor
+  return value
 
 
 CategoryInput = Annotated[HabitCategory, BeforeValidator(_normalize_category)]
+
 HabitName = Annotated[
-  str, StringConstraints(min_length=1, max_length=100, strip_whitespace=True)
+  str, StringConstraints(strip_whitespace=True, min_length=1, max_length=100)
 ]
+
+# O BeforeValidator fica fora do `| None` para que strings vazias ou de espaços
+# sejam convertidas em None antes da validação do tipo, evitando erro 422.
 HabitDescription = Annotated[
-  str | None,
-  StringConstraints(max_length=500, strip_whitespace=True),
+  Annotated[str, StringConstraints(strip_whitespace=True, max_length=500)] | None,
   BeforeValidator(_blank_to_none),
 ]
 
 
 class HabitPublic(BaseModel):
+  """Dados públicos do hábito devolvidos pelas rotas."""
+
   model_config = ConfigDict(from_attributes=True)
 
   id: UUID
@@ -58,21 +63,28 @@ class HabitPublic(BaseModel):
 
 
 class HabitCreate(BaseModel):
+  """Dados para criação de um novo hábito."""
+
   model_config = ConfigDict(from_attributes=True)
 
   name: HabitName
-  description: HabitDescription
+  description: HabitDescription = None
   category: CategoryInput
   is_public: bool = False
-  target_end_date: date | None
+  target_end_date: date | None = None
 
   @field_validator("target_end_date")
   @classmethod
-  def validate_target_end_date(cls, valor: date | None) -> None:
+  def validate_target_end_date(cls, valor: date | None) -> date | None:
     if valor is None:
       return None
 
+    # Import dentro do validador para evitar import circular com service.py
     from app.habits.service import today
 
     if valor < today():
-      raise ValueError
+      raise ValueError(
+        "A data alvo de término deve ser igual ou posterior à data de hoje."
+      )
+
+    return valor
