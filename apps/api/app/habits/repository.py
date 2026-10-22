@@ -117,5 +117,9 @@ def finish_habit(db: Session, habit: Habit, finished_at: date) -> Habit:
 
 
 def delete_habit(db: Session, habit: Habit) -> None:
-  """Apaga o hábito. Os check-ins saem pelo ON DELETE CASCADE. Não faz commit."""
+  """Apaga o hábito. Não faz commit.
+
+  O ON DELETE CASCADE apaga só os vínculos em `check_in_habits`. Os check-ins
+  continuam, mesmo os que ficarem sem nenhum hábito.
+  """
   db.delete(habit)
