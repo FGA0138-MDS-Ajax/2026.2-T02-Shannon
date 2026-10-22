@@ -2,6 +2,7 @@ from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from fastapi.responses import JSONResponse
 
 from app.auth.dependencies import get_current_user
 from app.auth.models import User
@@ -11,91 +12,96 @@ from app.checkins.exceptions import (
   MSG_CHECK_IN_NOT_FOUND,
   CheckInForbiddenError,
   CheckInNotFoundError,
+  CheckInRefusedError,
 )
 from app.checkins.responses import (
+  RESPONSES_CATEGORIES,
+  RESPONSES_CREATE,
   RESPONSES_DELETE,
   RESPONSES_GET_BY_ID,
+  RESPONSES_HABIT_OPTIONS,
   RESPONSES_UPDATE,
 )
 from app.checkins.schemas import (
   CheckInCategoriesResponse,
+  CheckInCreate,
   CheckInPublic,
   CheckInUpdate,
   HabitOptionsPage,
   HabitOptionsQuery,
 )
-from app.checkins.service import (
-  list_check_in_categories,
-  list_check_in_habit_options,
-)
 from app.database import SessionDep
 
-# Agrupa as rotas relacionadas aos check-ins.
 check_ins_router = APIRouter(tags=["check-ins"])
 
 
-# Lista as categorias que possuem hábitos ativos do usuário autenticado.
-# Esta rota deve ficar antes de qualquer rota dinâmica como /check-ins/{check_in_id}.
+@check_ins_router.post(
+  "/check-ins",
+  response_model=CheckInPublic,
+  status_code=status.HTTP_201_CREATED,
+  summary="Registrar check-in",
+  description=(
+    "Registra um check-in que conta para vários hábitos (de 1 a 20, sem repetidos)."
+    " Todos precisam ser hábitos ativos do usuário logado. Se algum for recusado,"
+    " nada é gravado e o erro traz `detail` e os `habit_ids` do motivo mais grave"
+    " (404, depois 403, depois 409)."
+  ),
+  responses=RESPONSES_CREATE,
+)
+def create_check_in(
+  db: SessionDep,
+  data: CheckInCreate,
+  user: Annotated[User, Depends(get_current_user)],
+) -> CheckInPublic | JSONResponse:
+  """Registra o check-in ou devolve a recusa com os ids do motivo."""
+  try:
+    return service.register_check_in(db, user, data)
+  except CheckInRefusedError as exc:
+    return JSONResponse(
+      status_code=exc.status_code,
+      content={"detail": exc.message, "habit_ids": [str(i) for i in exc.habit_ids]},
+    )
+
+
+# As rotas fixas abaixo precisam ficar antes de `/check-ins/{check_in_id}` (HAB-5).
 @check_ins_router.get(
   "/check-ins/categories",
   response_model=CheckInCategoriesResponse,
+  status_code=status.HTTP_200_OK,
   summary="Listar categorias para check-in",
   description=(
-    "Retorna as categorias que possuem hábitos ativos do usuário autenticado, "
-    "ordenadas alfabeticamente, com 'outros' por último. "
-    "Retorna uma lista vazia quando não há hábitos elegíveis."
+    "Retorna as categorias com hábitos ativos do usuário logado, em ordem"
+    " alfabética e com 'outros' por último. Lista vazia se não houver hábitos."
   ),
-  responses={
-    401: {"description": "Usuário não autenticado ou token inválido."},
-  },
+  responses=RESPONSES_CATEGORIES,
 )
 def get_check_in_categories(
   db: SessionDep,
-  current_user: Annotated[User, Depends(get_current_user)],
+  user: Annotated[User, Depends(get_current_user)],
 ) -> CheckInCategoriesResponse:
-  # O serviço aplica as regras de elegibilidade e ordenação.
-  return list_check_in_categories(db, current_user)
+  """Conta os hábitos elegíveis do usuário por categoria."""
+  return service.list_check_in_categories(db, user)
 
 
-# Lista uma página de hábitos para selecionar na tela de check-in.
-# O modelo de query valida os parâmetros e exige exatamente um modo de filtro.
 @check_ins_router.get(
   "/check-ins/habit-options",
   response_model=HabitOptionsPage,
+  status_code=status.HTTP_200_OK,
   summary="Listar opções de hábitos para check-in",
   description=(
-    "Retorna hábitos ativos do usuário autenticado, filtrados por uma categoria "
-    "ou por exclusão de categoria. A paginação aceita page >= 1 e page_size "
-    "entre 1 e 20. Informe somente category ou exclude_category."
+    "Retorna hábitos ativos do usuário logado de uma categoria (`category`) ou"
+    " das demais (`exclude_category`), informando só um dos dois. Paginação com"
+    " `page` >= 1 e `page_size` de 1 a 20."
   ),
-  responses={
-    401: {"description": "Usuário não autenticado ou token inválido."},
-    422: {
-      "description": "Parâmetros inválidos ou modos de filtro incompatíveis.",
-      "content": {
-        "application/json": {
-          "example": {
-            "detail": [
-              {
-                "type": "value_error",
-                "loc": ["query"],
-                "msg": "Informe category ou exclude_category, apenas um.",
-                "input": {},
-              }
-            ]
-          }
-        }
-      },
-    },
-  },
+  responses=RESPONSES_HABIT_OPTIONS,
 )
 def get_check_in_habit_options(
-  query: Annotated[HabitOptionsQuery, Query()],
   db: SessionDep,
-  current_user: Annotated[User, Depends(get_current_user)],
+  query: Annotated[HabitOptionsQuery, Query()],
+  user: Annotated[User, Depends(get_current_user)],
 ) -> HabitOptionsPage:
-  # O serviço calcula a paginação, has_more e preselected.
-  return list_check_in_habit_options(db, current_user, query)
+  """Devolve uma página de hábitos elegíveis para marcar no check-in."""
+  return service.list_check_in_habit_options(db, user, query)
 
 
 @check_ins_router.get(
