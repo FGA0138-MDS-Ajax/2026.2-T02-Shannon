@@ -8,6 +8,7 @@ from pydantic import (
   BeforeValidator,
   Field,
   StringConstraints,
+  field_validator,
   model_validator,
 )
 
@@ -120,3 +121,20 @@ class HabitOptionsQuery(BaseModel):
     if (self.category is None) == (self.exclude_category is None):
       raise ValueError("Informe category ou exclude_category, apenas um.")
     return self
+
+
+class CheckInCreate(BaseModel):
+  """Corpo do `POST /check-ins`: um check-in para até 20 hábitos."""
+
+  title: CheckInTitle
+  description: CheckInDescription = None
+  habit_ids: list[UUID] = Field(min_length=1, max_length=20)
+  duration: PositiveDuration | None = None
+
+  @field_validator("habit_ids")
+  @classmethod
+  def _reject_duplicates(cls, habit_ids: list[UUID]) -> list[UUID]:
+    # `list_habits_by_ids` devolve cada hábito uma vez: repetidos dariam 404 falso.
+    if len(set(habit_ids)) != len(habit_ids):
+      raise ValueError("A lista de hábitos não pode ter itens repetidos.")
+    return habit_ids

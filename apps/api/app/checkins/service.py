@@ -1,26 +1,31 @@
 from collections import defaultdict
 from uuid import UUID
 
+from fastapi import status
 from sqlmodel import Session
 
 from app.auth.models import User
+from app.checkins import repository as checkins_repository
+from app.checkins.exceptions import MSG_CHECK_IN_HABIT_FORBIDDEN, CheckInRefusedError
 from app.checkins.models import CheckIn
 from app.checkins.repository import list_habit_links
 from app.checkins.schemas import (
   CategoryCount,
   CheckInCategoriesResponse,
+  CheckInCreate,
   CheckInPublic,
   HabitOption,
   HabitOptionsPage,
   HabitOptionsQuery,
 )
+from app.habits.exceptions import MSG_HABIT_FINISHED, MSG_HABIT_NOT_FOUND
 from app.habits.models import HabitCategory
 from app.habits.repository import (
   count_eligible_habits_by_category,
   list_eligible_habits_page,
   list_habits_by_ids,
 )
-from app.habits.service import can_view_habit
+from app.habits.service import can_view_habit, get_check_in_eligible_habits
 
 
 def build_check_ins_public(
@@ -117,3 +122,57 @@ def list_check_in_habit_options(
     page=query.page,
     has_more=has_more,
   )
+
+
+def _raise_refusal(db: Session, user: User, refused: list[UUID]) -> None:
+  """Levanta a recusa do motivo mais grave: 404, depois 403, depois 409.
+
+  O erro leva só os ids desse motivo. Faz 1 consulta.
+  """
+  found = {habit.id: habit for habit in list_habits_by_ids(db, refused)}
+  not_found: list[UUID] = []
+  forbidden: list[UUID] = []
+  finished: list[UUID] = []
+
+  for habit_id in refused:
+    habit = found.get(habit_id)
+    if habit is None or not can_view_habit(habit, user):
+      not_found.append(habit_id)
+    elif habit.author_user_id != user.id:
+      forbidden.append(habit_id)
+    else:
+      # É do usuário e não é elegível, então está encerrado.
+      finished.append(habit_id)
+
+  if not_found:
+    raise CheckInRefusedError(status.HTTP_404_NOT_FOUND, MSG_HABIT_NOT_FOUND, not_found)
+  if forbidden:
+    raise CheckInRefusedError(
+      status.HTTP_403_FORBIDDEN, MSG_CHECK_IN_HABIT_FORBIDDEN, forbidden
+    )
+  raise CheckInRefusedError(status.HTTP_409_CONFLICT, MSG_HABIT_FINISHED, finished)
+
+
+def register_check_in(db: Session, user: User, data: CheckInCreate) -> CheckInPublic:
+  """Grava um check-in para vários hábitos, no modelo tudo ou nada.
+
+  Levanta `CheckInRefusedError` se algum hábito não for elegível; nesse caso
+  nada é gravado.
+  """
+  eligible_ids = {habit.id for habit in get_check_in_eligible_habits(db, user)}
+  refused = [habit_id for habit_id in data.habit_ids if habit_id not in eligible_ids]
+  if refused:
+    _raise_refusal(db, user, refused)
+
+  check_in = checkins_repository.create_check_in(
+    db,
+    user_id=user.id,
+    title=data.title,
+    description=data.description,
+    duration=data.duration,
+    habit_ids=data.habit_ids,
+  )
+  db.commit()
+  db.refresh(check_in)
+
+  return build_check_ins_public(db, [check_in], user)[0]
