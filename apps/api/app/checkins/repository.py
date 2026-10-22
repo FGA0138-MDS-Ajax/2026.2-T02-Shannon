@@ -60,3 +60,17 @@ def delete_check_in(db: Session, check_in: CheckIn) -> None:
   """Exclui o check-in e faz flush; os vínculos saem em cascata. Não faz commit."""
   db.delete(check_in)
   db.flush()
+
+
+def list_check_ins_by_habit(db: Session, habit_id: UUID) -> list[CheckIn]:
+  """Lista os check-ins ligados ao hábito, do mais recente ao mais antigo.
+
+  O `id` desempata check-ins com o mesmo `created_at`. Não faz commit.
+  """
+  statement = (
+    select(CheckIn)
+    .join(CheckInHabit, col(CheckInHabit.check_in_id) == col(CheckIn.id))
+    .where(col(CheckInHabit.habit_id) == habit_id)
+    .order_by(col(CheckIn.created_at).desc(), col(CheckIn.id))
+  )
+  return list(db.exec(statement).all())
