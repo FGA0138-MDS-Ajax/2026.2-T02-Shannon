@@ -4,9 +4,11 @@ from uuid import UUID
 from sqlmodel import Session
 
 from app.auth.models import User
+from app.checkins import repository as checkins_repository
+from app.checkins.exceptions import CheckInForbiddenError, CheckInNotFoundError
 from app.checkins.models import CheckIn
 from app.checkins.repository import list_habit_links
-from app.checkins.schemas import CheckInPublic
+from app.checkins.schemas import CheckInPublic, CheckInUpdate
 from app.habits.repository import list_habits_by_ids
 from app.habits.service import can_view_habit
 
@@ -45,3 +47,75 @@ def build_check_ins_public(
       )
     )
   return result
+
+
+def get_visible_check_in(db: Session, check_in_id: UUID, user: User) -> CheckIn:
+  """Devolve o check-in se o usuário o fez ou se vê algum hábito ligado a ele.
+
+  Levanta `CheckInNotFoundError` se não existir ou se nenhum hábito ligado for
+  visível para quem não fez o check-in.
+  """
+  check_in = checkins_repository.get_check_in_by_id(db, check_in_id)
+
+  if check_in is None:
+    raise CheckInNotFoundError
+
+  if check_in.user_id == user.id:
+    return check_in
+
+  links = list_habit_links(db, [check_in.id])
+  habits = list_habits_by_ids(db, [link.habit_id for link in links])
+
+  if not any(can_view_habit(habit, user) for habit in habits):
+    raise CheckInNotFoundError
+
+  return check_in
+
+
+def get_owned_check_in(db: Session, check_in_id: UUID, user: User) -> CheckIn:
+  """Devolve o check-in só se o usuário for quem o fez.
+
+  Levanta `CheckInNotFoundError` nos mesmos casos de `get_visible_check_in` e
+  `CheckInForbiddenError` se o usuário vê o check-in, mas não o fez.
+  """
+  check_in = get_visible_check_in(db, check_in_id, user)
+
+  if check_in.user_id != user.id:
+    raise CheckInForbiddenError
+
+  return check_in
+
+
+def get_check_in(db: Session, check_in_id: UUID, user: User) -> CheckInPublic:
+  """Consulta um check-in visível ao usuário, com os `habit_ids` que ele pode ver."""
+  check_in = get_visible_check_in(db, check_in_id, user)
+  return build_check_ins_public(db, [check_in], user)[0]
+
+
+def update_check_in(
+  db: Session, check_in_id: UUID, user: User, data: CheckInUpdate
+) -> CheckInPublic:
+  """Altera só os campos enviados do check-in de quem o fez.
+
+  Levanta `CheckInNotFoundError` ou `CheckInForbiddenError` conforme
+  `get_owned_check_in`.
+  """
+  check_in = get_owned_check_in(db, check_in_id, user)
+
+  checkins_repository.update_check_in(db, check_in, data.model_dump(exclude_unset=True))
+  db.commit()
+  db.refresh(check_in)
+
+  return build_check_ins_public(db, [check_in], user)[0]
+
+
+def delete_check_in(db: Session, check_in_id: UUID, user: User) -> None:
+  """Exclui definitivamente o check-in de quem o fez, junto com os vínculos.
+
+  Levanta `CheckInNotFoundError` ou `CheckInForbiddenError` conforme
+  `get_owned_check_in`.
+  """
+  check_in = get_owned_check_in(db, check_in_id, user)
+
+  checkins_repository.delete_check_in(db, check_in)
+  db.commit()
