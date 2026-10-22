@@ -6,8 +6,20 @@ from sqlmodel import Session
 from app.auth.models import User
 from app.checkins.models import CheckIn
 from app.checkins.repository import list_habit_links
-from app.checkins.schemas import CheckInPublic
-from app.habits.repository import list_habits_by_ids
+from app.checkins.schemas import (
+  CategoryCount,
+  CheckInCategoriesResponse,
+  CheckInPublic,
+  HabitOption,
+  HabitOptionsPage,
+  HabitOptionsQuery,
+)
+from app.habits.models import HabitCategory
+from app.habits.repository import (
+  count_eligible_habits_by_category,
+  list_eligible_habits_page,
+  list_habits_by_ids,
+)
 from app.habits.service import can_view_habit
 
 
@@ -45,3 +57,63 @@ def build_check_ins_public(
       )
     )
   return result
+
+
+def list_check_in_categories(db: Session, user: User) -> CheckInCategoriesResponse:
+  """Retorna a contagem dos hábitos disponíveis do usuário por categoria."""
+  rows = count_eligible_habits_by_category(db, user.id)
+
+  rows = sorted(
+    rows,
+    key=lambda row: (
+      row[0] == HabitCategory.OUTROS,
+      row[0].value if isinstance(row[0], HabitCategory) else row[0],
+    ),
+  )
+
+  return CheckInCategoriesResponse(
+    categories=[
+      CategoryCount(name=category, habit_count=count) for category, count in rows
+    ]
+  )
+
+
+def list_check_in_habit_options(
+  db: Session, user: User, query: HabitOptionsQuery
+) -> HabitOptionsPage:
+  """Retorna uma página de hábitos filtrados e indica se há mais resultados."""
+  limit = query.page_size + 1
+  offset = (query.page - 1) * query.page_size
+
+  habits = list_eligible_habits_page(
+    db,
+    user.id,
+    category=query.category,
+    exclude_category=query.exclude_category,
+    limit=limit,
+    offset=offset,
+  )
+
+  has_more = len(habits) > query.page_size
+  habits = habits[: query.page_size]
+
+  preselected = (
+    query.category is not None
+    and query.category != HabitCategory.OUTROS
+    and query.page == 1
+  )
+
+  return HabitOptionsPage(
+    items=[
+      HabitOption(
+        id=habit.id,
+        name=habit.name,
+        category=habit.category,
+        group=None,
+        preselected=preselected,
+      )
+      for habit in habits
+    ],
+    page=query.page,
+    has_more=has_more,
+  )
