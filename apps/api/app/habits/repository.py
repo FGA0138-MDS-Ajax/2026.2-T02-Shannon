@@ -37,3 +37,21 @@ def list_habits_by_ids(db: Session, habit_ids: list[UUID]) -> list[Habit]:
     return []
   statement = select(Habit).where(col(Habit.id).in_(habit_ids))
   return list(db.exec(statement).all())
+
+
+def list_habits_by_author(
+  db: Session, author_id: UUID, status: HabitStatus | None = None
+) -> list[Habit]:
+  statement = select(Habit).where(col(Habit.author_user_id).is_(author_id))
+  if status is not None:
+    statement = statement.where(col(Habit.status).is_(status))
+
+  statement = statement.order_by(col(Habit.created_at).desc(), col(Habit.name))
+
+  return list(db.exec(statement).all())
+
+
+def create_habit(db: Session, habit: Habit) -> Habit:
+  db.add(habit)
+  db.flush()
+  return habit
