@@ -13,6 +13,7 @@ from pydantic import (
 )
 
 from app.habits.models import HabitCategory
+from app.validators import NoNul
 
 # dias, horas, minutos e segundos (ex.: PT30M, PT1H15M, P1DT2H, PT0.5S).
 ISO_8601_DURATION = re.compile(
@@ -20,6 +21,8 @@ ISO_8601_DURATION = re.compile(
 )
 MSG_DURATION_FORMAT = "A duração deve estar no formato ISO 8601 (ex.: PT30M)."
 MSG_TITLE_NULL = "O título não pode ser nulo."
+MSG_DUPLICATE_HABIT_IDS = "A lista de hábitos não pode ter itens repetidos."
+MSG_ONE_FILTER_MODE = "Informe category ou exclude_category, apenas um."
 
 
 def _require_iso8601(value: object) -> object:
@@ -47,13 +50,14 @@ def _blank_to_none(value: object) -> object:
 
 
 CheckInTitle = Annotated[
-  str, StringConstraints(strip_whitespace=True, min_length=1, max_length=150)
+  str, NoNul, StringConstraints(strip_whitespace=True, min_length=1, max_length=150)
 ]
 # O BeforeValidator fica fora do `| None`: dentro do ramo `str`, o `None` gerado
 # seria recusado. Uso: `description: CheckInDescription = None`.
 CheckInDescription = Annotated[
   Annotated[str, StringConstraints(strip_whitespace=True, max_length=500)] | None,
   BeforeValidator(_blank_to_none),
+  NoNul,
 ]
 
 
@@ -139,7 +143,7 @@ class HabitOptionsQuery(BaseModel):
   @model_validator(mode="after")
   def _one_mode(self) -> Self:
     if (self.category is None) == (self.exclude_category is None):
-      raise ValueError("Informe category ou exclude_category, apenas um.")
+      raise ValueError(MSG_ONE_FILTER_MODE)
     return self
 
 
@@ -156,5 +160,5 @@ class CheckInCreate(BaseModel):
   def _reject_duplicates(cls, habit_ids: list[UUID]) -> list[UUID]:
     # `list_habits_by_ids` devolve cada hábito uma vez: repetidos dariam 404 falso.
     if len(set(habit_ids)) != len(habit_ids):
-      raise ValueError("A lista de hábitos não pode ter itens repetidos.")
+      raise ValueError(MSG_DUPLICATE_HABIT_IDS)
     return habit_ids

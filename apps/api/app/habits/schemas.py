@@ -11,6 +11,7 @@ from pydantic import (
 )
 
 from app.habits.models import HabitCategory, HabitStatus
+from app.validators import NoNul
 
 
 def _normalize_category(value: object) -> object:
@@ -34,12 +35,13 @@ def _blank_to_none(value: object) -> object:
 CategoryInput = Annotated[HabitCategory, BeforeValidator(_normalize_category)]
 
 HabitName = Annotated[
-  str, StringConstraints(strip_whitespace=True, min_length=1, max_length=100)
+  str, NoNul, StringConstraints(strip_whitespace=True, min_length=1, max_length=100)
 ]
 
 HabitDescription = Annotated[
   Annotated[str, StringConstraints(strip_whitespace=True, max_length=500)] | None,
   BeforeValidator(_blank_to_none),
+  NoNul,
 ]
 
 
