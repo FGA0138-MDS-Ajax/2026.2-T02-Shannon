@@ -1,5 +1,5 @@
 from datetime import date
-from typing import Annotated
+from typing import Annotated, Self
 from uuid import UUID
 
 from pydantic import (
@@ -8,6 +8,7 @@ from pydantic import (
   ConfigDict,
   StringConstraints,
   field_validator,
+  model_validator,
 )
 
 from app.habits.models import HabitCategory, HabitStatus
@@ -88,3 +89,37 @@ class HabitCreate(BaseModel):
       )
 
     return valor
+
+
+MSG_HABIT_NAME_NULL = "O nome não pode ser nulo."
+MSG_HABIT_CATEGORY_NULL = "A categoria não pode ser nula."
+MSG_HABIT_IS_PUBLIC_NULL = "O campo is_public não pode ser nulo."
+
+# campos que podem ficar de fora do PATCH, mas não podem vir como `null`
+_HABIT_NOT_NULL_FIELDS = {
+  "name": MSG_HABIT_NAME_NULL,
+  "category": MSG_HABIT_CATEGORY_NULL,
+  "is_public": MSG_HABIT_IS_PUBLIC_NULL,
+}
+
+
+class HabitUpdate(BaseModel):
+  """Corpo do `PATCH /habits/{habit_id}`. Só os campos enviados mudam.
+
+  `description` e `target_end_date` enviados como `null` são apagados.
+  `status` e `finished_at` não entram aqui: mudam só pela rota de encerrar.
+  """
+
+  name: HabitName | None = None
+  description: HabitDescription = None
+  category: CategoryInput | None = None
+  is_public: bool | None = None
+  target_end_date: date | None = None
+
+  @model_validator(mode="after")
+  def reject_null_required(self) -> Self:
+    """Recusa `name`, `category` e `is_public` enviados explicitamente como `null`."""
+    for field, message in _HABIT_NOT_NULL_FIELDS.items():
+      if field in self.model_fields_set and getattr(self, field) is None:
+        raise ValueError(message)
+    return self

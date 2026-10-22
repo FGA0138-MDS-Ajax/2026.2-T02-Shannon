@@ -1,3 +1,5 @@
+from datetime import date
+from typing import Any
 from uuid import UUID
 
 from sqlalchemy import ColumnElement, func
@@ -97,3 +99,27 @@ def list_eligible_habits_page(
   )
 
   return list(db.exec(statement).all())
+
+
+def update_habit(db: Session, habit: Habit, changes: dict[str, Any]) -> Habit:
+  """Aplica no hábito só os campos presentes em `changes`. Não faz commit."""
+  habit.sqlmodel_update(changes)
+  db.add(habit)
+  return habit
+
+
+def finish_habit(db: Session, habit: Habit, finished_at: date) -> Habit:
+  """Encerra o hábito, gravando `status` e `finished_at` juntos. Não faz commit."""
+  habit.status = HabitStatus.FINISHED
+  habit.finished_at = finished_at
+  db.add(habit)
+  return habit
+
+
+def delete_habit(db: Session, habit: Habit) -> None:
+  """Apaga o hábito. Não faz commit.
+
+  O ON DELETE CASCADE apaga só os vínculos em `check_in_habits`. Os check-ins
+  continuam, mesmo os que ficarem sem nenhum hábito.
+  """
+  db.delete(habit)

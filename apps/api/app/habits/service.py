@@ -6,10 +6,15 @@ from sqlmodel import Session
 
 from app.auth.models import User
 from app.habits import repository as habits_repository
-from app.habits.exceptions import HabitForbiddenError, HabitNotFoundError
+from app.habits.exceptions import (
+  HabitAlreadyFinishedError,
+  HabitForbiddenError,
+  HabitNotFoundError,
+  TargetEndDateBeforeCreatedError,
+)
 from app.habits.models import Habit, HabitStatus
 from app.habits.repository import get_habit_by_id, list_check_in_eligible_habits
-from app.habits.schemas import HabitCreate
+from app.habits.schemas import HabitCreate, HabitUpdate
 
 APP_TIMEZONE = ZoneInfo("America/Sao_Paulo")
 
@@ -83,3 +88,49 @@ def list_my_habits(
 ) -> list[Habit]:
   """Lista os hábitos pertencentes ao usuário logado, com filtro opcional de status."""
   return habits_repository.list_habits_by_author(db, user_id=user.id, status=status)
+
+
+def finish_habit(db: Session, habit_id: UUID, user: User) -> Habit:
+  """Encerra o hábito do autor com `finished_at` = hoje.
+
+  Checa o acesso antes (404/403) e só depois se já está encerrado
+  (`HabitAlreadyFinishedError`).
+  """
+  habit = get_owned_habit(db, habit_id, user)
+
+  if habit.status == HabitStatus.FINISHED:
+    raise HabitAlreadyFinishedError
+
+  habits_repository.finish_habit(db, habit, today())
+  db.commit()
+  db.refresh(habit)
+
+  return habit
+
+
+def delete_habit(db: Session, habit_id: UUID, user: User) -> None:
+  """Exclui o hábito do autor. Os check-ins continuam; só os vínculos somem."""
+  habit = get_owned_habit(db, habit_id, user)
+
+  habits_repository.delete_habit(db, habit)
+  db.commit()
+
+
+def update_habit(db: Session, habit_id: UUID, user: User, data: HabitUpdate) -> Habit:
+  """Edita só os campos enviados de um hábito do autor.
+
+  Levanta `TargetEndDateBeforeCreatedError` se `target_end_date` vier antes do
+  `created_at` gravado; por depender do banco, essa regra fica aqui, não no schema.
+  """
+  habit = get_owned_habit(db, habit_id, user)
+  changes = data.model_dump(exclude_unset=True)
+
+  target_end_date = changes.get("target_end_date")
+  if target_end_date is not None and target_end_date < habit.created_at:
+    raise TargetEndDateBeforeCreatedError
+
+  habits_repository.update_habit(db, habit, changes)
+  db.commit()
+  db.refresh(habit)
+
+  return habit
