@@ -1,17 +1,26 @@
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 
 from app.auth.dependencies import get_current_user
 from app.auth.models import User
 from app.database import SessionDep
 from app.habits import service
-from app.habits.exceptions import MSG_HABIT_NOT_FOUND, HabitNotFoundError
+from app.habits.exceptions import (
+  MSG_HABIT_ALREADY_FINISHED,
+  MSG_HABIT_FORBIDDEN,
+  MSG_HABIT_NOT_FOUND,
+  HabitAlreadyFinishedError,
+  HabitForbiddenError,
+  HabitNotFoundError,
+)
 from app.habits.models import HabitStatus
 from app.habits.responses import (
   RESPONSES_422_CREATE,
   RESPONSES_422_LIST,
+  RESPONSES_DELETE,
+  RESPONSES_FINISH,
   RESPONSES_GET_BY_ID,
 )
 from app.habits.schemas import HabitCreate, HabitPublic
@@ -79,3 +88,57 @@ def get_habit(
     return service.get_visible_habit(db, habit_id, user)
   except HabitNotFoundError:
     raise HTTPException(status.HTTP_404_NOT_FOUND, MSG_HABIT_NOT_FOUND) from None
+
+
+@habit_router.post(
+  "/{habit_id}/finish",
+  response_model=HabitPublic,
+  status_code=status.HTTP_200_OK,
+  summary="Encerrar hábito",
+  description=(
+    "Encerra um hábito do usuário logado: `status` passa a `finished` e"
+    " `finished_at` recebe a data de hoje. Não tem corpo. Só o autor pode"
+    " encerrar."
+  ),
+  responses=RESPONSES_FINISH,
+)
+def finish_habit(
+  db: SessionDep,
+  habit_id: UUID,
+  user: Annotated[User, Depends(get_current_user)],
+) -> HabitPublic:
+  """Encerra o hábito do autor."""
+  try:
+    return service.finish_habit(db, habit_id, user)
+  except HabitNotFoundError:
+    raise HTTPException(status.HTTP_404_NOT_FOUND, MSG_HABIT_NOT_FOUND) from None
+  except HabitForbiddenError:
+    raise HTTPException(status.HTTP_403_FORBIDDEN, MSG_HABIT_FORBIDDEN) from None
+  except HabitAlreadyFinishedError:
+    raise HTTPException(status.HTTP_409_CONFLICT, MSG_HABIT_ALREADY_FINISHED) from None
+
+
+@habit_router.delete(
+  "/{habit_id}",
+  status_code=status.HTTP_204_NO_CONTENT,
+  summary="Excluir hábito",
+  description=(
+    "Exclui definitivamente um hábito do usuário logado. Os check-ins"
+    " continuam existindo; só os vínculos com este hábito são apagados."
+    " Responde 204, sem corpo."
+  ),
+  responses=RESPONSES_DELETE,
+)
+def delete_habit(
+  db: SessionDep,
+  habit_id: UUID,
+  user: Annotated[User, Depends(get_current_user)],
+) -> Response:
+  """Exclui o hábito do autor. Responde 204, sem corpo."""
+  try:
+    service.delete_habit(db, habit_id, user)
+  except HabitNotFoundError:
+    raise HTTPException(status.HTTP_404_NOT_FOUND, MSG_HABIT_NOT_FOUND) from None
+  except HabitForbiddenError:
+    raise HTTPException(status.HTTP_403_FORBIDDEN, MSG_HABIT_FORBIDDEN) from None
+  return Response(status_code=status.HTTP_204_NO_CONTENT)
