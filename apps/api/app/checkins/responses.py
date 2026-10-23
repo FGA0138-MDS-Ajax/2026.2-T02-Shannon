@@ -150,3 +150,27 @@ RESPONSES_DELETE = {
   status.HTTP_404_NOT_FOUND: _RESPONSE_404,
   status.HTTP_422_UNPROCESSABLE_ENTITY: _RESPONSE_422_PATH,
 }
+
+RESPONSES_HABIT_CHECK_INS = {
+  status.HTTP_401_UNAUTHORIZED: _RESPONSE_401,
+  status.HTTP_404_NOT_FOUND: {
+    "description": "Hábito inexistente ou privado de outro usuário.",
+    "content": {"application/json": {"example": {"detail": MSG_HABIT_NOT_FOUND}}},
+  },
+  status.HTTP_422_UNPROCESSABLE_ENTITY: {
+    "description": "Identificador do hábito inválido (não é um UUID).",
+    "content": {
+      "application/json": {
+        "example": {
+          "detail": [
+            {
+              "loc": ["path", "habit_id"],
+              "msg": "Input should be a valid UUID",
+              "type": "uuid_parsing",
+            }
+          ]
+        }
+      }
+    },
+  },
+}
