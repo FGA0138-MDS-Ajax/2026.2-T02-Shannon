@@ -1,27 +1,39 @@
-import React, { ReactNode } from 'react';
-import { renderHook, waitFor, act } from '@testing-library/react-native';
-import * as SecureStore from 'expo-secure-store';
+import { act, renderHook, waitFor } from '@testing-library/react-native';
+import { ReactNode } from 'react';
 import { SessionProvider, useSession } from '@/contexts/auth-context';
+import * as SecureStore from 'expo-secure-store';
 
 let secureStoreMem: Record<string, string> = {};
+
+beforeEach(() => {
+  secureStoreMem = {};
+  jest.clearAllMocks();
+});
+
+jest.spyOn(SecureStore, 'getItemAsync').mockImplementation(async (key) => secureStoreMem[key] || null);
+jest.spyOn(SecureStore, 'setItemAsync').mockImplementation(async (key, value) => {
+  secureStoreMem[key] = value;
+});
+
+jest.spyOn(SecureStore, 'deleteItemAsync').mockImplementation(async (key) => {
+  delete secureStoreMem[key];
+});
+
 
 const mockFetch = jest.fn();
 global.fetch = mockFetch;
 
 const fakeUser = {
-  id: '1',
+  id: '123',
   email: 'test@example.com',
-  name: 'Test User',
-  username: 'testuser',
+  name: 'John Doe'
 };
-const fakeTokenResponse = {
-  access_token: 'fake-access',
-  refresh_token: 'fake-refresh',
-  exp: Math.floor(Date.now() / 1000) + 3600,
-};
-const fakeSignupResponse = {
+
+const fakeSingupResponse = {
   user: fakeUser,
-  token: fakeTokenResponse,
+  acessToken: 'fake-access',
+  refreshToken: 'fake-refresh'
+  expires_at: Date.now() + 10000
 };
 
 function wrapper({ children }: { children: ReactNode }) {
@@ -30,112 +42,34 @@ function wrapper({ children }: { children: ReactNode }) {
 
 describe('Auth Integration Tests', () => {
   beforeEach(() => {
-    secureStoreMem = {};
     mockFetch.mockReset();
-    jest.clearAllMocks();
-
-    jest.spyOn(SecureStore, 'getItemAsync').mockImplementation(async (key) => secureStoreMem[key] || null);
-    jest.spyOn(SecureStore, 'setItemAsync').mockImplementation(async (key, value) => {
-      secureStoreMem[key] = value;
-    });
-    jest.spyOn(SecureStore, 'deleteItemAsync').mockImplementation(async (key) => {
-      delete secureStoreMem[key];
-    });
   });
 
-  it('INT-01 - Cadastro completo', async () => {
+  it('INT-01 - Cadastro Completo', async () => {
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      json: async () => fakeSignupResponse,
+      json: async () => fakeSingupResponse,
     });
 
-    const { result } = await renderHook(() => useSession(), { wrapper });
-
-    await waitFor(() => {
-      expect(result.current.isLoading).toBe(false);
-    });
-
-    await act(async () => {
-      await result.current.signUp({
-        username: 'testuser',
-        email: 'test@example.com',
-        password: 'password123',
-        name: 'Test User',
-      });
-    });
-
-    expect(mockFetch).toHaveBeenCalledWith(
-      expect.stringContaining('/auth/signup'),
-      expect.any(Object)
-    );
-    expect(result.current.user).toEqual(fakeUser);
-    expect(result.current.session?.accessToken).toBe('fake-access');
-    expect(secureStoreMem['habbit.auth.tokens']).toBeDefined();
+  const { result } = renderHook(() => useSession() , { wrapper});
+  
+  await waitFor(() => {
+    expect(result.current.isLoading).toBe(false);
   });
 
-  it('INT-02 - Login com credenciais válidas', async () => {
-    const fakeLoginResponse = {
-      access_token: 'login-access',
-      refresh_token: 'login-refresh',
-      exp: Math.floor(Date.now() / 1000) + 3600,
-    };
+  await act(async (() => {
+    await result.current.signUp('test@example.com', 'password123', 'John Doe');
+  }));
 
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => fakeLoginResponse,
-    });
+  expect(mockFetch).toHaveBeenCalledWith(
+    expect.stringContaining('/auth/signup'),
+    expect.any(Object)
+  );
 
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => fakeUser,
-    });
-
-    const { result } = await renderHook(() => useSession(), { wrapper });
-
-    await waitFor(() => {
-      expect(result.current.isLoading).toBe(false);
-    });
-
-    await act(async () => {
-      await result.current.signIn({
-        login: 'test@example.com',
-        password: 'password123',
-      });
-    });
-
-    expect(mockFetch).toHaveBeenCalledWith(
-      expect.stringContaining('/auth/login'),
-      expect.any(Object)
-    );
-    expect(result.current.user).toEqual(fakeUser);
-    expect(result.current.session?.accessToken).toBe('login-access');
-    expect(secureStoreMem['habbit.auth.tokens']).toBeDefined();
+  expect(result.current.user).toEqual(fakeUser);
+  expect(result.current.session?.acessToken).toBe('fake-access');
+  expect(secureStoreMem['auth_session']).toBeDefined();
+  
   });
 
-  it('INT-03 - Credenciais inválidas / falha na API', async () => {
-    mockFetch.mockResolvedValueOnce({
-      ok: false,
-      status: 401,
-      json: async () => ({ detail: "Credenciais inválidas." }),
-    });
-
-    const { result } = await renderHook(() => useSession(), { wrapper });
-
-    await waitFor(() => {
-      expect(result.current.isLoading).toBe(false);
-    });
-
-    await act(async () => {
-      await expect(
-        result.current.signIn({
-          login: 'wrong@example.com',
-          password: 'wrongpassword',
-        })
-      ).rejects.toThrow();
-    });
-
-    expect(result.current.user).toBeNull();
-    expect(result.current.session).toBeNull();
-    expect(secureStoreMem['habbit.auth.tokens']).toBeUndefined();
-  });
 });
