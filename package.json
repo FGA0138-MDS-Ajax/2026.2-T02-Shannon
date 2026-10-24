@@ -10,17 +10,11 @@
   },
   "packageManager": "pnpm@12.4.0",
   "devDependencies": {
-    "@biomejs/biome": "2.5.15",
-    "@types/react": "~19.2.4",
-    "typescript": "~6.0.3"
+    "@biomejs/biome": "2.5.15"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
       "esbuild"
     ]
-  },
-  "dependencies": {
-    "expo": "^57.0.31",
-    "react-dom": "19.2.3"
   }
 }
