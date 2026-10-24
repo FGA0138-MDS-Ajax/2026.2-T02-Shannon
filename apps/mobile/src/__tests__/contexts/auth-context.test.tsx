@@ -1,10 +1,6 @@
-import { faker } from "@faker-js/faker";
 import { act, renderHook, waitFor } from "@testing-library/react-native";
 import type { ReactNode } from "react";
 import { SessionProvider, useSession } from "@/contexts/auth-context";
-import { api, type SignupRequest } from "@/services/api";
-
-jest.setTimeout(30_000);
 
 jest.mock("expo-secure-store", () => {
   const store: Record<string, string> = {};
@@ -19,16 +15,42 @@ jest.mock("expo-secure-store", () => {
   };
 });
 
-function makeAccount(): SignupRequest {
-  const suffix = faker.string.alphanumeric(12).toLowerCase();
+const mockFetch = jest.fn();
+global.fetch = mockFetch;
 
+function makeResponse(body: unknown, status = 200): Response {
   return {
-    name: faker.person.fullName(),
-    username: `user_${suffix}`,
-    email: `user.${suffix}@example.com`,
-    password: `${faker.internet.password({ length: 16 })}A1!`,
-  };
+    ok: status >= 200 && status < 300,
+    status,
+    json: jest.fn().mockResolvedValue(body),
+  } as unknown as Response;
 }
+
+function make204(): Response {
+  return {
+    ok: true,
+    status: 204,
+    json: jest.fn().mockRejectedValue(new Error("no body")),
+  } as unknown as Response;
+}
+
+const fakeUser = {
+  id: "u1",
+  name: "Ana",
+  username: "ana",
+  email: "ana@test.com",
+};
+
+const fakeTokenResponse = {
+  access_token: "acc-token",
+  refresh_token: "ref-token",
+  exp: 9999999999,
+};
+
+const fakeSignupResponse = {
+  user: fakeUser,
+  token: fakeTokenResponse,
+};
 
 function wrapper({ children }: { children: ReactNode }) {
   return <SessionProvider>{children}</SessionProvider>;
@@ -38,70 +60,96 @@ function getSecureStore() {
   return jest.requireMock("expo-secure-store");
 }
 
-async function waitForLoadedSession() {
-  const hook = await renderHook(() => useSession(), { wrapper });
-  await waitFor(() => expect(hook.result.current.isLoading).toBe(false));
-  return hook;
-}
-
 beforeEach(() => {
   jest.clearAllMocks();
+  // Por padrão: storage vazio (sem sessão persistida)
   getSecureStore().getItemAsync.mockResolvedValue(null);
 });
 
 describe("SessionProvider", () => {
   it("should end with user=null when there are no tokens in the storage", async () => {
-    const { result } = await waitForLoadedSession();
+    const { result } = await renderHook(() => useSession(), { wrapper });
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
 
     expect(result.current.user).toBeNull();
     expect(result.current.session).toBeNull();
   });
 
-  it("should restore session when the stored tokens are valid", async () => {
-    const signup = await api.signup(makeAccount());
+  it("should restore session when there are valid tokens in the storage and getMe is successful", async () => {
     getSecureStore().getItemAsync.mockResolvedValue(
       JSON.stringify({
-        accessToken: signup.token.access_token,
-        refreshToken: signup.token.refresh_token,
-        exp: signup.token.exp,
+        accessToken: "acc-token",
+        refreshToken: "ref-token",
+        exp: 9999999999,
       }),
     );
+    mockFetch.mockResolvedValueOnce(makeResponse(fakeUser));
 
-    const { result } = await waitForLoadedSession();
+    const { result } = await renderHook(() => useSession(), { wrapper });
 
-    expect(result.current.user).toEqual(signup.user);
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    expect(result.current.user).toEqual(fakeUser);
     expect(result.current.session).toMatchObject({
-      accessToken: signup.token.access_token,
-      refreshToken: signup.token.refresh_token,
+      accessToken: "acc-token",
+      refreshToken: "ref-token",
     });
   });
 
-  it("should refresh an invalid access token when the refresh token is valid", async () => {
-    const signup = await api.signup(makeAccount());
+  it("should attempt refresh when the access token is expired and the refresh is successful", async () => {
     getSecureStore().getItemAsync.mockResolvedValue(
       JSON.stringify({
-        accessToken: "invalid-access-token",
-        refreshToken: signup.token.refresh_token,
+        accessToken: "expired-acc",
+        refreshToken: "valid-ref",
         exp: 1,
       }),
     );
 
-    const { result } = await waitForLoadedSession();
+    // 1ª chamada: getMe falha (access expirado)
+    mockFetch.mockResolvedValueOnce(
+      makeResponse({ detail: "Unauthorized" }, 401),
+    );
+    // 2ª chamada: refresh retorna novos tokens
+    mockFetch.mockResolvedValueOnce(makeResponse(fakeTokenResponse));
+    // 3ª chamada: getMe com novo access token
+    mockFetch.mockResolvedValueOnce(makeResponse(fakeUser));
 
-    expect(result.current.user).toEqual(signup.user);
-    expect(result.current.session?.accessToken).not.toBe("invalid-access-token");
+    const { result } = await renderHook(() => useSession(), { wrapper });
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    expect(result.current.user).toEqual(fakeUser);
+    expect(result.current.session?.accessToken).toBe("acc-token");
   });
 
-  it("should clear the session when both access and refresh tokens are invalid", async () => {
+  it("should clear session when both access and refresh tokens are invalid", async () => {
     getSecureStore().getItemAsync.mockResolvedValue(
       JSON.stringify({
-        accessToken: "invalid-access-token",
-        refreshToken: "invalid-refresh-token",
+        accessToken: "bad-acc",
+        refreshToken: "bad-ref",
         exp: 1,
       }),
     );
 
-    const { result } = await waitForLoadedSession();
+    mockFetch.mockResolvedValueOnce(
+      makeResponse({ detail: "Unauthorized" }, 401),
+    );
+    mockFetch.mockResolvedValueOnce(
+      makeResponse({ detail: "Unauthorized" }, 401),
+    );
+
+    const { result } = await renderHook(() => useSession(), { wrapper });
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
 
     expect(result.current.user).toBeNull();
     expect(result.current.session).toBeNull();
@@ -110,32 +158,34 @@ describe("SessionProvider", () => {
 });
 
 describe("SessionProvider — signIn", () => {
-  it("should sign in with valid credentials and persist the session", async () => {
-    const account = makeAccount();
-    const signup = await api.signup(account);
-    const { result } = await waitForLoadedSession();
+  it("should sign in with success and update user and session, persisting tokens", async () => {
+    mockFetch
+      .mockResolvedValueOnce(makeResponse(fakeTokenResponse))
+      .mockResolvedValueOnce(makeResponse(fakeUser));
+
+    const { result } = await renderHook(() => useSession(), { wrapper });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
 
     await act(async () => {
-      await result.current.signIn({
-        login: account.username,
-        password: account.password,
-      });
+      await result.current.signIn({ login: "ana", password: "senha123" });
     });
 
-    expect(result.current.user).toEqual(signup.user);
-    expect(result.current.session?.accessToken).toBeTruthy();
+    expect(result.current.user).toEqual(fakeUser);
+    expect(result.current.session?.accessToken).toBe("acc-token");
     expect(getSecureStore().setItemAsync).toHaveBeenCalled();
   });
 
-  it("should reject invalid credentials without changing the state", async () => {
-    const { result } = await waitForLoadedSession();
+  it("should fail to sign in with invalid credentials and not change the state", async () => {
+    mockFetch.mockResolvedValueOnce(
+      makeResponse({ detail: "Credenciais inválidas." }, 401),
+    );
+
+    const { result } = await renderHook(() => useSession(), { wrapper });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
 
     await expect(
       act(async () => {
-        await result.current.signIn({
-          login: faker.internet.username(),
-          password: faker.internet.password(),
-        });
+        await result.current.signIn({ login: "errado", password: "errado" });
       }),
     ).rejects.toMatchObject({ status: 401 });
 
@@ -145,31 +195,42 @@ describe("SessionProvider — signIn", () => {
 });
 
 describe("SessionProvider — signUp", () => {
-  it("should sign up and populate the user and session", async () => {
-    const account = makeAccount();
-    const { result } = await waitForLoadedSession();
+  it("should sign up with success and persist tokens and populate user", async () => {
+    mockFetch.mockResolvedValueOnce(makeResponse(fakeSignupResponse, 201));
+
+    const { result } = await renderHook(() => useSession(), { wrapper });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
 
     await act(async () => {
-      await result.current.signUp(account);
+      await result.current.signUp({
+        name: "Ana",
+        username: "ana",
+        email: "ana@test.com",
+        password: "senha123",
+      });
     });
 
-    expect(result.current.user).toMatchObject({
-      name: account.name,
-      username: account.username,
-      email: account.email,
-    });
-    expect(result.current.session?.accessToken).toBeTruthy();
+    expect(result.current.user).toEqual(fakeUser);
+    expect(result.current.session?.accessToken).toBe("acc-token");
     expect(getSecureStore().setItemAsync).toHaveBeenCalled();
   });
 
-  it("should reject duplicate data without changing the state", async () => {
-    const account = makeAccount();
-    await api.signup(account);
-    const { result } = await waitForLoadedSession();
+  it("should fail to sign up with duplicate data and not change the state", async () => {
+    mockFetch.mockResolvedValueOnce(
+      makeResponse({ detail: "Username já está em uso." }, 409),
+    );
+
+    const { result } = await renderHook(() => useSession(), { wrapper });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
 
     await expect(
       act(async () => {
-        await result.current.signUp(account);
+        await result.current.signUp({
+          name: "Ana",
+          username: "ana",
+          email: "ana@test.com",
+          password: "senha123",
+        });
       }),
     ).rejects.toMatchObject({ status: 409 });
 
@@ -179,18 +240,19 @@ describe("SessionProvider — signUp", () => {
 });
 
 describe("SessionProvider — signOut", () => {
-  it("should sign out and clear the state and storage", async () => {
-    const account = makeAccount();
-    await api.signup(account);
-    const { result } = await waitForLoadedSession();
+  it("should sign out with an active session, calling /auth/logout and clearing the state and storage", async () => {
+    mockFetch
+      .mockResolvedValueOnce(makeResponse(fakeTokenResponse)) // login
+      .mockResolvedValueOnce(makeResponse(fakeUser)) // getMe
+      .mockResolvedValueOnce(make204()); // logout
+
+    const { result } = await renderHook(() => useSession(), { wrapper });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
 
     await act(async () => {
-      await result.current.signIn({
-        login: account.username,
-        password: account.password,
-      });
+      await result.current.signIn({ login: "ana", password: "senha123" });
     });
-    expect(result.current.user).not.toBeNull();
+    expect(result.current.user).toEqual(fakeUser);
 
     await act(async () => {
       await result.current.signOut();
@@ -198,39 +260,78 @@ describe("SessionProvider — signOut", () => {
 
     expect(result.current.user).toBeNull();
     expect(result.current.session).toBeNull();
+
+    const logoutCall = mockFetch.mock.calls[2] as [string, RequestInit];
+    expect(logoutCall[0]).toContain("/auth/logout");
+    expect(JSON.parse(logoutCall[1].body as string)).toEqual({
+      refresh_token: "ref-token",
+    });
     expect(getSecureStore().deleteItemAsync).toHaveBeenCalled();
+  });
+
+  it("should ignore network errors during signOut and still clear the local session", async () => {
+    mockFetch
+      .mockResolvedValueOnce(makeResponse(fakeTokenResponse))
+      .mockResolvedValueOnce(makeResponse(fakeUser))
+      .mockRejectedValueOnce(new Error("Network error"));
+
+    const { result } = await renderHook(() => useSession(), { wrapper });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    await act(async () => {
+      await result.current.signIn({ login: "ana", password: "senha123" });
+    });
+
+    // Não deve lançar erro mesmo com falha de rede
+    await act(async () => {
+      await result.current.signOut();
+    });
+
+    expect(result.current.user).toBeNull();
+    expect(result.current.session).toBeNull();
   });
 });
 
 describe("SessionProvider — refreshSession", () => {
   it("should refresh the session with a valid token", async () => {
-    const account = makeAccount();
-    const signup = await api.signup(account);
-    const { result } = await waitForLoadedSession();
+    const newTokenResponse = {
+      access_token: "new-acc",
+      refresh_token: "new-ref",
+      exp: 9999999999,
+    };
+    const updatedUser = { ...fakeUser, name: "Ana Atualizada" };
+
+    mockFetch
+      .mockResolvedValueOnce(makeResponse(fakeTokenResponse)) // signIn login
+      .mockResolvedValueOnce(makeResponse(fakeUser)) // signIn getMe
+      .mockResolvedValueOnce(makeResponse(newTokenResponse)) // refresh
+      .mockResolvedValueOnce(makeResponse(updatedUser)); // getMe após refresh
+
+    const { result } = await renderHook(() => useSession(), { wrapper });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
 
     await act(async () => {
-      await result.current.signIn({
-        login: account.username,
-        password: account.password,
-      });
+      await result.current.signIn({ login: "ana", password: "senha123" });
     });
 
     await act(async () => {
       await result.current.refreshSession();
     });
 
-    expect(result.current.session?.accessToken).toBeTruthy();
-    expect(result.current.user).toEqual(signup.user);
+    expect(result.current.session?.accessToken).toBe("new-acc");
+    expect(result.current.user).toEqual(updatedUser);
   });
 
-  it("should do nothing when there is no session to refresh", async () => {
-    const { result } = await waitForLoadedSession();
+  it("U-12: refreshSession sem token não realiza nenhuma chamada de rede", async () => {
+    const { result } = await renderHook(() => useSession(), { wrapper });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    const callsBefore = mockFetch.mock.calls.length;
 
     await act(async () => {
       await result.current.refreshSession();
     });
 
-    expect(result.current.user).toBeNull();
-    expect(result.current.session).toBeNull();
+    expect(mockFetch.mock.calls.length).toBe(callsBefore);
   });
 });

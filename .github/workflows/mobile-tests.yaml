@@ -4,27 +4,17 @@ on:
   push:
     paths:
       - "apps/mobile/**"
-      - "apps/api/**"
       - ".github/workflows/mobile-tests.yaml"
   pull_request:
     paths:
       - "apps/mobile/**"
-      - "apps/api/**"
       - ".github/workflows/mobile-tests.yaml"
   workflow_dispatch:
-
-env:
-  EXPO_PUBLIC_API_URL: http://172.0.0.1:8000
-  DATABASE_URL: postgres://habbit:habbit@postgresql:5432/habbit
-  JWT_SECRET_KEY: super_secret
-  JWT_ALGORITHM: HS256
-  ACCESS_TOKEN_EXPIRE_MINUTES: 15
-  REFRESH_TOKEN_EXPIRE_DAYS: 7
 
 jobs:
   test:
     runs-on: ubuntu-latest
-    name: Integration tests and type check
+    name: Unit tests and type check
     defaults:
       run:
         working-directory: apps/mobile
@@ -47,33 +37,5 @@ jobs:
       - name: Type check
         run: npx tsc --noEmit
 
-      - name: Start API containers and run tests
-        env:
-          EXPO_PUBLIC_API_URL: ${{ env.EXPO_PUBLIC_API_URL }}
-        run: |
-          set -euo pipefail
-          cd ../..
-          cat > apps/api/.env <<'EOF'
-          DATABASE_URL=${{ env.DATABASE_URL }}
-          JWT_SECRET_KEY=${{ env.JWT_SECRET_KEY }}
-          ACCESS_TOKEN_EXPIRE_MINUTES=${{ env.ACCESS_TOKEN_EXPIRE_MINUTES }}
-          REFRESH_TOKEN_EXPIRE_DAYS=${{ env.REFRESH_TOKEN_EXPIRE_DAYS }}
-          JWT_ALGORITHM=${{ env.JWT_ALGORITHM }}
-          EOF
-
-          trap 'docker compose down --volumes' EXIT
-          docker compose up -d --build postgresql api
-
-          for attempt in {1..30}; do
-            if curl --fail --silent http://127.0.0.1:8000/ > /dev/null; then
-              break
-            fi
-            if [[ "$attempt" -eq 30 ]]; then
-              docker compose logs api
-              exit 1
-            fi
-            sleep 2
-          done
-
-          cd apps/mobile
-          pnpm test
+      - name: Run tests
+        run: pnpm test

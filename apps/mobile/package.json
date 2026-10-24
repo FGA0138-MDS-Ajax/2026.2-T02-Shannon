@@ -31,7 +31,6 @@
     "react-native-worklets": "0.10.1"
   },
   "devDependencies": {
-    "@faker-js/faker": "^10.6.0",
     "@react-native-async-storage/async-storage": "^3.1.1",
     "@storybook/addon-ondevice-actions": "^10.6.0",
     "@storybook/addon-ondevice-controls": "^10.6.0",
