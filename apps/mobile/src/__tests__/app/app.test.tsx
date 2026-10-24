@@ -4,6 +4,8 @@ import Index from "@/app/index";
 describe("Index", () => {
   it("renders the default screen", async () => {
     const { getByText } = await render(<Index />);
-    expect(getByText(/edit src\/app\/index\.tsx/i)).toBeTruthy();
+    expect(getByText("Habbit")).toBeTruthy();
+    expect(getByText("Criar uma conta")).toBeTruthy();
+    expect(getByText("Já tenho uma conta")).toBeTruthy();
   });
 });
