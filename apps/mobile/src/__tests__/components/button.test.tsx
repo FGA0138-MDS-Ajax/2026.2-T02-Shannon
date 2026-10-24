@@ -2,7 +2,7 @@ import { fireEvent, render } from "@testing-library/react-native";
 import Button from "@/components/button";
 
 describe("Button", () => {
-  it("renders with text content correctly", async () => {
+  it("should renders with text content correctly", async () => {
     const { getByText, getByTestId } = await render(
       <Button>Clique aqui</Button>,
     );
@@ -10,7 +10,7 @@ describe("Button", () => {
     expect(getByTestId("button")).toBeTruthy();
   });
 
-  it("handles onPress events", async () => {
+  it("should handles onPress events", async () => {
     const onPressMock = jest.fn();
     const { getByTestId } = await render(
       <Button onPress={onPressMock}>Pressione</Button>,
@@ -20,7 +20,7 @@ describe("Button", () => {
     expect(onPressMock).toHaveBeenCalledTimes(1);
   });
 
-  it("supports prefix and suffix elements", async () => {
+  it("should supports prefix and suffix elements", async () => {
     const { getByText } = await render(
       <Button prefix="👉" suffix="👈">
         Avançar

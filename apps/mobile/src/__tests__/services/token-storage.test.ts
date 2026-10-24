@@ -2,8 +2,8 @@ import * as SecureStore from "expo-secure-store";
 import {
   clearTokens,
   getTokens,
-  saveTokens,
   type StoredTokens,
+  saveTokens,
 } from "@/services/token-storage";
 
 jest.mock("expo-secure-store");
@@ -23,7 +23,7 @@ beforeEach(() => {
 });
 
 describe("saveTokens", () => {
-  it("TS-1: chama setItemAsync com a chave correta e o valor serializado em JSON", async () => {
+  it("should call setItemAsync with the correct key and the serialized value in JSON", async () => {
     mockedSecureStore.setItemAsync.mockResolvedValueOnce();
 
     await saveTokens(mockTokens);
@@ -37,7 +37,7 @@ describe("saveTokens", () => {
 });
 
 describe("getTokens", () => {
-  it("TS-2: retorna StoredTokens quando o storage contém JSON válido", async () => {
+  it("should return StoredTokens when the storage contains valid JSON", async () => {
     mockedSecureStore.getItemAsync.mockResolvedValueOnce(
       JSON.stringify(mockTokens),
     );
@@ -48,7 +48,7 @@ describe("getTokens", () => {
     expect(mockedSecureStore.getItemAsync).toHaveBeenCalledWith(TOKENS_KEY);
   });
 
-  it("TS-3: retorna null quando não há dado no storage", async () => {
+  it("should return null when there is no data in the storage", async () => {
     mockedSecureStore.getItemAsync.mockResolvedValueOnce(null);
 
     const result = await getTokens();
@@ -56,7 +56,7 @@ describe("getTokens", () => {
     expect(result).toBeNull();
   });
 
-  it("TS-4: retorna null e limpa o storage quando o JSON está corrompido", async () => {
+  it("should return null and clear the storage when the JSON is corrupted", async () => {
     mockedSecureStore.getItemAsync.mockResolvedValueOnce("{ invalid json {{");
     mockedSecureStore.deleteItemAsync.mockResolvedValueOnce();
 
@@ -68,7 +68,7 @@ describe("getTokens", () => {
 });
 
 describe("clearTokens", () => {
-  it("TS-5: chama deleteItemAsync com a chave correta", async () => {
+  it("should call deleteItemAsync with the correct key", async () => {
     mockedSecureStore.deleteItemAsync.mockResolvedValueOnce();
 
     await clearTokens();
