@@ -1,0 +1,164 @@
+import re
+from datetime import datetime, timedelta
+from typing import Annotated, Self
+from uuid import UUID
+
+from pydantic import (
+  BaseModel,
+  BeforeValidator,
+  Field,
+  StringConstraints,
+  field_validator,
+  model_validator,
+)
+
+from app.habits.models import HabitCategory
+from app.validators import NoNul
+
+# dias, horas, minutos e segundos (ex.: PT30M, PT1H15M, P1DT2H, PT0.5S).
+ISO_8601_DURATION = re.compile(
+  r"P(?!$)(?:\d+D)?(?:T(?=\d)(?:\d+H)?(?:\d+M)?(?:\d+(?:\.\d+)?S)?)?"
+)
+MSG_DURATION_FORMAT = "A duração deve estar no formato ISO 8601 (ex.: PT30M)."
+MSG_TITLE_NULL = "O título não pode ser nulo."
+MSG_DUPLICATE_HABIT_IDS = "A lista de hábitos não pode ter itens repetidos."
+MSG_ONE_FILTER_MODE = "Informe category ou exclude_category, apenas um."
+
+
+def _require_iso8601(value: object) -> object:
+  """Aceita só texto ISO 8601. Recusa segundos (`1800`) e `HH:MM:SS`.
+
+  `timedelta` passa direto, para o código Python montar o schema sem converter.
+  """
+  if isinstance(value, timedelta):
+    return value
+  if isinstance(value, str) and ISO_8601_DURATION.fullmatch(value):
+    return value
+  raise ValueError(MSG_DURATION_FORMAT)
+
+
+PositiveDuration = Annotated[
+  timedelta, BeforeValidator(_require_iso8601), Field(gt=timedelta(0))
+]
+
+
+def _blank_to_none(value: object) -> object:
+  """Texto vazio ou só com espaços vira `None`; o resto segue sem mudança."""
+  if isinstance(value, str) and not value.strip():
+    return None
+  return value
+
+
+CheckInTitle = Annotated[
+  str, StringConstraints(strip_whitespace=True, min_length=1, max_length=150), NoNul
+]
+# O BeforeValidator fica fora do `| None`: dentro do ramo `str`, o `None` gerado
+# seria recusado. Uso: `description: CheckInDescription = None`.
+CheckInDescription = Annotated[
+  Annotated[str, StringConstraints(strip_whitespace=True, max_length=500)] | None,
+  BeforeValidator(_blank_to_none),
+  NoNul,
+]
+
+
+class CheckInPublic(BaseModel):
+  """Resposta de check-in. Monte com `build_check_ins_public`, não com
+  `model_validate`: `habit_ids` não é coluna de `CheckIn`.
+  """
+
+  id: UUID
+  user_id: UUID
+  title: str
+  description: str | None
+  created_at: datetime
+  duration: timedelta | None
+  habit_ids: list[UUID]
+
+
+class CheckInUpdate(BaseModel):
+  """Corpo do `PATCH /check-ins/{check_in_id}`: só os campos enviados mudam.
+
+  `title: null` é recusado. `description` vazia e `duration: null` apagam o
+  valor. `habit_ids`, `user_id` e `created_at` enviados no corpo são ignorados.
+  """
+
+  title: CheckInTitle | None = None
+  description: CheckInDescription = None
+  duration: PositiveDuration | None = None
+
+  @model_validator(mode="after")
+  def reject_null_title(self) -> Self:
+    """Recusa `title` enviado explicitamente como `null`."""
+    if "title" in self.model_fields_set and self.title is None:
+      raise ValueError(MSG_TITLE_NULL)
+    return self
+
+
+class CategoryCount(BaseModel):
+  """Representa uma categoria de hábitos e a quantidade de hábitos nela."""
+
+  name: HabitCategory
+  habit_count: int
+
+
+class CheckInCategoriesResponse(BaseModel):
+  """Resposta com a contagem de hábitos organizada por categoria."""
+
+  categories: list[CategoryCount]
+
+
+class GroupSummary(BaseModel):
+  """Identifica um grupo associado a uma opção de hábito."""
+
+  id: UUID
+  name: str
+
+
+class HabitOption(BaseModel):
+  """Representa um hábito disponível para seleção em um check-in."""
+
+  id: UUID
+  name: str
+  category: HabitCategory
+  group: GroupSummary | None = None
+  preselected: bool
+
+
+class HabitOptionsPage(BaseModel):
+  """Página de hábitos disponíveis e indicação de que há mais resultados."""
+
+  items: list[HabitOption]
+  page: int
+  has_more: bool
+
+
+class HabitOptionsQuery(BaseModel):
+  """Filtros e paginação para consultar hábitos disponíveis."""
+
+  category: HabitCategory | None = None
+  exclude_category: HabitCategory | None = None
+  page: int = Field(default=1, ge=1)
+  page_size: int = Field(default=20, ge=1, le=20)
+
+  @model_validator(mode="after")
+  def _one_mode(self) -> Self:
+    if (self.category is None) == (self.exclude_category is None):
+      raise ValueError(MSG_ONE_FILTER_MODE)
+    return self
+
+
+class CheckInCreate(BaseModel):
+  """Corpo do `POST /check-ins`: um check-in para até 20 hábitos."""
+
+  title: CheckInTitle
+  description: CheckInDescription = None
+  habit_ids: list[UUID] = Field(min_length=1, max_length=20)
+  duration: PositiveDuration | None = None
+
+  @field_validator("habit_ids")
+  @classmethod
+  def _reject_duplicates(cls, habit_ids: list[UUID]) -> list[UUID]:
+    # `list_habits_by_ids` devolve cada hábito uma vez: repetidos dariam 404 falso.
+    if len(set(habit_ids)) != len(habit_ids):
+      raise ValueError(MSG_DUPLICATE_HABIT_IDS)
+    return habit_ids

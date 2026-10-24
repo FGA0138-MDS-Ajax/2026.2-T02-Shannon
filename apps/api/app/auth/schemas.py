@@ -1,6 +1,9 @@
+from typing import Annotated
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
+
+from app.validators import NoNul
 
 USERNAME_PATTERN = r"^[a-z0-9_.]+$"
 PASSWORD_MAX_BYTES = 72
@@ -53,8 +56,8 @@ class TokenRefreshRequest(BaseModel):
 class LoginRequest(BaseModel):
   """corpo do POST /auth/login. `login` aceita username ou e-mail."""
 
-  login: str = Field(min_length=1)
-  password: str = Field(min_length=1)
+  login: Annotated[str, NoNul] = Field(min_length=1)
+  password: Annotated[str, NoNul] = Field(min_length=1)
 
   @field_validator("login", mode="before")
   @classmethod
@@ -81,9 +84,9 @@ class SignupRequest(BaseModel):
   """corpo do POST /auth/signup. chega ao serviço já normalizado."""
 
   username: str = Field(min_length=3, max_length=30, pattern=USERNAME_PATTERN)
-  email: EmailStr
-  password: str = Field(min_length=8)
-  name: str = Field(min_length=1, max_length=100)
+  email: Annotated[EmailStr, NoNul]
+  password: Annotated[str, NoNul] = Field(min_length=8)
+  name: Annotated[str, NoNul] = Field(min_length=1, max_length=100)
 
   @field_validator("username", "email", mode="before")
   @classmethod
