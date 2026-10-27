@@ -1,35 +1,14 @@
-import { useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import LogoutButton from "@/components/logout-button";
 import { theme } from "@/config/theme";
-import { useSession } from "@/hooks/useSession";
 
 export default function HabitsScreen() {
-  const { signOut } = useSession();
-  const [loggingOut, setLoggingOut] = useState(false);
-
-  const handleLogout = async () => {
-    try {
-      setLoggingOut(true);
-      await signOut();
-    } finally {
-      setLoggingOut(false);
-    }
-  };
-
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>Meus hábitos</Text>
-        <Pressable
-          onPress={handleLogout}
-          disabled={loggingOut}
-          style={styles.logoutButton}
-        >
-          <Text style={styles.logoutText}>
-            {loggingOut ? "Saindo..." : "Sair"}
-          </Text>
-        </Pressable>
+        <LogoutButton />
       </View>
     </SafeAreaView>
   );
@@ -52,14 +31,5 @@ const styles = StyleSheet.create({
     fontFamily: theme.font.bold,
     fontSize: 28,
     color: "#1C1917",
-  },
-  logoutButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 4,
-  },
-  logoutText: {
-    fontFamily: theme.font.medium,
-    fontSize: 14,
-    color: theme.colors.primaryDark,
   },
 });
