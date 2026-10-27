@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Iterator
-from datetime import date, timedelta
+from datetime import date, datetime, time, timedelta
 from urllib.parse import urlsplit, urlunsplit
 from uuid import uuid4
 
@@ -15,8 +15,10 @@ from app.auth.models import User
 from app.auth.tokens import create_access_token
 from app.checkins.models import CheckIn, CheckInHabit
 from app.database import get_session
+from app.goals.models import Goal, GoalPeriod, ScheduleType
+from app.habits import service as habits_service
 from app.habits.models import Habit, HabitCategory, HabitStatus
-from app.habits.service import today
+from app.habits.service import APP_TIMEZONE, today
 from app.main import app
 from tests.support.db import db_connection
 
@@ -142,6 +144,16 @@ def other_auth_headers(other_user: User) -> dict[str, str]:
 
 HabitFactory = Callable[..., Habit]
 CheckInFactory = Callable[..., CheckIn]
+GoalFactory = Callable[..., Goal]
+
+
+def at_noon(day: date) -> datetime:
+  """Meio-dia em São Paulo no dia dado, para o `created_at` dos check-ins.
+
+  Meio-dia evita qualquer dúvida de fuso. Exemplo:
+    check_in_factory(habit, created_at=at_noon(date(2026, 10, 20)))
+  """
+  return datetime.combine(day, time(12, 0), tzinfo=APP_TIMEZONE)
 
 
 @pytest.fixture
@@ -190,6 +202,9 @@ def check_in_factory(test_engine: Engine) -> CheckInFactory:
     check_in_factory(habit)
     check_in_factory([habit_a, habit_b], title="Treino de perna")
     check_in_factory(habit, user=other_user, duration=timedelta(minutes=30))
+    check_in_factory(habit, created_at=at_noon(date(2026, 10, 20)))  # no passado
+
+  Sem `created_at`, o banco usa `now()`.
   """
 
   def create(
@@ -199,13 +214,18 @@ def check_in_factory(test_engine: Engine) -> CheckInFactory:
     title: str = "Check-in de teste",
     description: str | None = None,
     duration: timedelta | None = None,
+    created_at: datetime | None = None,
   ) -> CheckIn:
     habits = habits if isinstance(habits, list) else [habits]
     if not habits:
       raise ValueError("check_in_factory precisa de pelo menos um hábito.")
     user_id = user.id if user is not None else habits[0].author_user_id
     check_in = CheckIn(
-      user_id=user_id, title=title, description=description, duration=duration
+      user_id=user_id,
+      title=title,
+      description=description,
+      duration=duration,
+      created_at=created_at,
     )
     with Session(test_engine) as session:
       session.add(check_in)
@@ -218,3 +238,52 @@ def check_in_factory(test_engine: Engine) -> CheckInFactory:
     return check_in
 
   return create
+
+
+@pytest.fixture
+def goal_factory(test_engine: Engine) -> GoalFactory:
+  """Fábrica que grava a meta de um hábito direto no banco.
+
+  Por padrão cria uma meta diária com `starts_on` em 2000-01-01, para que
+  check-ins no passado contem sem ajuste. Exemplos:
+    goal_factory(habit)                                   # diária
+    goal_factory(habit, period=GoalPeriod.WEEK, target_count=4, period_end_weekday=7)
+    goal_factory(habit, period=GoalPeriod.MONTH, target_count=10,
+                 starts_on=date(2026, 10, 1))
+  """
+
+  def create(
+    habit: Habit,
+    *,
+    period: GoalPeriod = GoalPeriod.DAY,
+    target_count: int = 1,
+    period_end_weekday: int | None = None,
+    starts_on: date = date(2000, 1, 1),
+  ) -> Goal:
+    return _save(
+      test_engine,
+      Goal(
+        habit_id=habit.id,
+        schedule_type=ScheduleType.FREQUENCY,
+        period=period,
+        target_count=target_count,
+        period_end_weekday=period_end_weekday,
+        starts_on=starts_on,
+      ),
+    )
+
+  return create
+
+
+@pytest.fixture
+def freeze_today(monkeypatch: pytest.MonkeyPatch) -> Callable[[date], None]:
+  """Fixa o "hoje" da API. Uso: `freeze_today(date(2026, 10, 28))`.
+
+  Só afeta quem chama `habits_service.today()`. Não muda o `now()` do banco:
+  um `POST /check-ins` continua gravando a data real.
+  """
+
+  def freeze(day: date) -> None:
+    monkeypatch.setattr(habits_service, "today", lambda: day)
+
+  return freeze

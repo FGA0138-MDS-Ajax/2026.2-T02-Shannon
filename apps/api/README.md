@@ -153,6 +153,7 @@ apps/api/
 ├── app/
 │   ├── auth/           # Módulo de autenticação (rotas, schemas, serviços)
 │   ├── group/          # Módulo de grupos de hábitos
+│   ├── goals/          # Metas dos hábitos (modelo, schemas, mensagens; ver README do módulo)
 │   ├── habit/          # Módulo principal de hábitos
 │   ├── config.py       # Configurações da aplicação (Pydantic Settings)
 │   ├── database.py     # Engine de conexão e dependências de sessão do banco

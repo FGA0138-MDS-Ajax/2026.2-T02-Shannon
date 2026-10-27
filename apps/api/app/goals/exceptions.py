@@ -10,7 +10,7 @@ MSG_GOAL_HABIT_FINISHED = "Hábito encerrado não permite alterar a meta."
 
 
 class GoalNotFoundError(Exception):
-  """O hábito existe, mas não tem meta."""
+  """O hábito existe, mas não tem meta (criado antes desta sprint)."""
 
 
 class GoalHabitFinishedError(Exception):
