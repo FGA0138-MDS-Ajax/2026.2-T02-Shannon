@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { StyleSheet, View } from "react-native";
-import Button from "@/components/button";
+import { Pressable, StyleSheet, Text, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { theme } from "@/config/theme";
 import { useSession } from "@/hooks/useSession";
 
-export default function HomeScreen() {
+export default function HabitsScreen() {
   const { signOut } = useSession();
   const [loggingOut, setLoggingOut] = useState(false);
 
@@ -18,31 +18,48 @@ export default function HomeScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      <View style={styles.footer}>
-        <Button
-          variant="secondary"
-          width="full"
+    <SafeAreaView style={styles.container}>
+      <View style={styles.header}>
+        <Text style={styles.title}>Meus hábitos</Text>
+        <Pressable
           onPress={handleLogout}
           disabled={loggingOut}
+          style={styles.logoutButton}
         >
-          {loggingOut ? "Saindo..." : "Sair da conta"}
-        </Button>
+          <Text style={styles.logoutText}>
+            {loggingOut ? "Saindo..." : "Sair"}
+          </Text>
+        </Pressable>
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.gray,
     paddingHorizontal: 24,
-    paddingTop: 64,
-    paddingBottom: 32,
+    paddingVertical: 16,
+    backgroundColor: theme.colors.gray,
+  },
+  header: {
+    marginTop: 16,
+    flexDirection: "row",
+    alignItems: "center",
     justifyContent: "space-between",
   },
-  footer: {
-    width: "100%",
+  title: {
+    fontFamily: theme.font.bold,
+    fontSize: 28,
+    color: "#1C1917",
+  },
+  logoutButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 4,
+  },
+  logoutText: {
+    fontFamily: theme.font.medium,
+    fontSize: 14,
+    color: theme.colors.primaryDark,
   },
 });
