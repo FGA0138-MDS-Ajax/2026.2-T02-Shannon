@@ -1,6 +1,6 @@
 import DateTimePicker from "@expo/ui/community/datetime-picker";
-import { router } from "expo-router";
-import { useState } from "react";
+import { router, useFocusEffect } from "expo-router";
+import { useCallback, useState } from "react";
 import {
   KeyboardAvoidingView,
   Platform,
@@ -58,6 +58,23 @@ export default function NewHabitScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // As telas das abas continuam montadas ao sair delas, então o formulário
+  // é limpo ao sair para começar vazio na próxima vez
+  useFocusEffect(
+    useCallback(() => {
+      return () => {
+        setName("");
+        setCategory(null);
+        setDescription("");
+        setIsPublic(false);
+        setTargetEndDate(null);
+        setShowDatePicker(false);
+        setFieldErrors({});
+        setErrorMessage(null);
+      };
+    }, []),
+  );
 
   const handleSubmit = async () => {
     setErrorMessage(null);

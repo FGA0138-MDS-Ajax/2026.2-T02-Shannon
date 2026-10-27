@@ -6,7 +6,7 @@ import type { HabitCategory } from "@/services/habits-mock";
 export interface CategoryPickerProps {
   label?: string;
   value: HabitCategory | null;
-  onChange: (category: HabitCategory) => void;
+  onChange: (category: HabitCategory | null) => void;
   error?: string;
 }
 
@@ -30,7 +30,8 @@ export default function CategoryPicker({
               testID={`category-${category}`}
               accessibilityRole="radio"
               accessibilityState={{ selected: isSelected }}
-              onPress={() => onChange(category)}
+              // Tocar na categoria já selecionada desmarca
+              onPress={() => onChange(isSelected ? null : category)}
               style={[
                 styles.option,
                 isSelected && styles.optionSelected,
