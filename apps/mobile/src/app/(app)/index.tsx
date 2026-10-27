@@ -1,4 +1,4 @@
-import { useFocusEffect } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import { useCallback, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -154,7 +154,17 @@ export default function HabitsScreen() {
         })}
       </View>
 
-      {renderContent()}
+      <View style={styles.content}>{renderContent()}</View>
+
+      <View style={styles.actions}>
+        <Button
+          variant="primary"
+          width="full"
+          onPress={() => router.push("/(app)/new-habit")}
+        >
+          Novo hábito
+        </Button>
+      </View>
     </SafeAreaView>
   );
 }
@@ -202,6 +212,12 @@ const styles = StyleSheet.create({
   },
   filterTextSelected: {
     color: "#FFFFFF",
+  },
+  content: {
+    flex: 1,
+  },
+  actions: {
+    paddingVertical: 12,
   },
   centered: {
     flex: 1,

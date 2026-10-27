@@ -14,6 +14,7 @@ export default function AppLayout() {
     >
       <Tabs.Screen name="index" options={{ title: "Hábitos" }} />
       <Tabs.Screen name="check-in" options={{ title: "Check-in" }} />
+      <Tabs.Screen name="new-habit" options={{ href: null }} />
     </Tabs>
   );
 }
