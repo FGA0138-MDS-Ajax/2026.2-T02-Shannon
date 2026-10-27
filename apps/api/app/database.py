@@ -9,8 +9,8 @@ from app.checkins import (
   models as checkins_models,  # noqa: F401  registra CheckIn no metadata
 )
 from app.config import settings
-from app.habits import models as habits_models  # noqa: F401  registra Habit no metadata
 from app.goals import models as goals_models  # noqa: F401  registra Goal no metadata
+from app.habits import models as habits_models  # noqa: F401  registra Habit no metadata
 
 engine = create_engine(
   settings.database_url_sync,
