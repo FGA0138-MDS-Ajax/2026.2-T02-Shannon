@@ -14,11 +14,9 @@ import Button from "@/components/button";
 import HabitCard from "@/components/habit-card";
 import LogoutButton from "@/components/logout-button";
 import { theme } from "@/config/theme";
-import {
-  type Habit,
-  type HabitStatus,
-  listHabits,
-} from "@/services/habits-mock";
+import { getErrorMessage } from "@/services/api-errors";
+import { listHabits } from "@/services/habits-api";
+import type { Habit, HabitStatus } from "@/services/types/habits";
 
 const filters: { status: HabitStatus; label: string }[] = [
   { status: "active", label: "Ativos" },
@@ -49,11 +47,9 @@ export default function HabitsScreen() {
         if (requestId === lastRequest.current) {
           setHabits(data);
         }
-      } catch {
+      } catch (err: unknown) {
         if (requestId === lastRequest.current) {
-          setErrorMessage(
-            "Não foi possível carregar seus hábitos. Verifique sua conexão.",
-          );
+          setErrorMessage(getErrorMessage(err));
         }
       } finally {
         if (requestId === lastRequest.current) {

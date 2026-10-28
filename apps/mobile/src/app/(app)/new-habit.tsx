@@ -17,10 +17,12 @@ import CategoryPicker from "@/components/category-picker";
 import Input from "@/components/input";
 import { theme } from "@/config/theme";
 import {
-  createHabit,
+  FORM_ERROR_KEY,
+  getErrorMessage,
   getFieldErrors,
-  type HabitCategory,
-} from "@/services/habits-mock";
+} from "@/services/api-errors";
+import { createHabit } from "@/services/habits-api";
+import type { HabitCategory } from "@/services/types/habits";
 
 type FieldErrors = {
   name?: string;
@@ -113,13 +115,14 @@ export default function NewHabitScreen() {
       });
       router.back();
     } catch (err: unknown) {
-      const apiFieldErrors = getFieldErrors(err);
-      if (Object.keys(apiFieldErrors).length > 0) {
-        setFieldErrors(apiFieldErrors);
-      } else {
-        setErrorMessage(
-          err instanceof Error ? err.message : "Erro ao criar o hábito.",
-        );
+      // Erros por campo (422) vão embaixo de cada campo; o resto vai na faixa
+      const { [FORM_ERROR_KEY]: formError, ...apiFieldErrors } =
+        getFieldErrors(err);
+      setFieldErrors(apiFieldErrors);
+      if (formError) {
+        setErrorMessage(formError);
+      } else if (Object.keys(apiFieldErrors).length === 0) {
+        setErrorMessage(getErrorMessage(err));
       }
     } finally {
       setSubmitting(false);

@@ -1,4 +1,4 @@
-import type { HabitCategory } from "@/services/habits-mock";
+import type { HabitCategory } from "@/services/types/habits";
 
 // Nomes exibidos na tela para cada categoria da API, na ordem do seletor
 export const habitCategoryLabels: Record<HabitCategory, string> = {

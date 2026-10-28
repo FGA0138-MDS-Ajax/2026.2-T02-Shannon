@@ -1,7 +1,7 @@
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { habitCategoryLabels } from "@/config/habit-categories";
 import { theme } from "@/config/theme";
-import type { Habit } from "@/services/habits-mock";
+import type { Habit } from "@/services/types/habits";
 
 export interface HabitCardProps {
   habit: Habit;

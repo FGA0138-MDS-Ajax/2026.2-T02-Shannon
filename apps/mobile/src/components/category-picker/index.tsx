@@ -1,7 +1,7 @@
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { habitCategoryLabels } from "@/config/habit-categories";
 import { theme } from "@/config/theme";
-import type { HabitCategory } from "@/services/habits-mock";
+import type { HabitCategory } from "@/services/types/habits";
 
 export interface CategoryPickerProps {
   label?: string;
