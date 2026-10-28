@@ -7,6 +7,7 @@ import {
 import { useCallback, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -19,7 +20,7 @@ import { theme } from "@/config/theme";
 import { useSession } from "@/hooks/useSession";
 import { ApiError } from "@/services/api";
 import { getErrorMessage } from "@/services/api-errors";
-import { getCheckIn } from "@/services/check-ins-api";
+import { deleteCheckIn, getCheckIn } from "@/services/check-ins-api";
 import type { CheckIn } from "@/services/types/habits";
 import { formatDateTime } from "@/utils/date";
 import { formatDuration } from "@/utils/duration";
@@ -31,6 +32,8 @@ export default function CheckInDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  // Evita tocar de novo em Excluir enquanto a API responde
+  const [deleting, setDeleting] = useState(false);
 
   const loadCheckIn = useCallback(async () => {
     setErrorMessage(null);
@@ -57,6 +60,31 @@ export default function CheckInDetailScreen() {
       loadCheckIn();
     }, [loadCheckIn]),
   );
+
+  const handleDelete = () => {
+    Alert.alert(
+      "Excluir check-in",
+      "Essa ação não pode ser desfeita. Deseja continuar?",
+      [
+        { text: "Cancelar", style: "cancel" },
+        {
+          text: "Excluir",
+          style: "destructive",
+          onPress: async () => {
+            setDeleting(true);
+            try {
+              await deleteCheckIn(id);
+              router.back();
+            } catch (err: unknown) {
+              Alert.alert("Não foi possível excluir", getErrorMessage(err));
+            } finally {
+              setDeleting(false);
+            }
+          },
+        },
+      ],
+    );
+  };
 
   const renderContent = () => {
     if (loading && !checkIn) {
@@ -111,6 +139,7 @@ export default function CheckInDetailScreen() {
             <Button
               variant="secondary"
               width="full"
+              disabled={deleting}
               style={styles.actionButton}
               // Cast: os tipos gerados pelo Expo ainda não reconhecem o [id]
               onPress={() =>
@@ -119,6 +148,13 @@ export default function CheckInDetailScreen() {
             >
               Editar
             </Button>
+            <Pressable
+              disabled={deleting}
+              onPress={handleDelete}
+              style={styles.deleteButton}
+            >
+              <Text style={styles.deleteText}>Excluir check-in</Text>
+            </Pressable>
           </View>
         )}
       </ScrollView>
@@ -215,5 +251,14 @@ const styles = StyleSheet.create({
   // da borda direita e seria cortado pela ScrollView
   actionButton: {
     marginHorizontal: 0,
+  },
+  deleteButton: {
+    alignSelf: "center",
+    paddingVertical: 8,
+  },
+  deleteText: {
+    fontFamily: theme.font.medium,
+    fontSize: 14,
+    color: "#B91C1C",
   },
 });
