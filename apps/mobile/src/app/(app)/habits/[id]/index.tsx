@@ -1,4 +1,9 @@
-import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
+import {
+  type Href,
+  router,
+  useFocusEffect,
+  useLocalSearchParams,
+} from "expo-router";
 import { useCallback, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -12,6 +17,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import Button from "@/components/button";
 import { habitCategoryLabels } from "@/config/habit-categories";
 import { theme } from "@/config/theme";
+import { useSession } from "@/hooks/useSession";
 import { ApiError } from "@/services/api";
 import { getErrorMessage } from "@/services/api-errors";
 import { getHabit, listHabitCheckIns } from "@/services/habits-api";
@@ -21,6 +27,7 @@ import { formatDuration } from "@/utils/duration";
 
 export default function HabitDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const { user } = useSession();
   const [habit, setHabit] = useState<Habit | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
@@ -138,6 +145,8 @@ export default function HabitDetailScreen() {
     }
 
     const isFinished = habit.status === "finished";
+    // Só quem criou o hábito pode alterá-lo
+    const isAuthor = habit.author_user_id === user?.id;
 
     return (
       <ScrollView>
@@ -180,6 +189,19 @@ export default function HabitDetailScreen() {
           <Text style={styles.sectionTitle}>Check-ins</Text>
           {renderCheckIns()}
         </View>
+
+        {isAuthor && (
+          <View style={styles.actions}>
+            <Button
+              variant="secondary"
+              width="full"
+              // Cast: os tipos gerados pelo Expo ainda não reconhecem o [id]
+              onPress={() => router.push(`/habits/${habit.id}/edit` as Href)}
+            >
+              Editar
+            </Button>
+          </View>
+        )}
       </ScrollView>
     );
   };
@@ -297,6 +319,10 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: "#3D3835",
     lineHeight: 22,
+  },
+  actions: {
+    marginTop: 24,
+    marginBottom: 8,
   },
   checkIn: {
     backgroundColor: "#FFFFFF",
