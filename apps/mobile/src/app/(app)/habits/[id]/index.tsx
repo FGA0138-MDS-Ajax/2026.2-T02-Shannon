@@ -7,6 +7,7 @@ import {
 import { useCallback, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -20,7 +21,12 @@ import { theme } from "@/config/theme";
 import { useSession } from "@/hooks/useSession";
 import { ApiError } from "@/services/api";
 import { getErrorMessage } from "@/services/api-errors";
-import { getHabit, listHabitCheckIns } from "@/services/habits-api";
+import {
+  deleteHabit,
+  finishHabit,
+  getHabit,
+  listHabitCheckIns,
+} from "@/services/habits-api";
 import type { CheckIn, Habit } from "@/services/types/habits";
 import { formatDate, formatDateTime, parseApiDate } from "@/utils/date";
 import { formatDuration } from "@/utils/duration";
@@ -35,6 +41,8 @@ export default function HabitDetailScreen() {
   const [checkIns, setCheckIns] = useState<CheckIn[] | null>(null);
   const [checkInsError, setCheckInsError] = useState<string | null>(null);
   const checkInsHabitId = useRef<string | null>(null);
+  // Evita tocar de novo em Encerrar/Excluir enquanto a API responde
+  const [acting, setActing] = useState(false);
 
   // O histórico carrega à parte: se falhar, os dados do hábito continuam na tela
   const loadCheckIns = useCallback(async () => {
@@ -79,6 +87,54 @@ export default function HabitDetailScreen() {
       loadCheckIns();
     }, [loadHabit, loadCheckIns]),
   );
+
+  const handleFinish = () => {
+    Alert.alert(
+      "Encerrar hábito",
+      "O hábito vai para a lista de encerrados. Deseja continuar?",
+      [
+        { text: "Cancelar", style: "cancel" },
+        {
+          text: "Encerrar",
+          onPress: async () => {
+            setActing(true);
+            try {
+              setHabit(await finishHabit(id));
+            } catch (err: unknown) {
+              Alert.alert("Não foi possível encerrar", getErrorMessage(err));
+            } finally {
+              setActing(false);
+            }
+          },
+        },
+      ],
+    );
+  };
+
+  const handleDelete = () => {
+    Alert.alert(
+      "Excluir hábito",
+      "Essa ação não pode ser desfeita. Os check-ins registrados continuam salvos.",
+      [
+        { text: "Cancelar", style: "cancel" },
+        {
+          text: "Excluir",
+          style: "destructive",
+          onPress: async () => {
+            setActing(true);
+            try {
+              await deleteHabit(id);
+              router.back();
+            } catch (err: unknown) {
+              Alert.alert("Não foi possível excluir", getErrorMessage(err));
+            } finally {
+              setActing(false);
+            }
+          },
+        },
+      ],
+    );
+  };
 
   const renderCheckIns = () => {
     if (checkInsError) {
@@ -195,11 +251,31 @@ export default function HabitDetailScreen() {
             <Button
               variant="secondary"
               width="full"
+              disabled={acting}
+              style={styles.actionButton}
               // Cast: os tipos gerados pelo Expo ainda não reconhecem o [id]
               onPress={() => router.push(`/habits/${habit.id}/edit` as Href)}
             >
               Editar
             </Button>
+            {!isFinished && (
+              <Button
+                variant="primary"
+                width="full"
+                disabled={acting}
+                style={styles.actionButton}
+                onPress={handleFinish}
+              >
+                Encerrar hábito
+              </Button>
+            )}
+            <Pressable
+              disabled={acting}
+              onPress={handleDelete}
+              style={styles.deleteButton}
+            >
+              <Text style={styles.deleteText}>Excluir hábito</Text>
+            </Pressable>
           </View>
         )}
       </ScrollView>
@@ -323,6 +399,21 @@ const styles = StyleSheet.create({
   actions: {
     marginTop: 24,
     marginBottom: 8,
+    gap: 8,
+  },
+  // O Button tem margem lateral de 8; somada à largura total, ele passaria
+  // da borda direita e seria cortado pela ScrollView
+  actionButton: {
+    marginHorizontal: 0,
+  },
+  deleteButton: {
+    alignSelf: "center",
+    paddingVertical: 8,
+  },
+  deleteText: {
+    fontFamily: theme.font.medium,
+    fontSize: 14,
+    color: "#B91C1C",
   },
   checkIn: {
     backgroundColor: "#FFFFFF",
