@@ -1,4 +1,9 @@
-import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
+import {
+  type Href,
+  router,
+  useFocusEffect,
+  useLocalSearchParams,
+} from "expo-router";
 import { useCallback, useState } from "react";
 import {
   ActivityIndicator,
@@ -11,6 +16,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import Button from "@/components/button";
 import { theme } from "@/config/theme";
+import { useSession } from "@/hooks/useSession";
 import { ApiError } from "@/services/api";
 import { getErrorMessage } from "@/services/api-errors";
 import { getCheckIn } from "@/services/check-ins-api";
@@ -20,6 +26,7 @@ import { formatDuration } from "@/utils/duration";
 
 export default function CheckInDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const { user } = useSession();
   const [checkIn, setCheckIn] = useState<CheckIn | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
@@ -81,6 +88,9 @@ export default function CheckInDetailScreen() {
       );
     }
 
+    // Só quem registrou o check-in pode alterá-lo
+    const isOwner = checkIn.user_id === user?.id;
+
     return (
       <ScrollView>
         <Text style={styles.title}>{checkIn.title}</Text>
@@ -93,6 +103,22 @@ export default function CheckInDetailScreen() {
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Descrição</Text>
             <Text style={styles.sectionText}>{checkIn.description}</Text>
+          </View>
+        )}
+
+        {isOwner && (
+          <View style={styles.actions}>
+            <Button
+              variant="secondary"
+              width="full"
+              style={styles.actionButton}
+              // Cast: os tipos gerados pelo Expo ainda não reconhecem o [id]
+              onPress={() =>
+                router.push(`/check-ins/${checkIn.id}/edit` as Href)
+              }
+            >
+              Editar
+            </Button>
           </View>
         )}
       </ScrollView>
@@ -179,5 +205,15 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: "#3D3835",
     lineHeight: 22,
+  },
+  actions: {
+    marginTop: 24,
+    marginBottom: 8,
+    gap: 8,
+  },
+  // O Button tem margem lateral de 8; somada à largura total, ele passaria
+  // da borda direita e seria cortado pela ScrollView
+  actionButton: {
+    marginHorizontal: 0,
   },
 });
