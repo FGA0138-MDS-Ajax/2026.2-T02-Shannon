@@ -4,6 +4,8 @@ import { theme } from "@/config/theme";
 export default function AppLayout() {
   return (
     <Tabs
+      // "Voltar" retorna à tela anterior (ex.: do detalhe para a lista)
+      backBehavior="history"
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: theme.colors.primary,
@@ -15,6 +17,7 @@ export default function AppLayout() {
       <Tabs.Screen name="index" options={{ title: "Hábitos" }} />
       <Tabs.Screen name="check-in" options={{ title: "Check-in" }} />
       <Tabs.Screen name="new-habit" options={{ href: null }} />
+      <Tabs.Screen name="habits/[id]/index" options={{ href: null }} />
     </Tabs>
   );
 }

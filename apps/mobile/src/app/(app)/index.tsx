@@ -1,4 +1,4 @@
-import { router, useFocusEffect } from "expo-router";
+import { type Href, router, useFocusEffect } from "expo-router";
 import { useCallback, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -97,7 +97,13 @@ export default function HabitsScreen() {
       <FlatList
         data={habits}
         keyExtractor={(habit) => habit.id}
-        renderItem={({ item }) => <HabitCard habit={item} />}
+        renderItem={({ item }) => (
+          <HabitCard
+            habit={item}
+            // Cast: os tipos gerados pelo Expo ainda não reconhecem o [id]
+            onPress={() => router.push(`/habits/${item.id}` as Href)}
+          />
+        )}
         contentContainerStyle={habits.length === 0 && styles.emptyContainer}
         ListEmptyComponent={
           <Text style={styles.emptyText}>
