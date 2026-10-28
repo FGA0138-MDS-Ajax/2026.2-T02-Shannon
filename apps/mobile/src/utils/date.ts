@@ -25,3 +25,9 @@ export function parseApiDate(value: string): Date {
 export function formatDate(date: Date): string {
   return `${pad(date.getDate())}/${pad(date.getMonth() + 1)}/${date.getFullYear()}`;
 }
+
+/** Data e hora ISO em UTC (ex.: `created_at` do check-in) → `"28/10/2026 às 07:30"` no fuso do aparelho */
+export function formatDateTime(isoDateTime: string): string {
+  const date = new Date(isoDateTime);
+  return `${formatDate(date)} às ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}

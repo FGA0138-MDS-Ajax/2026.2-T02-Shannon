@@ -1,5 +1,5 @@
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -14,9 +14,10 @@ import { habitCategoryLabels } from "@/config/habit-categories";
 import { theme } from "@/config/theme";
 import { ApiError } from "@/services/api";
 import { getErrorMessage } from "@/services/api-errors";
-import { getHabit } from "@/services/habits-api";
-import type { Habit } from "@/services/types/habits";
-import { formatDate, parseApiDate } from "@/utils/date";
+import { getHabit, listHabitCheckIns } from "@/services/habits-api";
+import type { CheckIn, Habit } from "@/services/types/habits";
+import { formatDate, formatDateTime, parseApiDate } from "@/utils/date";
+import { formatDuration } from "@/utils/duration";
 
 export default function HabitDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -24,6 +25,26 @@ export default function HabitDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [checkIns, setCheckIns] = useState<CheckIn[] | null>(null);
+  const [checkInsError, setCheckInsError] = useState<string | null>(null);
+  const checkInsHabitId = useRef<string | null>(null);
+
+  // O histórico carrega à parte: se falhar, os dados do hábito continuam na tela
+  const loadCheckIns = useCallback(async () => {
+    setCheckInsError(null);
+    // Ao abrir outro hábito, não mostra o histórico do anterior
+    if (checkInsHabitId.current !== id) {
+      setCheckIns(null);
+    }
+    try {
+      const data = await listHabitCheckIns(id);
+      checkInsHabitId.current = id;
+      setCheckIns(data);
+    } catch (err: unknown) {
+      setCheckIns(null);
+      setCheckInsError(getErrorMessage(err));
+    }
+  }, [id]);
 
   const loadHabit = useCallback(async () => {
     setErrorMessage(null);
@@ -48,8 +69,43 @@ export default function HabitDetailScreen() {
   useFocusEffect(
     useCallback(() => {
       loadHabit();
-    }, [loadHabit]),
+      loadCheckIns();
+    }, [loadHabit, loadCheckIns]),
   );
+
+  const renderCheckIns = () => {
+    if (checkInsError) {
+      return (
+        <Pressable onPress={loadCheckIns}>
+          <Text style={styles.checkInsError}>
+            {checkInsError} Toque para tentar novamente.
+          </Text>
+        </Pressable>
+      );
+    }
+
+    if (!checkIns) {
+      return <ActivityIndicator color={theme.colors.primary} />;
+    }
+
+    if (checkIns.length === 0) {
+      return (
+        <Text style={styles.sectionText}>
+          Nenhum check-in registrado ainda.
+        </Text>
+      );
+    }
+
+    return checkIns.map((checkIn) => (
+      <View key={checkIn.id} testID="check-in-item" style={styles.checkIn}>
+        <Text style={styles.checkInTitle}>{checkIn.title}</Text>
+        <Text style={styles.checkInDetails}>
+          {formatDateTime(checkIn.created_at)}
+          {checkIn.duration ? ` · ${formatDuration(checkIn.duration)}` : ""}
+        </Text>
+      </View>
+    ));
+  };
 
   const renderContent = () => {
     if (loading && !habit) {
@@ -118,6 +174,11 @@ export default function HabitDetailScreen() {
           {habit.finished_at && (
             <InfoRow label="Encerrado em" value={habit.finished_at} />
           )}
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Check-ins</Text>
+          {renderCheckIns()}
         </View>
       </ScrollView>
     );
@@ -236,6 +297,31 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: "#3D3835",
     lineHeight: 22,
+  },
+  checkIn: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#E7E2DE",
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    marginBottom: 8,
+  },
+  checkInTitle: {
+    fontFamily: theme.font.semiBold,
+    fontSize: 15,
+    color: "#1C1917",
+    marginBottom: 2,
+  },
+  checkInDetails: {
+    fontFamily: theme.font.regular,
+    fontSize: 13,
+    color: "#6B6560",
+  },
+  checkInsError: {
+    fontFamily: theme.font.regular,
+    fontSize: 14,
+    color: "#B91C1C",
   },
   infoRow: {
     flexDirection: "row",
