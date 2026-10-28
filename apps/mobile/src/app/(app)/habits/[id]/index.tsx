@@ -160,13 +160,19 @@ export default function HabitDetailScreen() {
     }
 
     return checkIns.map((checkIn) => (
-      <View key={checkIn.id} testID="check-in-item" style={styles.checkIn}>
+      <Pressable
+        key={checkIn.id}
+        testID="check-in-item"
+        style={styles.checkIn}
+        // Cast: os tipos gerados pelo Expo ainda não reconhecem o [id]
+        onPress={() => router.push(`/check-ins/${checkIn.id}` as Href)}
+      >
         <Text style={styles.checkInTitle}>{checkIn.title}</Text>
         <Text style={styles.checkInDetails}>
           {formatDateTime(checkIn.created_at)}
           {checkIn.duration ? ` · ${formatDuration(checkIn.duration)}` : ""}
         </Text>
-      </View>
+      </Pressable>
     ));
   };
 
