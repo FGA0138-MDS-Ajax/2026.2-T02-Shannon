@@ -12,6 +12,7 @@ import {
   api,
   type LoginRequest,
   type SignupRequest,
+  setAuthHandlers,
   toStoredTokens,
   type UserPublic,
 } from "@/services/api";
@@ -84,6 +85,22 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     },
     [applySession],
   );
+
+  // O request() renova o token sozinho no 401. Sem este aviso, a sessão em
+  // memória guardaria o refresh token antigo, que o back já invalidou.
+  useEffect(() => {
+    setAuthHandlers({
+      onTokensRefreshed: (tokens) => setSession(tokens),
+      // Os tokens já foram apagados do storage; sem sessão, o
+      // Stack.Protected manda a pessoa de volta para a entrada.
+      onAuthFailure: () => {
+        setUser(null);
+        setSession(null);
+      },
+    });
+
+    return () => setAuthHandlers(null);
+  }, []);
 
   useEffect(() => {
     const init = async () => {
