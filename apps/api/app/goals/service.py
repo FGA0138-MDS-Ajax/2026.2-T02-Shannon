@@ -4,11 +4,12 @@ from sqlmodel import Session
 
 from app.auth.models import User
 from app.goals import repository as goals_repository
-from app.goals.exceptions import GoalHabitFinishedError
+from app.goals.exceptions import GoalHabitFinishedError, GoalNotFoundError
 from app.goals.models import Goal
-from app.goals.schemas import GoalInput
+from app.goals.schemas import GoalInput, HabitProgressPublic
+from app.goals.streak import calculate_progress
 from app.habits import service as habits_service
-from app.habits.models import HabitStatus
+from app.habits.models import Habit, HabitStatus
 
 
 def set_goal(db: Session, habit_id: UUID, user: User, data: GoalInput) -> Goal:
@@ -39,3 +40,40 @@ def set_goal(db: Session, habit_id: UUID, user: User, data: GoalInput) -> Goal:
   db.refresh(goal)
 
   return goal
+
+
+def calculate_habits_progress(
+  db: Session, habits: list[Habit]
+) -> dict[UUID, HabitProgressPublic]:
+  """Calcula o progresso de vários hábitos com uma consulta só aos check-ins.
+
+  Usado no acompanhamento de um hábito (GOAL-5) e nas listas (GOAL-6 e GOAL-7).
+  Hábitos sem meta ficam de fora do resultado. Nada é gravado.
+  """
+  with_goal = [habit for habit in habits if habit.goal is not None]
+  days = goals_repository.list_check_in_days(db, [habit.id for habit in with_goal])
+  today = habits_service.today()
+
+  result: dict[UUID, HabitProgressPublic] = {}
+  for habit in with_goal:
+    progress = calculate_progress(
+      habit.goal, days.get(habit.id, set()), today, habit.finished_at
+    )
+    result[habit.id] = HabitProgressPublic(
+      habit_id=habit.id, goal=habit.goal, **progress.model_dump()
+    )
+  return result
+
+
+def get_habit_progress(db: Session, habit_id: UUID, user: User) -> HabitProgressPublic:
+  """Progresso da meta de um hábito que o usuário pode ver.
+
+  Levanta `HabitNotFoundError` se o hábito não existir ou for privado de outra
+  pessoa, e `GoalNotFoundError` se ele não tiver meta.
+  """
+  habit = habits_service.get_visible_habit(db, habit_id, user)
+
+  if habit.goal is None:
+    raise GoalNotFoundError
+
+  return calculate_habits_progress(db, [habit])[habit.id]
