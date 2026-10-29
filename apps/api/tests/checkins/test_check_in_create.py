@@ -1,3 +1,5 @@
+from datetime import date
+
 from fastapi.testclient import TestClient
 from sqlalchemy import func
 from sqlmodel import Session, select
@@ -41,6 +43,8 @@ def test_create_check_in_for_two_active_habits(
   assert response.status_code == 201
 
   data = response.json()
+
+  assert data["progress"] == []
   assert data["title"] == "Treino completo"
   assert set(data["habit_ids"]) == {
     str(habit_a.id),
@@ -134,3 +138,45 @@ def test_create_check_in_rejects_habits_from_other_users(
 
   assert _count_rows(test_engine, CheckIn) == 0
   assert _count_rows(test_engine, CheckInHabit) == 0
+
+
+def test_create_check_in_returns_updated_goal_progress(
+  client: TestClient,
+  auth_headers: dict[str, str],
+  habit_factory,
+  goal_factory,
+  freeze_today,
+):
+  """Garante que a resposta inclua o progresso atualizado da meta."""
+
+  # Fixa a data para tornar o resultado previsível.
+  freeze_today(date(2026, 10, 28))
+
+  # Cria um hábito ativo e cadastra uma meta diária para ele.
+  habit = habit_factory(name="Leitura")
+  goal_factory(habit)
+
+  # Cria um check-in para esse hábito.
+  response = client.post(
+    "/check-ins",
+    headers=auth_headers,
+    json={
+      "title": "Leitura diária",
+      "habit_ids": [str(habit.id)],
+    },
+  )
+
+  # Confirma que o check-in foi criado com sucesso.
+  assert response.status_code == 201
+
+  data = response.json()
+
+  # Confirma que a resposta identifica o hábito e inclui seu progresso.
+  assert len(data["progress"]) == 1
+  assert data["progress"][0]["habit_id"] == str(habit.id)
+
+  progress = data["progress"][0]["progress"]
+
+  # A meta diária deve contabilizar o check-in recém-criado.
+  assert progress["current_period"]["done"] == 1
+  assert progress["status"] == "completed"

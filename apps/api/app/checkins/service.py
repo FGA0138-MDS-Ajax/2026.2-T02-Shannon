@@ -1,3 +1,4 @@
+from datetime import date
 from collections import defaultdict
 from uuid import UUID
 
@@ -13,17 +14,23 @@ from app.checkins.exceptions import (
   CheckInRefusedError,
 )
 from app.checkins.models import CheckIn
-from app.checkins.repository import list_habit_links
+from app.checkins.repository import (
+  list_check_in_dates_by_habit_ids,
+  list_habit_links,
+)
 from app.checkins.schemas import (
   CategoryCount,
   CheckInCategoriesResponse,
   CheckInCreate,
+  CheckInCreatedPublic,
   CheckInPublic,
   CheckInUpdate,
   HabitOption,
   HabitOptionsPage,
   HabitOptionsQuery,
+  HabitProgressPublic,
 )
+from app.goals.streak import calculate_progress
 from app.habits.exceptions import MSG_HABIT_FINISHED, MSG_HABIT_NOT_FOUND
 from app.habits.models import HabitCategory
 from app.habits.repository import (
@@ -32,9 +39,11 @@ from app.habits.repository import (
   list_habits_by_ids,
 )
 from app.habits.service import (
+  APP_TIMEZONE,
   can_view_habit,
   get_check_in_eligible_habits,
   get_visible_habit,
+  today,
 )
 
 
@@ -163,17 +172,18 @@ def _raise_refusal(db: Session, user: User, refused: list[UUID]) -> None:
   raise CheckInRefusedError(status.HTTP_409_CONFLICT, MSG_HABIT_FINISHED, finished)
 
 
-def register_check_in(db: Session, user: User, data: CheckInCreate) -> CheckInPublic:
-  """Grava um check-in para vários hábitos, no modelo tudo ou nada.
+def register_check_in(
+  db: Session, user: User, data: CheckInCreate
+) -> CheckInCreatedPublic:
+  """Grava um check-in e retorna o progresso atualizado das metas."""
 
-  Levanta `CheckInRefusedError` se algum hábito não for elegível; nesse caso
-  nada é gravado.
-  """
+  # Mantém a validação original dos hábitos.
   eligible_ids = {habit.id for habit in get_check_in_eligible_habits(db, user)}
   refused = [habit_id for habit_id in data.habit_ids if habit_id not in eligible_ids]
   if refused:
     _raise_refusal(db, user, refused)
 
+  # Mantém a criação e a persistência original do check-in.
   check_in = checkins_repository.create_check_in(
     db,
     user_id=user.id,
@@ -185,7 +195,44 @@ def register_check_in(db: Session, user: User, data: CheckInCreate) -> CheckInPu
   db.commit()
   db.refresh(check_in)
 
-  return build_check_ins_public(db, [check_in], user)[0]
+  # Busca os hábitos associados ao check-in em lote.
+  habits = list_habits_by_ids(db, data.habit_ids)
+
+  # Mantém apenas os hábitos que possuem uma meta cadastrada.
+  habits_with_goals = [habit for habit in habits if habit.goal is not None]
+
+  # Busca o histórico dos hábitos com meta em uma única consulta.
+  history = list_check_in_dates_by_habit_ids(
+    db, [habit.id for habit in habits_with_goals]
+  )
+
+  # Agrupa as datas de check-in por hábito.
+  dates_by_habit: dict[UUID, list[date]] = defaultdict(list)
+  for habit_id, created_at in history:
+    # Converte o horário para o fuso da aplicação antes de obter a data.
+    check_in_date = created_at.astimezone(APP_TIMEZONE).date()
+    dates_by_habit[habit_id].append(check_in_date)
+
+  # Calcula o progresso atualizado de cada hábito que possui meta.
+  progress = [
+    HabitProgressPublic(
+      habit_id=habit.id,
+      progress=calculate_progress(
+        habit.goal,
+        dates_by_habit[habit.id],
+        today(),
+        habit.finished_at,
+      ),
+    )
+    for habit in habits_with_goals
+  ]
+
+  # Preserva os campos originais do check-in e acrescenta o progresso.
+  check_in_public = build_check_ins_public(db, [check_in], user)[0]
+  return CheckInCreatedPublic(
+    **check_in_public.model_dump(),
+    progress=progress,
+  )
 
 
 def get_visible_check_in(db: Session, check_in_id: UUID, user: User) -> CheckIn:

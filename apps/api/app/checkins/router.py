@@ -26,6 +26,7 @@ from app.checkins.responses import (
 from app.checkins.schemas import (
   CheckInCategoriesResponse,
   CheckInCreate,
+  CheckInCreatedPublic,
   CheckInPublic,
   CheckInUpdate,
   HabitOptionsPage,
@@ -39,7 +40,7 @@ check_ins_router = APIRouter(tags=["check-ins"])
 
 @check_ins_router.post(
   "/check-ins",
-  response_model=CheckInPublic,
+  response_model=CheckInCreatedPublic,
   status_code=status.HTTP_201_CREATED,
   summary="Registrar check-in",
   description=(
@@ -54,7 +55,7 @@ def create_check_in(
   db: SessionDep,
   data: CheckInCreate,
   user: Annotated[User, Depends(get_current_user)],
-) -> CheckInPublic | JSONResponse:
+) -> CheckInCreatedPublic | JSONResponse:
   """Registra o check-in ou devolve a recusa com os ids do motivo."""
   try:
     return service.register_check_in(db, user, data)

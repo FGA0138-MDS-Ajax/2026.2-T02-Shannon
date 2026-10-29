@@ -12,6 +12,7 @@ from pydantic import (
   model_validator,
 )
 
+from app.goals.streak import GoalProgress
 from app.habits.models import HabitCategory
 from app.validators import NoNul
 
@@ -73,6 +74,19 @@ class CheckInPublic(BaseModel):
   created_at: datetime
   duration: timedelta | None
   habit_ids: list[UUID]
+
+
+class HabitProgressPublic(BaseModel):
+  """Representa o progresso atualizado de um hábito associado a uma meta."""
+
+  habit_id: UUID
+  progress: GoalProgress
+
+
+class CheckInCreatedPublic(CheckInPublic):
+  """Resposta da criação de check-in com o progresso atualizado das metas."""
+
+  progress: list[HabitProgressPublic]
 
 
 class CheckInUpdate(BaseModel):
