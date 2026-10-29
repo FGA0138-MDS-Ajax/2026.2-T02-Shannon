@@ -1,5 +1,5 @@
-from datetime import date
 from collections import defaultdict
+from datetime import date
 from uuid import UUID
 
 from fastapi import status
