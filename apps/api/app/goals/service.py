@@ -10,6 +10,7 @@ from app.goals.schemas import GoalInput, HabitProgressPublic
 from app.goals.streak import calculate_progress
 from app.habits import service as habits_service
 from app.habits.models import Habit, HabitStatus
+from app.habits.schemas import HabitWithProgress
 
 
 def set_goal(db: Session, habit_id: UUID, user: User, data: GoalInput) -> Goal:
@@ -77,3 +78,19 @@ def get_habit_progress(db: Session, habit_id: UUID, user: User) -> HabitProgress
     raise GoalNotFoundError
 
   return calculate_habits_progress(db, [habit])[habit.id]
+
+
+def list_habits_with_progress(
+  db: Session, user: User, status: HabitStatus | None = None
+) -> list[HabitWithProgress]:
+  habits = habits_service.list_my_habits(db, user, status)
+  habits_progress = calculate_habits_progress(db, habits)
+
+  habits_with_progress = []
+  for habit, progress in zip(habits, habits_progress.values(), strict=False):
+    habit_with_progress = HabitWithProgress.model_validate(
+      habit, from_attributes=True
+    ).model_copy(update={"progress": progress.get(habit.id)})
+    habits_with_progress.append(habit_with_progress)
+
+  return habits_with_progress
