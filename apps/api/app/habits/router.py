@@ -3,10 +3,10 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 
-from app.goals import service as goals_service
 from app.auth.dependencies import get_current_user
 from app.auth.models import User
 from app.database import SessionDep
+from app.goals import service as goals_service
 from app.habits import service
 from app.habits.exceptions import (
   MSG_HABIT_ALREADY_FINISHED,
@@ -33,7 +33,6 @@ from app.habits.schemas import (
   HabitUpdate,
   HabitWithProgress,
 )
-
 
 habit_router = APIRouter(prefix="/habits", tags=["habits"])
 
@@ -64,7 +63,8 @@ def create_habit(
   summary="Listar hábitos",
   description=(
     "Lista todos os hábitos do usuário logado ordenados por data de criação"
-    " decrescente e nome."
+    " decrescente e nome. Cada item traz goal e progress; progress é null"
+    " em hábito sem meta."
   ),
   responses=RESPONSES_422_LIST,
 )

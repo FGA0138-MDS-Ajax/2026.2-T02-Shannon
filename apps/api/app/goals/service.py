@@ -83,14 +83,18 @@ def get_habit_progress(db: Session, habit_id: UUID, user: User) -> HabitProgress
 def list_habits_with_progress(
   db: Session, user: User, status: HabitStatus | None = None
 ) -> list[HabitWithProgress]:
+  """Lista os hábitos do usuário logado com o progresso calculado da meta.
+
+  Calcula o progresso de todos os hábitos em lote com uma consulta só aos
+  check-ins. Hábito sem meta recebe `progress: None`. Mantém o filtro de status
+  e a ordenação original.
+  """
   habits = habits_service.list_my_habits(db, user, status)
-  habits_progress = calculate_habits_progress(db, habits)
+  progress = calculate_habits_progress(db, habits)
 
-  habits_with_progress = []
-  for habit, progress in zip(habits, habits_progress.values(), strict=False):
-    habit_with_progress = HabitWithProgress.model_validate(
-      habit, from_attributes=True
-    ).model_copy(update={"progress": progress.get(habit.id)})
-    habits_with_progress.append(habit_with_progress)
-
-  return habits_with_progress
+  return [
+    HabitWithProgress.model_validate(habit, from_attributes=True).model_copy(
+      update={"progress": progress.get(habit.id)}
+    )
+    for habit in habits
+  ]
