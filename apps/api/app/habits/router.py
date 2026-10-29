@@ -37,7 +37,12 @@ habit_router = APIRouter(prefix="/habits", tags=["habits"])
   status_code=status.HTTP_201_CREATED,
   summary="Criar hábito",
   description=(
-    "Cria um novo hábito para o usuário logado com status ativo e data de criação hoje."
+    "Cria um novo hábito para o usuário logado com status ativo e data de"
+    " criação hoje. O campo `goal` é **obrigatório** e depende do `period`:"
+    " `day` aceita `target_count` vazio ou 1 (gravado como 1); `week` exige"
+    " `target_count` de 1 a 7 e `period_end_weekday` (1 = segunda ... 7 ="
+    " domingo); `month` exige `target_count` de 1 a 28. Só a meta semanal"
+    " aceita `period_end_weekday`."
   ),
   responses=RESPONSES_422_CREATE,
 )
