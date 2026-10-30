@@ -11,8 +11,7 @@ from pydantic import (
   model_validator,
 )
 
-from app.goals.schemas import GoalInput, GoalPublic
-from app.goals.schemas import HabitProgressPublic
+from app.goals.schemas import GoalInput, GoalPublic, HabitProgressPublic
 from app.habits.models import HabitCategory, HabitStatus
 from app.validators import NoNul
 
