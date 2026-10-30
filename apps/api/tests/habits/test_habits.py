@@ -59,7 +59,7 @@ def test_create_habit_validates_and_normalizes_category(
   test_engine,
 ):
   # Garante que a categoria seja obrigatória, validada e normalizada na criação.
-  base_payload = {"name": "Hábito de teste"}
+  base_payload = {"name": "Hábito de teste", "goal": {"period": "day"}}
 
   missing_category_response = client.post(
     "/habits",
