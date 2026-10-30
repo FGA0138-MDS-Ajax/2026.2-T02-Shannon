@@ -1,5 +1,6 @@
 from fastapi import status
 
+from app.goals.exceptions import MSG_GOAL_WEEKDAY_REQUIRED
 from app.habits.exceptions import (
   MSG_HABIT_ALREADY_FINISHED,
   MSG_HABIT_FORBIDDEN,
@@ -13,14 +14,43 @@ RESPONSES_422_CREATE = {
     "description": "Erro de validação nos dados enviados.",
     "content": {
       "application/json": {
-        "example": {
-          "detail": [
-            {
-              "loc": ["body", "category"],
-              "msg": "Field required",
-              "type": "missing",
-            }
-          ]
+        "examples": {
+          "categoria_faltando": {
+            "summary": "`category` não enviada",
+            "value": {
+              "detail": [
+                {
+                  "loc": ["body", "category"],
+                  "msg": "Field required",
+                  "type": "missing",
+                }
+              ]
+            },
+          },
+          "meta_invalida": {
+            "summary": "Regra da meta inválida (ex.: semanal sem dia de fechamento)",
+            "value": {
+              "detail": [
+                {
+                  "loc": ["body", "goal"],
+                  "msg": f"Value error, {MSG_GOAL_WEEKDAY_REQUIRED}",
+                  "type": "value_error",
+                }
+              ]
+            },
+          },
+          "meta_faltando": {
+            "summary": "`goal` não enviada",
+            "value": {
+              "detail": [
+                {
+                  "loc": ["body", "goal"],
+                  "msg": "Field required",
+                  "type": "missing",
+                }
+              ]
+            },
+          },
         }
       }
     },
