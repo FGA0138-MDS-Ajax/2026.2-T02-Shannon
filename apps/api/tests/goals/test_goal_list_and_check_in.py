@@ -14,7 +14,8 @@ def test_list_habits_includes_goal_and_progress(
 ):
   # Cria um hábito com meta diária e outro sem meta.
   habit_with_goal = habit_factory(name="Hábito com meta")
-  habit_without_goal = habit_factory(name="Hábito sem meta")
+  # Cria um hábito sem meta para validar a listagem.
+  habit_factory(name="Hábito sem meta")
 
   goal_factory(
     habit_with_goal,
