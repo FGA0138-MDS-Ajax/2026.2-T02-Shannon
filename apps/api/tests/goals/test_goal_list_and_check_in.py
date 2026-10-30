@@ -53,6 +53,7 @@ def test_list_habits_includes_goal_and_progress(
   assert habit_without_goal_data["goal"] is None
   assert habit_without_goal_data["progress"] is None
 
+
 def test_create_check_in_returns_goal_progress(
   client,
   auth_headers,
