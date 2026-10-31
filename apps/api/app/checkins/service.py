@@ -18,12 +18,14 @@ from app.checkins.schemas import (
   CategoryCount,
   CheckInCategoriesResponse,
   CheckInCreate,
+  CheckInCreatedPublic,
   CheckInPublic,
   CheckInUpdate,
   HabitOption,
   HabitOptionsPage,
   HabitOptionsQuery,
 )
+from app.goals import service as goals_service
 from app.habits.exceptions import MSG_HABIT_FINISHED, MSG_HABIT_NOT_FOUND
 from app.habits.models import HabitCategory
 from app.habits.repository import (
@@ -163,11 +165,14 @@ def _raise_refusal(db: Session, user: User, refused: list[UUID]) -> None:
   raise CheckInRefusedError(status.HTTP_409_CONFLICT, MSG_HABIT_FINISHED, finished)
 
 
-def register_check_in(db: Session, user: User, data: CheckInCreate) -> CheckInPublic:
+def register_check_in(
+  db: Session, user: User, data: CheckInCreate
+) -> CheckInCreatedPublic:
   """Grava um check-in para vários hábitos, no modelo tudo ou nada.
 
   Levanta `CheckInRefusedError` se algum hábito não for elegível; nesse caso
-  nada é gravado.
+  nada é gravado. Depois de gravar, devolve o progresso de cada hábito com meta,
+  já contando este check-in.
   """
   eligible_ids = {habit.id for habit in get_check_in_eligible_habits(db, user)}
   refused = [habit_id for habit_id in data.habit_ids if habit_id not in eligible_ids]
@@ -185,7 +190,12 @@ def register_check_in(db: Session, user: User, data: CheckInCreate) -> CheckInPu
   db.commit()
   db.refresh(check_in)
 
-  return build_check_ins_public(db, [check_in], user)[0]
+  # Busca os hábitos de novo: depois do commit, os elegíveis estão vencidos
+  # (`expire_on_commit`) e ler `habit.goal` em cada um faria uma consulta por hábito.
+  public = build_check_ins_public(db, [check_in], user)[0]
+  habits = list_habits_by_ids(db, data.habit_ids)
+  progress = goals_service.calculate_habits_progress(db, habits)
+  return CheckInCreatedPublic(**public.model_dump(), progress=list(progress.values()))
 
 
 def get_visible_check_in(db: Session, check_in_id: UUID, user: User) -> CheckIn:

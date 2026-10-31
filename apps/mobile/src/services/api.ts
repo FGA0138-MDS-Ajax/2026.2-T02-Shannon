@@ -143,7 +143,7 @@ export const api = {
   },
 
   async getMe(accessToken: string): Promise<UserPublic> {
-    return request<UserPublic>("/session/me", {
+    return request<UserPublic>("/auth/session/me", {
       method: "GET",
       headers: {
         Authorization: `Bearer ${accessToken}`,
