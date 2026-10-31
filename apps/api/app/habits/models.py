@@ -1,9 +1,13 @@
 from datetime import date
 from enum import StrEnum
+from typing import TYPE_CHECKING, Optional
 from uuid import UUID, uuid4
 
 from sqlalchemy import CheckConstraint
-from sqlmodel import Field, SQLModel
+from sqlmodel import Field, Relationship, SQLModel
+
+if TYPE_CHECKING:
+  from app.goals.models import Goal
 
 
 class HabitStatus(StrEnum):
@@ -59,3 +63,9 @@ class Habit(SQLModel, table=True):
   created_at: date = Field(nullable=False)
   target_end_date: date | None = Field(default=None)
   finished_at: date | None = Field(default=None)
+
+  goal: Optional["Goal"] = Relationship(
+    back_populates="habit",
+    cascade_delete=True,
+    sa_relationship_kwargs={"lazy": "selectin"},
+  )
