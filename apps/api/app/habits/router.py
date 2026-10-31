@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from app.auth.dependencies import get_current_user
 from app.auth.models import User
 from app.database import SessionDep
+from app.goals import service as goals_service
 from app.habits import service
 from app.habits.exceptions import (
   MSG_HABIT_ALREADY_FINISHED,
@@ -26,7 +27,12 @@ from app.habits.responses import (
   RESPONSES_GET_BY_ID,
   RESPONSES_UPDATE,
 )
-from app.habits.schemas import HabitCreate, HabitPublic, HabitUpdate
+from app.habits.schemas import (
+  HabitCreate,
+  HabitPublic,
+  HabitUpdate,
+  HabitWithProgress,
+)
 
 habit_router = APIRouter(prefix="/habits", tags=["habits"])
 
@@ -37,7 +43,12 @@ habit_router = APIRouter(prefix="/habits", tags=["habits"])
   status_code=status.HTTP_201_CREATED,
   summary="Criar hábito",
   description=(
-    "Cria um novo hábito para o usuário logado com status ativo e data de criação hoje."
+    "Cria um novo hábito para o usuário logado com status ativo e data de"
+    " criação hoje. O campo `goal` é **obrigatório** e depende do `period`:"
+    " `day` aceita `target_count` vazio ou 1 (gravado como 1); `week` exige"
+    " `target_count` de 1 a 7 e `period_end_weekday` (1 = segunda ... 7 ="
+    " domingo); `month` exige `target_count` de 1 a 28. Só a meta semanal"
+    " aceita `period_end_weekday`."
   ),
   responses=RESPONSES_422_CREATE,
 )
@@ -52,12 +63,13 @@ def create_habit(
 
 @habit_router.get(
   "",
-  response_model=list[HabitPublic],
+  response_model=list[HabitWithProgress],
   status_code=status.HTTP_200_OK,
   summary="Listar hábitos",
   description=(
     "Lista todos os hábitos do usuário logado ordenados por data de criação"
-    " decrescente e nome."
+    " decrescente e nome. Cada item traz goal e progress; progress é null"
+    " em hábito sem meta."
   ),
   responses=RESPONSES_422_LIST,
 )
@@ -65,9 +77,9 @@ def list_habits(
   db: SessionDep,
   user: Annotated[User, Depends(get_current_user)],
   status_filter: Annotated[HabitStatus | None, Query(alias="status")] = None,
-) -> list[HabitPublic]:
+) -> list[HabitWithProgress]:
   """Lista os hábitos do usuário logado, com filtro opcional por status."""
-  return service.list_my_habits(db, user, status_filter)
+  return goals_service.list_habits_with_progress(db, user, status_filter)
 
 
 @habit_router.get(

@@ -11,6 +11,7 @@ from pydantic import (
   model_validator,
 )
 
+from app.goals.schemas import GoalInput, GoalPublic, HabitProgressPublic
 from app.habits.models import HabitCategory, HabitStatus
 from app.validators import NoNul
 
@@ -61,6 +62,13 @@ class HabitPublic(BaseModel):
   created_at: date
   target_end_date: date | None
   finished_at: date | None
+  goal: GoalPublic | None
+
+
+class HabitWithProgress(HabitPublic):
+  """Item de GET /habits: o hábito com o progresso da meta (null se não tiver)."""
+
+  progress: HabitProgressPublic | None = None
 
 
 class HabitCreate(BaseModel):
@@ -73,6 +81,7 @@ class HabitCreate(BaseModel):
   category: CategoryInput
   is_public: bool = False
   target_end_date: date | None = None
+  goal: GoalInput
 
   @field_validator("target_end_date")
   @classmethod

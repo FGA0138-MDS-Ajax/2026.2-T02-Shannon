@@ -1,5 +1,6 @@
 from datetime import date
 from typing import Self
+from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -11,6 +12,7 @@ from app.goals.exceptions import (
   MSG_GOAL_WEEKDAY_REQUIRED,
 )
 from app.goals.models import GoalPeriod, ScheduleType
+from app.goals.streak import GoalProgress
 
 
 class GoalInput(BaseModel):
@@ -59,3 +61,10 @@ class GoalPublic(BaseModel):
   target_count: int
   period_end_weekday: int | None
   starts_on: date
+
+
+class HabitProgressPublic(GoalProgress):
+  """Acompanhamento do hábito: a meta e o progresso calculado na hora."""
+
+  habit_id: UUID
+  goal: GoalPublic

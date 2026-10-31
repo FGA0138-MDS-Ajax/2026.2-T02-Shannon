@@ -5,6 +5,7 @@ from zoneinfo import ZoneInfo
 from sqlmodel import Session
 
 from app.auth.models import User
+from app.goals.models import Goal
 from app.habits import repository as habits_repository
 from app.habits.exceptions import (
   HabitAlreadyFinishedError,
@@ -69,14 +70,15 @@ def get_check_in_eligible_habits(db: Session, user: User) -> list[Habit]:
 
 
 def create_habit(db: Session, user: User, data: HabitCreate) -> Habit:
-  """Cria um novo hábito associado ao usuário logado, persiste e atualiza no banco."""
+  """Cria um novo hábito com a sua meta, na mesma transação."""
   habit = Habit(
-    **data.model_dump(),
+    **data.model_dump(exclude={"goal"}),
     author_user_id=user.id,
     created_at=today(),
   )
 
   habits_repository.create_habit(db, habit)
+  db.add(Goal(habit_id=habit.id, starts_on=habit.created_at, **data.goal.model_dump()))
   db.commit()
   db.refresh(habit)
 
