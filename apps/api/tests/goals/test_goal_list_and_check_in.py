@@ -71,39 +71,22 @@ def test_create_check_in_returns_goal_progress(
     target_count=1,
   )
 
-  # Cria um check-in para cada hábito pela API.
-  goal_response = client.post(
+  # Registra um único check-in pela API com os dois hábitos.
+  response = client.post(
     "/check-ins",
     headers=auth_headers,
     json={
-      "title": "Check-in com meta",
-      "habit_ids": [str(habit_with_goal.id)],
+      "title": "Check-in com e sem meta",
+      "habit_ids": [str(habit_with_goal.id), str(habit_without_goal.id)],
     },
   )
 
-  no_goal_response = client.post(
-    "/check-ins",
-    headers=auth_headers,
-    json={
-      "title": "Check-in sem meta",
-      "habit_ids": [str(habit_without_goal.id)],
-    },
-  )
-
-  assert goal_response.status_code == 201
-  assert no_goal_response.status_code == 201
+  assert response.status_code == 201
 
   # O retorno deve incluir o progresso somente para o hábito com meta.
-  goal_progress = goal_response.json()["progress"]
+  goal_progress = response.json()["progress"]
 
   assert len(goal_progress) == 1
   assert goal_progress[0]["habit_id"] == str(habit_with_goal.id)
-
-  # O progresso da meta fica dentro da propriedade "progress".
-  habit_progress = goal_progress[0]["progress"]
-
-  assert habit_progress["current_period"]["done"] == 1
-  assert habit_progress["status"] == "completed"
-
-  # O hábito sem meta não deve aparecer no progresso.
-  assert no_goal_response.json()["progress"] == []
+  assert goal_progress[0]["current_period"]["done"] == 1
+  assert goal_progress[0]["status"] == "completed"

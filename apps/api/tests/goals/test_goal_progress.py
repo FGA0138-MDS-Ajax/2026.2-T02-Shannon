@@ -280,7 +280,6 @@ def test_deleting_check_in_recalculates_daily_streak(
 def test_goal_progress_respects_habit_visibility_and_goal_existence(
   client,
   auth_headers,
-  user,
   other_user,
   habit_factory,
   goal_factory,
@@ -315,7 +314,7 @@ def test_goal_progress_respects_habit_visibility_and_goal_existence(
   )
 
   assert public_response.status_code == 200
-  assert public_response.json()["current_streak"] >= 1
+  assert public_response.json()["current_streak"] == 1
 
   # Cria um hábito próprio sem meta.
   habit_without_goal = habit_factory()

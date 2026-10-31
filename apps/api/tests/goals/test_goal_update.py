@@ -79,7 +79,12 @@ def test_update_goal_resets_progress_when_period_changes(
   )
 
   assert progress_response.status_code == 200
-  assert progress_response.json()["current_streak"] == 0
+
+  data = progress_response.json()
+
+  assert data["current_streak"] == 0
+  # Sem o reinício do `starts_on`, os check-ins de 26 e 27/10 dariam `done` 2.
+  assert data["current_period"]["done"] == 0
 
 
 def test_update_goal_rejects_finished_habit(

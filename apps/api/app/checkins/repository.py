@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import timedelta
 from typing import Any
 from uuid import UUID
 
@@ -74,28 +74,3 @@ def list_check_ins_by_habit(db: Session, habit_id: UUID) -> list[CheckIn]:
     .order_by(col(CheckIn.created_at).desc(), col(CheckIn.id))
   )
   return list(db.exec(statement).all())
-
-
-def list_check_in_dates_by_habit_ids(
-  db: Session, habit_ids: list[UUID]
-) -> list[tuple[UUID, datetime]]:
-  """Busca em uma consulta as datas dos check-ins de vários hábitos."""
-
-  # Evita consultar o banco quando não há hábitos para processar.
-  if not habit_ids:
-    return []
-
-  # Busca o ID do hábito e a data do check-in em uma única consulta.
-  statement = (
-    select(CheckInHabit.habit_id, CheckIn.created_at)
-    .join(CheckIn, col(CheckIn.id) == col(CheckInHabit.check_in_id))
-    .where(col(CheckInHabit.habit_id).in_(habit_ids))
-    .where(col(CheckIn.created_at).is_not(None))
-  )
-
-  # Converte o resultado da consulta em pares (ID do hábito, data).
-  return [
-    (habit_id, created_at)
-    for habit_id, created_at in db.exec(statement).all()
-    if created_at is not None
-  ]
