@@ -26,6 +26,7 @@ from app.checkins.responses import (
 from app.checkins.schemas import (
   CheckInCategoriesResponse,
   CheckInCreate,
+  CheckInCreatedPublic,
   CheckInPublic,
   CheckInUpdate,
   HabitOptionsPage,
@@ -39,14 +40,16 @@ check_ins_router = APIRouter(tags=["check-ins"])
 
 @check_ins_router.post(
   "/check-ins",
-  response_model=CheckInPublic,
+  response_model=CheckInCreatedPublic,
   status_code=status.HTTP_201_CREATED,
   summary="Registrar check-in",
   description=(
     "Registra um check-in que conta para vários hábitos (de 1 a 20, sem repetidos)."
     " Todos precisam ser hábitos ativos do usuário logado. Se algum for recusado,"
     " nada é gravado e o erro traz `detail` e os `habit_ids` do motivo mais grave"
-    " (404, depois 403, depois 409)."
+    " (404, depois 403, depois 409). A resposta traz `progress`, um item por hábito"
+    " com meta, já contando este check-in. Hábitos sem meta não aparecem e a ordem"
+    " não é garantida."
   ),
   responses=RESPONSES_CREATE,
 )
@@ -54,7 +57,7 @@ def create_check_in(
   db: SessionDep,
   data: CheckInCreate,
   user: Annotated[User, Depends(get_current_user)],
-) -> CheckInPublic | JSONResponse:
+) -> CheckInCreatedPublic | JSONResponse:
   """Registra o check-in ou devolve a recusa com os ids do motivo."""
   try:
     return service.register_check_in(db, user, data)

@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.auth.router import auth_router
 from app.checkins.router import check_ins_router
 from app.database import create_db_and_tables
+from app.goals.router import goals_router
 from app.habits.router import habit_router
 
 
@@ -35,6 +36,7 @@ app.add_middleware(
 app.include_router(auth_router)
 app.include_router(habit_router)
 app.include_router(check_ins_router)
+app.include_router(goals_router)
 
 
 @app.get("/")

@@ -12,6 +12,7 @@ from pydantic import (
   model_validator,
 )
 
+from app.goals.schemas import HabitProgressPublic
 from app.habits.models import HabitCategory
 from app.validators import NoNul
 
@@ -73,6 +74,12 @@ class CheckInPublic(BaseModel):
   created_at: datetime
   duration: timedelta | None
   habit_ids: list[UUID]
+
+
+class CheckInCreatedPublic(CheckInPublic):
+  """Resposta do `POST /check-ins`: o check-in e o progresso de cada hábito."""
+
+  progress: list[HabitProgressPublic]
 
 
 class CheckInUpdate(BaseModel):
