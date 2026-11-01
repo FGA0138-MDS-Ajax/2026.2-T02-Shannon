@@ -1,5 +1,5 @@
 import re
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from typing import Annotated, Self
 from uuid import UUID
 
@@ -152,6 +152,21 @@ class HabitOptionsQuery(BaseModel):
     if (self.category is None) == (self.exclude_category is None):
       raise ValueError(MSG_ONE_FILTER_MODE)
     return self
+
+
+class CheckInsPage(BaseModel):
+  """Página de check-ins agrupados por data e indicação de mais resultados."""
+
+  items: list[dict[date, list[CheckInPublic]]]
+  page: int
+  has_more: bool
+
+
+class CheckInsQuery(BaseModel):
+  """Paginação para consultar check-ins do usuário agrupados por data."""
+
+  page: int = Field(default=1, ge=1)
+  page_size: int = Field(default=20, ge=1, le=100)
 
 
 class CheckInCreate(BaseModel):

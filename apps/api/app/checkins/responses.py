@@ -174,3 +174,25 @@ RESPONSES_HABIT_CHECK_INS = {
     },
   },
 }
+
+_RESPONSE_422_CHECK_INS = {
+  "description": "Parâmetros de paginação inválidos.",
+  "content": {
+    "application/json": {
+      "example": {
+        "detail": [
+          {
+            "loc": ["query", "page"],
+            "msg": "Input should be greater than or equal to 1",
+            "type": "greater_than_equal",
+          }
+        ]
+      }
+    }
+  },
+}
+
+RESPONSES_USER_CHECK_INS = {
+  status.HTTP_401_UNAUTHORIZED: _RESPONSE_401,
+  status.HTTP_422_UNPROCESSABLE_ENTITY: _RESPONSE_422_CHECK_INS,
+}
