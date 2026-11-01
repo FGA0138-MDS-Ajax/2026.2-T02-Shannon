@@ -1,4 +1,5 @@
 from collections import defaultdict
+from datetime import date
 from uuid import UUID
 
 from fastapi import status
@@ -20,6 +21,8 @@ from app.checkins.schemas import (
   CheckInCreate,
   CheckInCreatedPublic,
   CheckInPublic,
+  CheckInsPage,
+  CheckInsQuery,
   CheckInUpdate,
   HabitOption,
   HabitOptionsPage,
@@ -281,3 +284,30 @@ def list_habit_check_ins(
   get_visible_habit(db, habit_id, user)
   check_ins = checkins_repository.list_check_ins_by_habit(db, habit_id)
   return build_check_ins_public(db, check_ins, user)
+
+
+def list_user_check_ins(db: Session, user: User, query: CheckInsQuery) -> CheckInsPage:
+  """Histórico de check-ins do usuário logado agrupados por data no banco.
+
+  Retorna uma página de dias com seus check-ins e indica se há mais resultados.
+  """
+  limit = query.page_size + 1
+  offset = (query.page - 1) * query.page_size
+
+  rows = checkins_repository.list_user_check_ins_grouped_by_day(
+    db, user_id=user.id, limit=limit, offset=offset
+  )
+
+  has_more = len(rows) > query.page_size
+  rows = rows[: query.page_size]
+
+  items: list[dict[date, list[CheckInPublic]]] = [
+    {day: [CheckInPublic.model_validate(c) for c in check_ins]}
+    for day, check_ins in rows
+  ]
+
+  return CheckInsPage(
+    items=items,
+    page=query.page,
+    has_more=has_more,
+  )

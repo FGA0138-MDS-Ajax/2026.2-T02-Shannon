@@ -1,10 +1,13 @@
-from datetime import timedelta
+from datetime import date, timedelta
 from typing import Any
 from uuid import UUID
 
+from sqlalchemy import text
 from sqlmodel import Session, col, select
 
 from app.checkins.models import CheckIn, CheckInHabit
+
+APP_TIMEZONE_NAME = "America/Sao_Paulo"
 
 
 def list_habit_links(db: Session, check_in_ids: list[UUID]) -> list[CheckInHabit]:
@@ -74,3 +77,71 @@ def list_check_ins_by_habit(db: Session, habit_id: UUID) -> list[CheckIn]:
     .order_by(col(CheckIn.created_at).desc(), col(CheckIn.id))
   )
   return list(db.exec(statement).all())
+
+
+def list_user_check_ins_grouped_by_day(
+  db: Session,
+  user_id: UUID,
+  limit: int,
+  offset: int,
+) -> list[tuple[date, list[dict[str, Any]]]]:
+  """Consulta check-ins do usuário agrupados por dia (São Paulo) no PostgreSQL.
+
+  Aplica paginação por dias distintos. Não faz commit.
+  """
+  statement = text(
+    """
+    WITH paged_days AS (
+      SELECT DISTINCT DATE(TIMEZONE(:tz, created_at)) AS day
+      FROM check_ins
+      WHERE user_id = :user_id
+      ORDER BY day DESC
+      LIMIT :limit OFFSET :offset
+    ),
+    check_in_data AS (
+      SELECT
+        c.id,
+        c.user_id,
+        c.title,
+        c.description,
+        c.created_at,
+        c.duration,
+        d.day,
+        COALESCE(
+          JSON_AGG(h.habit_id) FILTER (WHERE h.habit_id IS NOT NULL),
+          '[]'::json
+        ) AS habit_ids
+      FROM paged_days d
+      JOIN check_ins c ON c.user_id = :user_id
+        AND DATE(TIMEZONE(:tz, c.created_at)) = d.day
+      LEFT JOIN check_in_habits h ON h.check_in_id = c.id
+      GROUP BY c.id, d.day
+    )
+    SELECT
+      d.day,
+      JSON_AGG(
+        JSON_BUILD_OBJECT(
+          'id', cd.id,
+          'user_id', cd.user_id,
+          'title', cd.title,
+          'description', cd.description,
+          'created_at', cd.created_at,
+          'duration', cd.duration,
+          'habit_ids', cd.habit_ids
+        ) ORDER BY cd.created_at DESC, cd.id
+      ) AS check_ins
+    FROM paged_days d
+    JOIN check_in_data cd ON cd.day = d.day
+    GROUP BY d.day
+    ORDER BY d.day DESC;
+    """
+  )
+  result = db.exec(
+    statement.params(
+      tz=APP_TIMEZONE_NAME,
+      user_id=user_id,
+      limit=limit,
+      offset=offset,
+    )
+  ).all()
+  return [(row[0], row[1]) for row in result]

@@ -22,12 +22,15 @@ from app.checkins.responses import (
   RESPONSES_HABIT_CHECK_INS,
   RESPONSES_HABIT_OPTIONS,
   RESPONSES_UPDATE,
+  RESPONSES_USER_CHECK_INS,
 )
 from app.checkins.schemas import (
   CheckInCategoriesResponse,
   CheckInCreate,
   CheckInCreatedPublic,
   CheckInPublic,
+  CheckInsPage,
+  CheckInsQuery,
   CheckInUpdate,
   HabitOptionsPage,
   HabitOptionsQuery,
@@ -208,3 +211,24 @@ def list_habit_check_ins(
     return service.list_habit_check_ins(db, habit_id, user)
   except HabitNotFoundError:
     raise HTTPException(status.HTTP_404_NOT_FOUND, MSG_HABIT_NOT_FOUND) from None
+
+
+@check_ins_router.get(
+  "/check-ins",
+  response_model=CheckInsPage,
+  status_code=status.HTTP_200_OK,
+  summary="Listar check-ins do usuário",
+  description=(
+    "Lista os check-ins do usuário logado, agrupados pelo dia em que foram feitos "
+    "no banco de dados, do mais recente ao mais antigo. Paginação por dias com "
+    "`page` >= 1 e `page_size` de 1 a 100."
+  ),
+  responses=RESPONSES_USER_CHECK_INS,
+)
+def list_user_check_ins(
+  db: SessionDep,
+  query: Annotated[CheckInsQuery, Query()],
+  user: Annotated[User, Depends(get_current_user)],
+) -> CheckInsPage:
+  """Lista os check-ins do usuário logado agrupados por data com paginação."""
+  return service.list_user_check_ins(db, user, query)
