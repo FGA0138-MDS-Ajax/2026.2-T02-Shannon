@@ -17,13 +17,14 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import useSWR from "swr";
 import Button from "@/components/button";
+import GoalProgress from "@/components/goal-progress";
 import { habitCategoryLabels } from "@/config/habit-categories";
 import { theme } from "@/config/theme";
 import { useSession } from "@/hooks/useSession";
 import { request } from "@/services/api";
 import { getErrorMessage } from "@/services/api-errors";
 import { deleteHabit, finishHabit } from "@/services/habits-api";
-import type { CheckIn, Habit } from "@/services/types/habits";
+import type { CheckIn, Habit, HabitProgress } from "@/services/types/habits";
 import { formatDate, formatDateTime, parseApiDate } from "@/utils/date";
 import { formatDuration } from "@/utils/duration";
 
@@ -32,6 +33,7 @@ export default function HabitDetailScreen() {
   const { user } = useSession();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [checkInsError, setCheckInsError] = useState<string | null>(null);
+  const [progressError, setProgressError] = useState<string | null>(null);
   const [acting, startActing] = useTransition();
 
   const {
@@ -54,13 +56,25 @@ export default function HabitDetailScreen() {
     },
   );
 
+  // Hábito antigo não tem meta: sem `goal`, nem chama a rota (ela responderia 404)
+  const { data: progress, mutate: refreshProgress } = useSWR<HabitProgress>(
+    habit?.goal ? `/goals/habits/${id}/progress` : null,
+    request,
+    {
+      onError: (err) => setProgressError(getErrorMessage(err)),
+    },
+  );
+
+  // Recarrega ao voltar para a tela: reflete check-ins novos ou excluídos
   useFocusEffect(
     useCallback(() => {
       setErrorMessage(null);
       setCheckInsError(null);
+      setProgressError(null);
       refreshHabit();
       refreshCheckIns();
-    }, [refreshHabit, refreshCheckIns]),
+      refreshProgress();
+    }, [refreshHabit, refreshCheckIns, refreshProgress]),
   );
 
   const handleFinish = () => {
@@ -76,6 +90,8 @@ export default function HabitDetailScreen() {
               try {
                 const updated = await finishHabit(id);
                 refreshHabit(updated, { revalidate: false });
+                // O progresso passa a "encerrado"
+                refreshProgress();
               } catch (err: unknown) {
                 Alert.alert("Não foi possível encerrar", getErrorMessage(err));
               }
@@ -106,6 +122,35 @@ export default function HabitDetailScreen() {
         },
       ],
     );
+  };
+
+  const renderGoal = (habit: Habit) => {
+    if (!habit.goal) {
+      return (
+        <Text style={styles.sectionText}>Este hábito ainda não tem meta.</Text>
+      );
+    }
+
+    if (progressError) {
+      return (
+        <Pressable
+          onPress={() => {
+            setProgressError(null);
+            refreshProgress();
+          }}
+        >
+          <Text style={styles.checkInsError}>
+            {progressError} Toque para tentar novamente.
+          </Text>
+        </Pressable>
+      );
+    }
+
+    if (!progress) {
+      return <ActivityIndicator color={theme.colors.primary} />;
+    }
+
+    return <GoalProgress progress={progress} />;
   };
 
   const renderCheckIns = () => {
@@ -217,6 +262,11 @@ export default function HabitDetailScreen() {
           {habit.finished_at && (
             <InfoRow label="Encerrado em" value={habit.finished_at} />
           )}
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Meta</Text>
+          {renderGoal(habit)}
         </View>
 
         <View style={styles.section}>
