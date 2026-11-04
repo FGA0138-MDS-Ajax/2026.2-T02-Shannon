@@ -5,6 +5,7 @@ import {
   getCheckIn,
   listCheckInCategories,
   listHabitOptions,
+  listUserCheckIns,
   updateCheckIn,
 } from "@/services/check-ins-api";
 import {
@@ -92,6 +93,15 @@ describe("habits-api", () => {
 });
 
 describe("check-ins-api", () => {
+  it("should list user check-ins with pagination", async () => {
+    await listUserCheckIns({ page: 2, page_size: 15 });
+
+    expect(lastCall()).toMatchObject({
+      url: "/check-ins?page=2&page_size=15",
+      method: "GET",
+    });
+  });
+
   it("should list the categories", async () => {
     await listCheckInCategories();
 

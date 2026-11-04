@@ -3,10 +3,22 @@ import type {
   CheckIn,
   CheckInCategoriesResponse,
   CheckInCreate,
+  CheckInsPage,
   CheckInUpdate,
   HabitOptionsPage,
   HabitOptionsParams,
+  ListCheckInsParams,
 } from "@/services/types/habits";
+
+/**
+ * Lista os check-ins do usuário logado agrupados por dia, do mais recente ao
+ * mais antigo. Cada item de `items` é um objeto `{ [data]: CheckIn[] }`.
+ */
+export function listUserCheckIns(
+  params: ListCheckInsParams = {},
+): Promise<CheckInsPage> {
+  return request<CheckInsPage>(`/check-ins${toQueryString(params)}`);
+}
 
 /** Categorias com hábitos elegíveis, em ordem alfabética e `outros` por último. */
 export function listCheckInCategories(): Promise<CheckInCategoriesResponse> {

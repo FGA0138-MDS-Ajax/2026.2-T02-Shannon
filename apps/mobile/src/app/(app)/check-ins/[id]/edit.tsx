@@ -11,16 +11,17 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import useSWR from "swr";
 import Button from "@/components/button";
 import Input from "@/components/input";
 import { theme } from "@/config/theme";
-import { ApiError } from "@/services/api";
+import { request } from "@/services/api";
 import {
   FORM_ERROR_KEY,
   getErrorMessage,
   getFieldErrors,
 } from "@/services/api-errors";
-import { getCheckIn, updateCheckIn } from "@/services/check-ins-api";
+import { updateCheckIn } from "@/services/check-ins-api";
 import type { CheckIn, CheckInUpdate } from "@/services/types/habits";
 import { isoDurationToMinutes, minutesToIsoDuration } from "@/utils/duration";
 
@@ -37,31 +38,24 @@ function durationToText(duration: string | null): string {
 
 export default function EditCheckInScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const [checkIn, setCheckIn] = useState<CheckIn | null>(null);
-  const [notFound, setNotFound] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  const {
+    data: checkIn,
+    isLoading,
+    error,
+    mutate: refreshCheckIn,
+  } = useSWR<CheckIn>(`/check-ins/${id}`, request, {
+    onError: (err) => setErrorMessage(getErrorMessage(err)),
+  });
+
+  const notFound = error?.status === 404;
+
   // Busca de novo a cada abertura: a tela continua montada entre as visitas
-  const loadCheckIn = useCallback(async () => {
-    setCheckIn(null);
-    setNotFound(false);
-    setErrorMessage(null);
-
-    try {
-      setCheckIn(await getCheckIn(id));
-    } catch (err: unknown) {
-      if (err instanceof ApiError && err.status === 404) {
-        setNotFound(true);
-      } else {
-        setErrorMessage(getErrorMessage(err));
-      }
-    }
-  }, [id]);
-
   useFocusEffect(
     useCallback(() => {
-      loadCheckIn();
-    }, [loadCheckIn]),
+      refreshCheckIn();
+    }, [refreshCheckIn]),
   );
 
   const renderContent = () => {
@@ -77,14 +71,14 @@ export default function EditCheckInScreen() {
       return (
         <View style={styles.errorBanner}>
           <Text style={styles.errorBannerText}>{errorMessage}</Text>
-          <Button variant="secondary" onPress={loadCheckIn}>
+          <Button variant="secondary" onPress={() => refreshCheckIn()}>
             Tentar novamente
           </Button>
         </View>
       );
     }
 
-    if (!checkIn) {
+    if (isLoading || !checkIn) {
       return (
         <View style={styles.centered}>
           <ActivityIndicator size="large" color={theme.colors.primary} />

@@ -4,7 +4,7 @@ import {
   useFocusEffect,
   useLocalSearchParams,
 } from "expo-router";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useState, useTransition } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -15,18 +15,14 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import useSWR from "swr";
 import Button from "@/components/button";
 import { habitCategoryLabels } from "@/config/habit-categories";
 import { theme } from "@/config/theme";
 import { useSession } from "@/hooks/useSession";
-import { ApiError } from "@/services/api";
+import { request } from "@/services/api";
 import { getErrorMessage } from "@/services/api-errors";
-import {
-  deleteHabit,
-  finishHabit,
-  getHabit,
-  listHabitCheckIns,
-} from "@/services/habits-api";
+import { deleteHabit, finishHabit } from "@/services/habits-api";
 import type { CheckIn, Habit } from "@/services/types/habits";
 import { formatDate, formatDateTime, parseApiDate } from "@/utils/date";
 import { formatDuration } from "@/utils/duration";
@@ -34,58 +30,37 @@ import { formatDuration } from "@/utils/duration";
 export default function HabitDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { user } = useSession();
-  const [habit, setHabit] = useState<Habit | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [notFound, setNotFound] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [checkIns, setCheckIns] = useState<CheckIn[] | null>(null);
   const [checkInsError, setCheckInsError] = useState<string | null>(null);
-  const checkInsHabitId = useRef<string | null>(null);
-  // Evita tocar de novo em Encerrar/Excluir enquanto a API responde
-  const [acting, setActing] = useState(false);
+  const [acting, startActing] = useTransition();
+
+  const {
+    data: habit,
+    isLoading,
+    error: habitError,
+    mutate: refreshHabit,
+  } = useSWR<Habit>(`/habits/${id}`, request, {
+    onError: (err) => setErrorMessage(getErrorMessage(err)),
+  });
+
+  const notFound = habitError?.status === 404;
 
   // O histórico carrega à parte: se falhar, os dados do hábito continuam na tela
-  const loadCheckIns = useCallback(async () => {
-    setCheckInsError(null);
-    // Ao abrir outro hábito, não mostra o histórico do anterior
-    if (checkInsHabitId.current !== id) {
-      setCheckIns(null);
-    }
-    try {
-      const data = await listHabitCheckIns(id);
-      checkInsHabitId.current = id;
-      setCheckIns(data);
-    } catch (err: unknown) {
-      setCheckIns(null);
-      setCheckInsError(getErrorMessage(err));
-    }
-  }, [id]);
-
-  const loadHabit = useCallback(async () => {
-    setErrorMessage(null);
-    setNotFound(false);
-    setLoading(true);
-    // Ao abrir outro hábito, não mostra o anterior enquanto carrega
-    setHabit((current) => (current?.id === id ? current : null));
-
-    try {
-      setHabit(await getHabit(id));
-    } catch (err: unknown) {
-      if (err instanceof ApiError && err.status === 404) {
-        setNotFound(true);
-      } else {
-        setErrorMessage(getErrorMessage(err));
-      }
-    } finally {
-      setLoading(false);
-    }
-  }, [id]);
+  const { data: checkIns, mutate: refreshCheckIns } = useSWR<CheckIn[]>(
+    `/habits/${id}/check-ins`,
+    request,
+    {
+      onError: (err) => setCheckInsError(getErrorMessage(err)),
+    },
+  );
 
   useFocusEffect(
     useCallback(() => {
-      loadHabit();
-      loadCheckIns();
-    }, [loadHabit, loadCheckIns]),
+      setErrorMessage(null);
+      setCheckInsError(null);
+      refreshHabit();
+      refreshCheckIns();
+    }, [refreshHabit, refreshCheckIns]),
   );
 
   const handleFinish = () => {
@@ -96,16 +71,15 @@ export default function HabitDetailScreen() {
         { text: "Cancelar", style: "cancel" },
         {
           text: "Encerrar",
-          onPress: async () => {
-            setActing(true);
-            try {
-              setHabit(await finishHabit(id));
-            } catch (err: unknown) {
-              Alert.alert("Não foi possível encerrar", getErrorMessage(err));
-            } finally {
-              setActing(false);
-            }
-          },
+          onPress: () =>
+            startActing(async () => {
+              try {
+                const updated = await finishHabit(id);
+                refreshHabit(updated, { revalidate: false });
+              } catch (err: unknown) {
+                Alert.alert("Não foi possível encerrar", getErrorMessage(err));
+              }
+            }),
         },
       ],
     );
@@ -120,17 +94,15 @@ export default function HabitDetailScreen() {
         {
           text: "Excluir",
           style: "destructive",
-          onPress: async () => {
-            setActing(true);
-            try {
-              await deleteHabit(id);
-              router.back();
-            } catch (err: unknown) {
-              Alert.alert("Não foi possível excluir", getErrorMessage(err));
-            } finally {
-              setActing(false);
-            }
-          },
+          onPress: () =>
+            startActing(async () => {
+              try {
+                await deleteHabit(id);
+                router.back();
+              } catch (err: unknown) {
+                Alert.alert("Não foi possível excluir", getErrorMessage(err));
+              }
+            }),
         },
       ],
     );
@@ -139,7 +111,7 @@ export default function HabitDetailScreen() {
   const renderCheckIns = () => {
     if (checkInsError) {
       return (
-        <Pressable onPress={loadCheckIns}>
+        <Pressable onPress={() => refreshCheckIns()}>
           <Text style={styles.checkInsError}>
             {checkInsError} Toque para tentar novamente.
           </Text>
@@ -177,7 +149,7 @@ export default function HabitDetailScreen() {
   };
 
   const renderContent = () => {
-    if (loading && !habit) {
+    if (isLoading && !habit) {
       return (
         <View style={styles.centered}>
           <ActivityIndicator size="large" color={theme.colors.primary} />
@@ -199,7 +171,7 @@ export default function HabitDetailScreen() {
           <Text style={styles.errorBannerText}>
             {errorMessage ?? "Não foi possível carregar o hábito."}
           </Text>
-          <Button variant="secondary" onPress={loadHabit}>
+          <Button variant="secondary" onPress={() => refreshHabit()}>
             Tentar novamente
           </Button>
         </View>
