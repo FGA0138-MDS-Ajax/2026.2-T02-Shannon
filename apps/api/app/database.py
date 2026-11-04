@@ -2,7 +2,7 @@ from collections.abc import Generator
 from typing import Annotated
 
 from fastapi import Depends
-from sqlmodel import Session, SQLModel, create_engine
+from sqlmodel import Session, create_engine
 
 from app.auth import models as auth_models  # noqa: F401  registra User no metadata
 from app.auth.session import (
@@ -19,10 +19,6 @@ engine = create_engine(
   settings.database_url_sync,
   echo=False,
 )
-
-
-def create_db_and_tables() -> None:
-  SQLModel.metadata.create_all(engine)
 
 
 def get_session() -> Generator[Session]:

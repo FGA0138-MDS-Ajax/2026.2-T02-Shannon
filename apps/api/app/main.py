@@ -5,14 +5,12 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.auth.router import auth_router
 from app.checkins.router import check_ins_router
-from app.database import create_db_and_tables
 from app.goals.router import goals_router
 from app.habits.router import habit_router
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-  create_db_and_tables()
   yield
 
 
