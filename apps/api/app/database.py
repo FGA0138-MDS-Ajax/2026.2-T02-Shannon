@@ -5,6 +5,9 @@ from fastapi import Depends
 from sqlmodel import Session, SQLModel, create_engine
 
 from app.auth import models as auth_models  # noqa: F401  registra User no metadata
+from app.auth.session import (
+  models as session_models,  # noqa: F401  registra SessionToken no metadata
+)
 from app.checkins import (
   models as checkins_models,  # noqa: F401  registra CheckIn no metadata
 )
