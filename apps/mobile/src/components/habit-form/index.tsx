@@ -10,6 +10,7 @@ import {
 } from "react-native";
 import Button from "@/components/button";
 import CategoryPicker from "@/components/category-picker";
+import GoalPicker from "@/components/goal-picker";
 import Input from "@/components/input";
 import { theme } from "@/config/theme";
 import {
@@ -17,7 +18,7 @@ import {
   getErrorMessage,
   getFieldErrors,
 } from "@/services/api-errors";
-import type { HabitCategory } from "@/services/types/habits";
+import type { GoalInput, HabitCategory } from "@/services/types/habits";
 import {
   formatDate,
   parseApiDate,
@@ -32,10 +33,14 @@ export interface HabitFormValues {
   description: string | null;
   is_public: boolean;
   target_end_date: string | null;
+  /** A meta escolhida; `null` quando o formulário não tem o campo (`withGoal`). */
+  goal: GoalInput | null;
 }
 
 export interface HabitFormProps {
   initialValues?: Partial<HabitFormValues>;
+  /** Mostra o campo de meta. Só na criação: a edição de hábito não muda a meta. */
+  withGoal?: boolean;
   /** Primeiro dia aceito no calendário. Padrão: hoje. */
   minimumDate?: Date;
   submitLabel: string;
@@ -47,12 +52,14 @@ export interface HabitFormProps {
 type FieldErrors = {
   name?: string;
   category?: string;
+  goal?: string;
   description?: string;
   target_end_date?: string;
 };
 
 export default function HabitForm({
   initialValues,
+  withGoal = false,
   minimumDate,
   submitLabel,
   submittingLabel,
@@ -61,6 +68,9 @@ export default function HabitForm({
   const [name, setName] = useState(initialValues?.name ?? "");
   const [category, setCategory] = useState<HabitCategory | null>(
     initialValues?.category ?? null,
+  );
+  const [goal, setGoal] = useState<GoalInput | null>(
+    initialValues?.goal ?? null,
   );
   const [description, setDescription] = useState(
     initialValues?.description ?? "",
@@ -96,6 +106,10 @@ export default function HabitForm({
       errors.category = "Escolha uma categoria.";
     }
 
+    if (withGoal && !goal) {
+      errors.goal = "Escolha o tipo da meta.";
+    }
+
     if (trimmedDescription.length > 500) {
       errors.description = "Use no máximo 500 caracteres.";
     }
@@ -113,11 +127,21 @@ export default function HabitForm({
         description: trimmedDescription || null,
         is_public: isPublic,
         target_end_date: targetEndDate ? toApiDate(targetEndDate) : null,
+        goal: withGoal ? goal : null,
       });
     } catch (err: unknown) {
       // Erros por campo (422) vão embaixo de cada campo; o resto vai na faixa
-      const { [FORM_ERROR_KEY]: formError, ...apiFieldErrors } =
-        getFieldErrors(err);
+      const {
+        [FORM_ERROR_KEY]: formError,
+        period,
+        target_count,
+        period_end_weekday,
+        ...apiFieldErrors
+      } = getFieldErrors(err);
+      // Erros de dentro da meta (ex.: `target_count`) aparecem no seletor de meta
+      const goalError =
+        apiFieldErrors.goal ?? period ?? target_count ?? period_end_weekday;
+      if (goalError) apiFieldErrors.goal = goalError;
       setFieldErrors(apiFieldErrors);
       if (formError) {
         setErrorMessage(formError);
@@ -155,6 +179,15 @@ export default function HabitForm({
           onChange={setCategory}
           error={fieldErrors.category}
         />
+
+        {withGoal && (
+          <GoalPicker
+            label="Meta"
+            value={goal}
+            onChange={setGoal}
+            error={fieldErrors.goal}
+          />
+        )}
 
         <Input
           testID="habit-description-input"
