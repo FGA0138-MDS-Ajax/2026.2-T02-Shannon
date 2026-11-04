@@ -65,12 +65,16 @@ describe("habits-api", () => {
   });
 
   it("should create a habit with the body", async () => {
-    await createHabit({ name: "Correr", category: "corrida" });
+    await createHabit({
+      name: "Correr",
+      category: "corrida",
+      goal: { period: "day" },
+    });
 
     expect(lastCall()).toEqual({
       url: "/habits",
       method: "POST",
-      body: { name: "Correr", category: "corrida" },
+      body: { name: "Correr", category: "corrida", goal: { period: "day" } },
     });
   });
 

@@ -16,6 +16,7 @@ const meta: Meta<typeof HabitCard> = {
       created_at: "2026-10-10",
       target_end_date: null,
       finished_at: null,
+      goal: null,
     },
   },
 };
@@ -39,6 +40,7 @@ export const Finished: Story = {
       created_at: "2026-10-01",
       target_end_date: null,
       finished_at: "2026-10-20",
+      goal: null,
     },
   },
 };

@@ -3,6 +3,7 @@ import type {
   CheckIn,
   CheckInCategoriesResponse,
   CheckInCreate,
+  CheckInCreated,
   CheckInsPage,
   CheckInUpdate,
   HabitOptionsPage,
@@ -41,8 +42,8 @@ export function listHabitOptions(
  * Tudo ou nada: se algum hábito for recusado, nada é gravado e o erro traz os
  * `habit_ids` do motivo (ver getRejectedHabitIds).
  */
-export function createCheckIn(body: CheckInCreate): Promise<CheckIn> {
-  return request<CheckIn>("/check-ins", {
+export function createCheckIn(body: CheckInCreate): Promise<CheckInCreated> {
+  return request<CheckInCreated>("/check-ins", {
     method: "POST",
     body: JSON.stringify(body),
   });

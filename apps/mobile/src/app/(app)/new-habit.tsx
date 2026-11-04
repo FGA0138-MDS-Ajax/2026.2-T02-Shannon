@@ -14,7 +14,8 @@ import { createHabit } from "@/services/habits-api";
 
 export default function NewHabitScreen() {
   const handleSubmit = async (values: HabitFormValues) => {
-    await createHabit(values);
+    // Provisório: meta diária fixa até o formulário ganhar o campo de meta (#93)
+    await createHabit({ ...values, goal: { period: "day" } });
     router.back();
   };
 
