@@ -26,6 +26,57 @@ export type HabitCategory = (typeof HABIT_CATEGORIES)[number];
 
 export type HabitStatus = "active" | "finished";
 
+// Meta do hábito: quantas vezes fazer em cada período.
+export type GoalPeriod = "day" | "week" | "month";
+
+export type ScheduleType = "frequency";
+
+// Situação do período atual, calculada pela API.
+export type ProgressStatus =
+  | "completed"
+  | "in_progress"
+  | "at_risk"
+  | "failed"
+  | "ended";
+
+// Corpo da meta no POST /habits (campo `goal`) e no PUT /goals/habits/{id}/goal.
+export interface GoalInput {
+  period: GoalPeriod;
+  // day: omita ou mande 1. week: 1 a 7. month: 1 a 28.
+  target_count?: number | null;
+  // Só na semanal, obrigatório: 1 = segunda ... 7 = domingo.
+  period_end_weekday?: number | null;
+}
+
+export interface GoalPublic {
+  schedule_type: ScheduleType;
+  period: GoalPeriod;
+  target_count: number;
+  period_end_weekday: number | null;
+  // `YYYY-MM-DD`: dia a partir do qual os check-ins contam.
+  starts_on: string;
+}
+
+export interface PeriodProgress {
+  start: string;
+  end: string;
+  // Dias distintos com check-in. Pode passar de target_count.
+  done: number;
+  target_count: number;
+}
+
+// Progresso calculado pela API a cada pedido; o app só exibe.
+export interface HabitProgress {
+  habit_id: string;
+  goal: GoalPublic;
+  current_period: PeriodProgress;
+  status: ProgressStatus;
+  current_streak: number;
+  best_streak: number;
+  streak_started_on: string | null;
+  consistent_days: number;
+}
+
 export interface Habit {
   id: string;
   name: string;
@@ -37,11 +88,19 @@ export interface Habit {
   created_at: string;
   target_end_date: string | null;
   finished_at: string | null;
+  // `null` só em hábito criado antes das metas.
+  goal: GoalPublic | null;
+}
+
+// Item de GET /habits. `progress` é `null` quando o hábito não tem meta.
+export interface HabitWithProgress extends Habit {
+  progress: HabitProgress | null;
 }
 
 export interface HabitCreate {
   name: string;
   category: HabitCategory;
+  goal: GoalInput;
   description?: string | null;
   is_public?: boolean;
   target_end_date?: string | null;
@@ -75,6 +134,12 @@ export interface CheckInCreate {
   habit_ids: string[];
   description?: string | null;
   duration?: string | null;
+}
+
+// Resposta do POST /check-ins: um item de `progress` por hábito com meta,
+// já contando este check-in. A ordem não é garantida: case pelo habit_id.
+export interface CheckInCreated extends CheckIn {
+  progress: HabitProgress[];
 }
 
 // Os hábitos vinculados não são editáveis.
