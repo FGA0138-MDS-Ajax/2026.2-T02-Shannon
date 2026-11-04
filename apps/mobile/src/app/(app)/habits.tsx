@@ -16,7 +16,7 @@ import HabitCard from "@/components/habit-card";
 import { theme } from "@/config/theme";
 import { request, toQueryString } from "@/services/api";
 import { getErrorMessage } from "@/services/api-errors";
-import type { Habit, HabitStatus } from "@/services/types/habits";
+import type { HabitStatus, HabitWithProgress } from "@/services/types/habits";
 
 const filters: { status: HabitStatus; label: string }[] = [
   { status: "active", label: "Ativos" },
@@ -30,9 +30,13 @@ export default function HabitsScreen() {
     data: habits,
     isLoading,
     mutate: refreshHabits,
-  } = useSWR<Habit[]>(`/habits${toQueryString({ status: filter })}`, request, {
-    onError: (error) => setErrorMessage(getErrorMessage(error)),
-  });
+  } = useSWR<HabitWithProgress[]>(
+    `/habits${toQueryString({ status: filter })}`,
+    request,
+    {
+      onError: (error) => setErrorMessage(getErrorMessage(error)),
+    },
+  );
 
   useFocusEffect(
     useCallback(() => {
