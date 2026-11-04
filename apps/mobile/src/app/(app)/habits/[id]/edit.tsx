@@ -10,12 +10,13 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import useSWR from "swr";
 import Button from "@/components/button";
 import HabitForm, { type HabitFormValues } from "@/components/habit-form";
 import { theme } from "@/config/theme";
-import { ApiError } from "@/services/api";
+import { request } from "@/services/api";
 import { getErrorMessage } from "@/services/api-errors";
-import { getHabit, updateHabit } from "@/services/habits-api";
+import { updateHabit } from "@/services/habits-api";
 import type { Habit, HabitUpdate } from "@/services/types/habits";
 import { parseApiDate } from "@/utils/date";
 
@@ -35,31 +36,23 @@ function getChangedFields(habit: Habit, values: HabitFormValues): HabitUpdate {
 
 export default function EditHabitScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const [habit, setHabit] = useState<Habit | null>(null);
-  const [notFound, setNotFound] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // Busca de novo a cada abertura: a tela continua montada entre as visitas
-  const loadHabit = useCallback(async () => {
-    setHabit(null);
-    setNotFound(false);
-    setErrorMessage(null);
+  const {
+    data: habit,
+    isLoading,
+    error,
+    mutate: refreshHabit,
+  } = useSWR<Habit>(`/habits/${id}`, request, {
+    onError: (err) => setErrorMessage(getErrorMessage(err)),
+  });
 
-    try {
-      setHabit(await getHabit(id));
-    } catch (err: unknown) {
-      if (err instanceof ApiError && err.status === 404) {
-        setNotFound(true);
-      } else {
-        setErrorMessage(getErrorMessage(err));
-      }
-    }
-  }, [id]);
+  const notFound = error?.status === 404;
 
   useFocusEffect(
     useCallback(() => {
-      loadHabit();
-    }, [loadHabit]),
+      refreshHabit();
+    }, [refreshHabit]),
   );
 
   const handleSubmit = async (values: HabitFormValues) => {
@@ -84,14 +77,14 @@ export default function EditHabitScreen() {
       return (
         <View style={styles.errorBanner}>
           <Text style={styles.errorBannerText}>{errorMessage}</Text>
-          <Button variant="secondary" onPress={loadHabit}>
+          <Button variant="secondary" onPress={() => refreshHabit()}>
             Tentar novamente
           </Button>
         </View>
       );
     }
 
-    if (!habit) {
+    if (isLoading || !habit) {
       return (
         <View style={styles.centered}>
           <ActivityIndicator size="large" color={theme.colors.primary} />

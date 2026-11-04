@@ -1,5 +1,4 @@
-import { router, useFocusEffect } from "expo-router";
-import { useCallback, useState } from "react";
+import { router } from "expo-router";
 import {
   KeyboardAvoidingView,
   Platform,
@@ -14,16 +13,6 @@ import { theme } from "@/config/theme";
 import { createHabit } from "@/services/habits-api";
 
 export default function NewHabitScreen() {
-  // As telas das abas continuam montadas ao sair delas; trocar a `key` recria
-  // o formulário vazio para a próxima vez
-  const [formKey, setFormKey] = useState(0);
-
-  useFocusEffect(
-    useCallback(() => {
-      return () => setFormKey((key) => key + 1);
-    }, []),
-  );
-
   const handleSubmit = async (values: HabitFormValues) => {
     await createHabit(values);
     router.back();
@@ -43,7 +32,6 @@ export default function NewHabitScreen() {
         </View>
 
         <HabitForm
-          key={formKey}
           submitLabel="Criar hábito"
           submittingLabel="Criando..."
           onSubmit={handleSubmit}

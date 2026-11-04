@@ -3,6 +3,7 @@ import type { PressableStateCallbackType, StyleProp } from "react-native";
 export const theme = {
   colors: {
     gray: "#f1eeec",
+    gray100: "#f4f2f0",
     primary: "#F5652F",
     primaryDark: "#D15528",
   },

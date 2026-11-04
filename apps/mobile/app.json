@@ -34,7 +34,8 @@
         }
       ],
       "expo-secure-store",
-      "expo-font"
+      "expo-font",
+      "@react-native-vector-icons/lucide"
     ],
     "experiments": {
       "typedRoutes": true,

@@ -127,3 +127,15 @@ export interface CheckInRejection {
   detail: string;
   habit_ids: string[];
 }
+
+export interface CheckInsPage {
+  items: Array<Record<string, CheckIn[]>>;
+  page: number;
+  has_more: boolean;
+}
+
+export interface ListCheckInsParams {
+  [key: string]: string | number | undefined;
+  page?: number;
+  page_size?: number;
+}
