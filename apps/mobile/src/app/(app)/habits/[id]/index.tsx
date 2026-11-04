@@ -124,10 +124,25 @@ export default function HabitDetailScreen() {
     );
   };
 
-  const renderGoal = (habit: Habit) => {
+  const renderGoal = (habit: Habit, canChangeGoal: boolean) => {
     if (!habit.goal) {
       return (
-        <Text style={styles.sectionText}>Este hábito ainda não tem meta.</Text>
+        <>
+          <Text style={styles.sectionText}>
+            Este hábito ainda não tem meta.
+          </Text>
+          {canChangeGoal && (
+            <Button
+              variant="secondary"
+              width="full"
+              style={styles.defineGoalButton}
+              // Cast: os tipos gerados pelo Expo ainda não reconhecem o [id]
+              onPress={() => router.push(`/habits/${habit.id}/goal` as Href)}
+            >
+              Definir meta
+            </Button>
+          )}
+        </>
       );
     }
 
@@ -226,6 +241,8 @@ export default function HabitDetailScreen() {
     const isFinished = habit.status === "finished";
     // Só quem criou o hábito pode alterá-lo
     const isAuthor = habit.author_user_id === user?.id;
+    // Hábito encerrado não aceita alteração de meta
+    const canChangeGoal = isAuthor && !isFinished;
 
     return (
       <ScrollView>
@@ -266,7 +283,7 @@ export default function HabitDetailScreen() {
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Meta</Text>
-          {renderGoal(habit)}
+          {renderGoal(habit, canChangeGoal)}
         </View>
 
         <View style={styles.section}>
@@ -286,6 +303,17 @@ export default function HabitDetailScreen() {
             >
               Editar
             </Button>
+            {canChangeGoal && habit.goal && (
+              <Button
+                variant="secondary"
+                width="full"
+                disabled={acting}
+                style={styles.actionButton}
+                onPress={() => router.push(`/habits/${habit.id}/goal` as Href)}
+              >
+                Editar meta
+              </Button>
+            )}
             {!isFinished && (
               <Button
                 variant="primary"
@@ -433,6 +461,10 @@ const styles = StyleSheet.create({
   // da borda direita e seria cortado pela ScrollView
   actionButton: {
     marginHorizontal: 0,
+  },
+  defineGoalButton: {
+    marginHorizontal: 0,
+    marginTop: 8,
   },
   deleteButton: {
     alignSelf: "center",

@@ -56,6 +56,7 @@ export default function AppLayout() {
       <Tabs.Screen name="new-habit" options={{ href: null }} />
       <Tabs.Screen name="habits/[id]/index" options={{ href: null }} />
       <Tabs.Screen name="habits/[id]/edit" options={{ href: null }} />
+      <Tabs.Screen name="habits/[id]/goal" options={{ href: null }} />
       <Tabs.Screen name="check-ins/[id]/index" options={{ href: null }} />
       <Tabs.Screen name="check-ins/create" options={{ href: null }} />
       <Tabs.Screen name="check-ins/[id]/edit" options={{ href: null }} />
