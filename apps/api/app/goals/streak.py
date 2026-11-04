@@ -136,3 +136,31 @@ def calculate_progress(
     streak_started_on=streak_started_on,
     consistent_days=consistent_days,
   )
+
+
+class PeriodResult(BaseModel):
+  start: date
+  end: date
+  done: int
+  target_count: int
+  met: bool
+
+
+def completion_dates(
+  goal: GoalRule,
+  days: Iterable[date],
+  today: date,
+  finished_at: date | None = None,
+) -> list[date]:
+  raise NotImplementedError
+
+
+def period_results(
+  goal: GoalRule,
+  days: Iterable[date],
+  window_start: date,
+  window_end: date,
+  today: date,
+  finished_at: date | None = None,
+) -> list[PeriodResult]:
+  raise NotImplementedError
