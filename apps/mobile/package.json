@@ -5,6 +5,7 @@
   "dependencies": {
     "@expo-google-fonts/libre-baskerville": "^0.4.3",
     "@expo/ui": "~57.0.20",
+    "@react-native-vector-icons/lucide": "^14.0.0",
     "axios": "^1.20.0",
     "expo": "~57.0.25",
     "expo-constants": "~57.0.19",
@@ -28,7 +29,8 @@
     "react-native-safe-area-context": "~5.7.0",
     "react-native-screens": "~4.26.0",
     "react-native-web": "~0.21.0",
-    "react-native-worklets": "0.10.1"
+    "react-native-worklets": "0.10.1",
+    "swr": "^2.5.1"
   },
   "devDependencies": {
     "@react-native-async-storage/async-storage": "^3.1.1",

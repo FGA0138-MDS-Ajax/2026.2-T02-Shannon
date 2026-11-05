@@ -1,5 +1,6 @@
 import { SplashScreen, Stack } from "expo-router";
 import { useEffect } from "react";
+import SWR from "@/config/swr";
 import { SessionProvider, useSession } from "@/contexts/auth-context";
 import useFonts from "@/hooks/useFonts";
 
@@ -39,9 +40,11 @@ function RootNavigation() {
 
 function RootLayout() {
   return (
-    <SessionProvider>
-      <RootNavigation />
-    </SessionProvider>
+    <SWR>
+      <SessionProvider>
+        <RootNavigation />
+      </SessionProvider>
+    </SWR>
   );
 }
 

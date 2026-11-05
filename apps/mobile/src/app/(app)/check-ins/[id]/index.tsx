@@ -4,7 +4,7 @@ import {
   useFocusEffect,
   useLocalSearchParams,
 } from "expo-router";
-import { useCallback, useState } from "react";
+import { useCallback, useState, useTransition } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -15,12 +15,13 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import useSWR from "swr";
 import Button from "@/components/button";
 import { theme } from "@/config/theme";
 import { useSession } from "@/hooks/useSession";
-import { ApiError } from "@/services/api";
+import { request } from "@/services/api";
 import { getErrorMessage } from "@/services/api-errors";
-import { deleteCheckIn, getCheckIn } from "@/services/check-ins-api";
+import { deleteCheckIn } from "@/services/check-ins-api";
 import type { CheckIn } from "@/services/types/habits";
 import { formatDateTime } from "@/utils/date";
 import { formatDuration } from "@/utils/duration";
@@ -28,37 +29,24 @@ import { formatDuration } from "@/utils/duration";
 export default function CheckInDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { user } = useSession();
-  const [checkIn, setCheckIn] = useState<CheckIn | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [notFound, setNotFound] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  // Evita tocar de novo em Excluir enquanto a API responde
-  const [deleting, setDeleting] = useState(false);
+  const [deleting, startDeleting] = useTransition();
 
-  const loadCheckIn = useCallback(async () => {
-    setErrorMessage(null);
-    setNotFound(false);
-    setLoading(true);
-    // Ao abrir outro check-in, não mostra o anterior enquanto carrega
-    setCheckIn((current) => (current?.id === id ? current : null));
+  const {
+    data: checkIn,
+    isLoading,
+    error,
+    mutate: refreshCheckIn,
+  } = useSWR<CheckIn>(`/check-ins/${id}`, request, {
+    onError: (err) => setErrorMessage(getErrorMessage(err)),
+  });
 
-    try {
-      setCheckIn(await getCheckIn(id));
-    } catch (err: unknown) {
-      if (err instanceof ApiError && err.status === 404) {
-        setNotFound(true);
-      } else {
-        setErrorMessage(getErrorMessage(err));
-      }
-    } finally {
-      setLoading(false);
-    }
-  }, [id]);
+  const notFound = error?.status === 404;
 
   useFocusEffect(
     useCallback(() => {
-      loadCheckIn();
-    }, [loadCheckIn]),
+      refreshCheckIn();
+    }, [refreshCheckIn]),
   );
 
   const handleDelete = () => {
@@ -70,24 +58,22 @@ export default function CheckInDetailScreen() {
         {
           text: "Excluir",
           style: "destructive",
-          onPress: async () => {
-            setDeleting(true);
-            try {
-              await deleteCheckIn(id);
-              router.back();
-            } catch (err: unknown) {
-              Alert.alert("Não foi possível excluir", getErrorMessage(err));
-            } finally {
-              setDeleting(false);
-            }
-          },
+          onPress: () =>
+            startDeleting(async () => {
+              try {
+                await deleteCheckIn(id);
+                router.back();
+              } catch (err: unknown) {
+                Alert.alert("Não foi possível excluir", getErrorMessage(err));
+              }
+            }),
         },
       ],
     );
   };
 
   const renderContent = () => {
-    if (loading && !checkIn) {
+    if (isLoading && !checkIn) {
       return (
         <View style={styles.centered}>
           <ActivityIndicator size="large" color={theme.colors.primary} />
@@ -109,7 +95,7 @@ export default function CheckInDetailScreen() {
           <Text style={styles.errorBannerText}>
             {errorMessage ?? "Não foi possível carregar o check-in."}
           </Text>
-          <Button variant="secondary" onPress={loadCheckIn}>
+          <Button variant="secondary" onPress={() => refreshCheckIn()}>
             Tentar novamente
           </Button>
         </View>
@@ -164,7 +150,7 @@ export default function CheckInDetailScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <Pressable onPress={() => router.back()} style={styles.backButton}>
-        <Text style={styles.backButtonText}>← Voltar</Text>
+        <Text style={styles.backButtonText}>Voltar</Text>
       </Pressable>
       {renderContent()}
     </SafeAreaView>
