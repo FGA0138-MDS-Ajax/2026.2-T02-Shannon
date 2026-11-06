@@ -7,7 +7,7 @@ from app.auth.models import User
 from app.goals import repository as goals_repository
 from app.goals.repository import APP_TIMEZONE_NAME
 from app.habits import service as habits_service
-from app.habits.models import Habit
+from app.habits.models import Habit, HabitStatus
 from app.statistics import repository as statistics_repository
 from app.statistics.calculations import (
   calculate_activity_streak,
@@ -66,7 +66,11 @@ def get_user_statistics(
 
 
 def build_habits_block(habits: list[Habit]) -> HabitsSummary:
-  return HabitsSummary(total=0, active=0, finished=0)
+  """Conta os hábitos do usuário, com e sem meta. Não consulta o banco."""
+  active = sum(habit.status == HabitStatus.ACTIVE for habit in habits)
+  finished = sum(habit.status == HabitStatus.FINISHED for habit in habits)
+
+  return HabitsSummary(total=len(habits), active=active, finished=finished)
 
 
 def build_habit_progress_block(
