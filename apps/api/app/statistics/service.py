@@ -8,7 +8,13 @@ from app.goals import repository as goals_repository
 from app.goals.repository import APP_TIMEZONE_NAME
 from app.habits import service as habits_service
 from app.habits.models import Habit
-from app.statistics.calculations import days_window
+from app.statistics import repository as statistics_repository
+from app.statistics.calculations import (
+  calculate_activity_streak,
+  days_window,
+  fill_series,
+  window_starts,
+)
 from app.statistics.schemas import (
   ActivityStreak,
   AtRiskSummary,
@@ -79,17 +85,40 @@ def build_at_risk_block(items: list[HabitStatisticsItem]) -> AtRiskSummary:
 def build_check_ins_block(
   db: Session, user_id: UUID, today: date, mode: StatisticsMode
 ) -> CheckInsSummary:
-  return CheckInsSummary(total=0, today=0, week=0, month=0)
+  """Monta o resumo de check-ins do usuário para o período selecionado."""
+
+  week_start, month_start = window_starts(today, mode)
+
+  total, today_count, week_count, month_count = statistics_repository.count_check_ins(
+    db, user_id, today, week_start, month_start
+  )
+
+  return CheckInsSummary(
+    total=total,
+    today=today_count,
+    week=week_count,
+    month=month_count,
+  )
 
 
 def build_series_block(db: Session, user_id: UUID, start: date, end: date) -> Series:
-  return Series(start=start, end=end, points=[])
+  """Monta a série diária de check-ins dentro do intervalo solicitado."""
+
+  counts = statistics_repository.count_check_ins_by_day(db, user_id, start, end)
+
+  points = fill_series(counts, start, end)
+
+  return Series(start=start, end=end, points=points)
 
 
 def build_activity_streak_block(
   db: Session, user_id: UUID, today: date
 ) -> ActivityStreak:
-  return ActivityStreak(current=0, best=0)
+  """Calcula a sequência atual e o recorde de dias com check-ins."""
+
+  activity_days = statistics_repository.list_user_check_in_days(db, user_id)
+
+  return calculate_activity_streak(activity_days, today)
 
 
 def build_completed_habits_block(
