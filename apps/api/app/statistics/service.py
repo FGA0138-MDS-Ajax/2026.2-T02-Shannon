@@ -5,9 +5,11 @@ from sqlmodel import Session
 
 from app.auth.models import User
 from app.goals import repository as goals_repository
+from app.goals import service as goals_service
 from app.goals.repository import APP_TIMEZONE_NAME
+from app.goals.streak import ProgressStatus
 from app.habits import service as habits_service
-from app.habits.models import Habit
+from app.habits.models import Habit, HabitStatus
 from app.statistics import repository as statistics_repository
 from app.statistics.calculations import (
   calculate_activity_streak,
@@ -66,7 +68,11 @@ def get_user_statistics(
 
 
 def build_habits_block(habits: list[Habit]) -> HabitsSummary:
-  return HabitsSummary(total=0, active=0, finished=0)
+  """Conta os hábitos do usuário, com e sem meta. Não consulta o banco."""
+  active = sum(habit.status == HabitStatus.ACTIVE for habit in habits)
+  finished = sum(habit.status == HabitStatus.FINISHED for habit in habits)
+
+  return HabitsSummary(total=len(habits), active=active, finished=finished)
 
 
 def build_habit_progress_block(
@@ -75,11 +81,38 @@ def build_habit_progress_block(
   today: date,
   window_start: date,
 ) -> list[HabitStatisticsItem]:
-  return []
+  """Painel diário: hábitos ativos com meta, do maior streak para o menor.
+
+  Reaproveita os dias já buscados, sem consultar o banco. Empates no streak
+  ficam em ordem de nome.
+  """
+  tracked = [
+    habit
+    for habit in habits
+    if habit.status == HabitStatus.ACTIVE and habit.goal is not None
+  ]
+  progress = goals_service.build_habits_progress(tracked, days_by_habit, today)
+
+  items = []
+  for habit in tracked:
+    days = days_by_habit.get(habit.id, set())
+    items.append(
+      HabitStatisticsItem(
+        **progress[habit.id].model_dump(),
+        name=habit.name,
+        checked_today=today in days,
+        consistency=build_consistency(habit, days, today, window_start),
+      )
+    )
+
+  return sorted(items, key=lambda item: (-item.current_streak, item.name))
 
 
 def build_at_risk_block(items: list[HabitStatisticsItem]) -> AtRiskSummary:
-  return AtRiskSummary(count=0, habit_ids=[])
+  """Hábitos sem folga, na mesma ordem de `items`. Não recalcula o progresso."""
+  habit_ids = [item.habit_id for item in items if item.status == ProgressStatus.AT_RISK]
+
+  return AtRiskSummary(count=len(habit_ids), habit_ids=habit_ids)
 
 
 def build_check_ins_block(
