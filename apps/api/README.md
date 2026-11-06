@@ -69,9 +69,22 @@ Você pode subir uma instância do PostgreSQL localmente utilizando o Docker Com
 docker compose up -d postgresql
 ```
 
-As alterações no esquema do banco de dados são gerenciadas através de migrações versionadas com o **Alembic**.
+### ⚡ Procedimento de Execução das Migrações
 
-### 🧭 Guia de Migrações (Alembic)
+Com o banco de dados ativo, aplique as migrações para criar as tabelas ou atualizar o esquema para a versão mais recente:
+
+```bash
+# Dentro do diretório apps/api:
+uv run alembic upgrade head
+```
+
+> ⚠️ **Importante:** Sempre execute `uv run alembic upgrade head` antes de iniciar a API pela primeira vez ou após atualizar sua branch (`git pull`) com alterações da equipe.
+
+---
+
+### 🧭 Guia de Desenvolvimento de Migrações (Alembic)
+
+As alterações no esquema do banco de dados são gerenciadas através de migrações versionadas com o **Alembic**.
 
 Dentro do diretório `apps/api`:
 
@@ -139,7 +152,7 @@ Após o merge desta funcionalidade, todo o time deve alinhar o banco local com o
 
 ### Modo Desenvolvimento (Hot Reload)
 
-Com o banco de dados ativo e o ambiente sincronizado, execute o servidor de desenvolvimento:
+Com o banco de dados ativo, as migrações aplicadas (`uv run alembic upgrade head`) e o ambiente sincronizado, execute o servidor de desenvolvimento:
 
 ```bash
 uv run fastapi dev app/main.py
