@@ -7,6 +7,7 @@ from app.auth.models import User
 from app.goals import repository as goals_repository
 from app.goals import service as goals_service
 from app.goals.repository import APP_TIMEZONE_NAME
+from app.goals.streak import ProgressStatus
 from app.habits import service as habits_service
 from app.habits.models import Habit, HabitStatus
 from app.statistics import repository as statistics_repository
@@ -108,7 +109,10 @@ def build_habit_progress_block(
 
 
 def build_at_risk_block(items: list[HabitStatisticsItem]) -> AtRiskSummary:
-  return AtRiskSummary(count=0, habit_ids=[])
+  """Hábitos sem folga, na mesma ordem de `items`. Não recalcula o progresso."""
+  habit_ids = [item.habit_id for item in items if item.status == ProgressStatus.AT_RISK]
+
+  return AtRiskSummary(count=len(habit_ids), habit_ids=habit_ids)
 
 
 def build_check_ins_block(
