@@ -152,7 +152,18 @@ def completion_dates(
   today: date,
   finished_at: date | None = None,
 ) -> list[date]:
-  raise NotImplementedError
+  """Dia em que cada período da meta foi cumprido (o `target_count`-ésimo dia).
+
+  Período que não chegou à meta não gera data. Cada período gera no máximo uma.
+  """
+  reference = finished_at or today
+  grouped = _group_days_by_period(goal, days, reference)
+
+  return [
+    period_days[goal.target_count - 1]
+    for period_days in grouped.values()
+    if len(period_days) >= goal.target_count
+  ]
 
 
 def period_results(
@@ -163,4 +174,58 @@ def period_results(
   today: date,
   finished_at: date | None = None,
 ) -> list[PeriodResult]:
-  raise NotImplementedError
+  """Períodos da janela que contam para a taxa, em ordem de `end`.
+
+  Fechado entra sempre; aberto e primeiro período parcial só se cumpridos.
+  """
+  reference = finished_at or today
+  first_day = max(window_start, goal.starts_on)
+  last_day = min(window_end, reference)
+
+  window_floor = period_bounds(goal, first_day)[0]
+  window_days = [day for day in days if window_floor <= day <= last_day]
+  grouped = _group_days_by_period(goal, window_days, reference)
+
+  results: list[PeriodResult] = []
+  cursor = first_day
+  while cursor <= last_day:
+    start, end = period_bounds(goal, cursor)
+    cursor = end + timedelta(days=1)
+
+    if not window_start <= end <= window_end:
+      continue
+
+    done = len(grouped.get(end, []))
+    met = done >= goal.target_count
+
+    is_open = end >= reference
+    is_first_partial = start < goal.starts_on
+    if (is_open or is_first_partial) and not met:
+      continue
+
+    results.append(
+      PeriodResult(
+        start=start,
+        end=end,
+        done=done,
+        target_count=goal.target_count,
+        met=met,
+      )
+    )
+  return results
+
+
+def _group_days_by_period(
+  goal: GoalRule, days: Iterable[date], reference: date
+) -> dict[date, list[date]]:
+  """Agrupa os dias válidos pelo `end` do período, com os dias em ordem.
+
+  Dia válido: entre `starts_on` e a referência, sem repetidos.
+  """
+  valid_days = {day for day in days if goal.starts_on <= day <= reference}
+
+  grouped: dict[date, list[date]] = {}
+  for day in sorted(valid_days):
+    period_end = period_bounds(goal, day)[1]
+    grouped.setdefault(period_end, []).append(day)
+  return grouped
