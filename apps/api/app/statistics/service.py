@@ -5,6 +5,7 @@ from sqlmodel import Session
 
 from app.auth.models import User
 from app.goals import repository as goals_repository
+from app.goals import service as goals_service
 from app.goals.repository import APP_TIMEZONE_NAME
 from app.habits import service as habits_service
 from app.habits.models import Habit, HabitStatus
@@ -79,7 +80,31 @@ def build_habit_progress_block(
   today: date,
   window_start: date,
 ) -> list[HabitStatisticsItem]:
-  return []
+  """Painel diário: hábitos ativos com meta, do maior streak para o menor.
+
+  Reaproveita os dias já buscados, sem consultar o banco. Empates no streak
+  ficam em ordem de nome.
+  """
+  tracked = [
+    habit
+    for habit in habits
+    if habit.status == HabitStatus.ACTIVE and habit.goal is not None
+  ]
+  progress = goals_service.build_habits_progress(tracked, days_by_habit, today)
+
+  items = []
+  for habit in tracked:
+    days = days_by_habit.get(habit.id, set())
+    items.append(
+      HabitStatisticsItem(
+        **progress[habit.id].model_dump(),
+        name=habit.name,
+        checked_today=today in days,
+        consistency=build_consistency(habit, days, today, window_start),
+      )
+    )
+
+  return sorted(items, key=lambda item: (-item.current_streak, item.name))
 
 
 def build_at_risk_block(items: list[HabitStatisticsItem]) -> AtRiskSummary:
