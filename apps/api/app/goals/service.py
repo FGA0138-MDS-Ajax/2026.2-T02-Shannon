@@ -1,3 +1,4 @@
+from datetime import date
 from uuid import UUID
 
 from sqlmodel import Session
@@ -43,6 +44,27 @@ def set_goal(db: Session, habit_id: UUID, user: User, data: GoalInput) -> Goal:
   return goal
 
 
+def build_habits_progress(
+  habits: list[Habit], days: dict[UUID, set[date]], today: date
+) -> dict[UUID, HabitProgressPublic]:
+  """Calcula o progresso com os dias já buscados. Não consulta o banco.
+
+  Usado por quem já tem os dias em mãos, como as estatísticas (STAT-4). Hábitos
+  sem meta ficam de fora do resultado.
+  """
+  result: dict[UUID, HabitProgressPublic] = {}
+  for habit in habits:
+    if habit.goal is None:
+      continue
+    progress = calculate_progress(
+      habit.goal, days.get(habit.id, set()), today, habit.finished_at
+    )
+    result[habit.id] = HabitProgressPublic(
+      habit_id=habit.id, goal=habit.goal, **progress.model_dump()
+    )
+  return result
+
+
 def calculate_habits_progress(
   db: Session, habits: list[Habit]
 ) -> dict[UUID, HabitProgressPublic]:
@@ -53,17 +75,7 @@ def calculate_habits_progress(
   """
   with_goal = [habit for habit in habits if habit.goal is not None]
   days = goals_repository.list_check_in_days(db, [habit.id for habit in with_goal])
-  today = habits_service.today()
-
-  result: dict[UUID, HabitProgressPublic] = {}
-  for habit in with_goal:
-    progress = calculate_progress(
-      habit.goal, days.get(habit.id, set()), today, habit.finished_at
-    )
-    result[habit.id] = HabitProgressPublic(
-      habit_id=habit.id, goal=habit.goal, **progress.model_dump()
-    )
-  return result
+  return build_habits_progress(with_goal, days, habits_service.today())
 
 
 def get_habit_progress(db: Session, habit_id: UUID, user: User) -> HabitProgressPublic:
