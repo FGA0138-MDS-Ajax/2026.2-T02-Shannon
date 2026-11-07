@@ -7,7 +7,7 @@ from app.auth.models import User
 from app.goals import repository as goals_repository
 from app.goals import service as goals_service
 from app.goals.repository import APP_TIMEZONE_NAME
-from app.goals.streak import ProgressStatus
+from app.goals.streak import ProgressStatus, completion_dates, period_results
 from app.habits import service as habits_service
 from app.habits.models import Habit, HabitStatus
 from app.statistics import repository as statistics_repository
@@ -15,6 +15,7 @@ from app.statistics.calculations import (
   calculate_activity_streak,
   days_window,
   fill_series,
+  to_completion_rate,
   window_starts,
 )
 from app.statistics.schemas import (
@@ -160,7 +161,27 @@ def build_completed_habits_block(
   today: date,
   mode: StatisticsMode,
 ) -> CompletedHabitsSummary:
-  return CompletedHabitsSummary(today=0, week=0, month=0)
+  """Hábitos que cumpriram a meta hoje, na semana e no mês. Não consulta o banco.
+
+  Cada hábito conta uma vez por janela. Encerrados entram, até o `finished_at`.
+  """
+  week_start, month_start = window_starts(today, mode)
+  dates_by_habit = [
+    completion_dates(
+      habit.goal, days_by_habit.get(habit.id, set()), today, habit.finished_at
+    )
+    for habit in habits
+    if habit.goal is not None
+  ]
+
+  def count_since(start: date) -> int:
+    return sum(any(day >= start for day in dates) for dates in dates_by_habit)
+
+  return CompletedHabitsSummary(
+    today=count_since(today),
+    week=count_since(week_start),
+    month=count_since(month_start),
+  )
 
 
 def build_goal_completion_block(
@@ -170,10 +191,37 @@ def build_goal_completion_block(
   window_start: date,
   days: int,
 ) -> GoalCompletion:
-  return GoalCompletion(completed_periods=0, total_periods=0, rate=0.0, days=days)
+  """Taxa de períodos cumpridos de todos os hábitos com meta na janela.
+
+  Junta os períodos antes de calcular, em vez de tirar a média das constâncias:
+  assim, cada período pesa igual. Encerrados entram, até o `finished_at`. Não
+  consulta o banco.
+  """
+  results = []
+  for habit in habits:
+    if habit.goal is None:
+      continue
+    results += period_results(
+      habit.goal,
+      days_by_habit.get(habit.id, set()),
+      window_start,
+      today,
+      today,
+      habit.finished_at,
+    )
+
+  return GoalCompletion(**to_completion_rate(results).model_dump(), days=days)
 
 
 def build_consistency(
   habit: Habit, days: set[date], today: date, window_start: date
 ) -> CompletionRate:
-  return CompletionRate(completed_periods=0, total_periods=0, rate=0.0)
+  """Taxa de períodos cumpridos do hábito na janela. Não consulta o banco."""
+  if habit.goal is None:
+    return to_completion_rate([])
+
+  results = period_results(
+    habit.goal, days, window_start, today, today, habit.finished_at
+  )
+
+  return to_completion_rate(results)
