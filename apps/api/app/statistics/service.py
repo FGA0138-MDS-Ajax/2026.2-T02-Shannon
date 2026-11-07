@@ -191,7 +191,26 @@ def build_goal_completion_block(
   window_start: date,
   days: int,
 ) -> GoalCompletion:
-  return GoalCompletion(completed_periods=0, total_periods=0, rate=0.0, days=days)
+  """Taxa de períodos cumpridos de todos os hábitos com meta na janela.
+
+  Junta os períodos antes de calcular, em vez de tirar a média das constâncias:
+  assim, cada período pesa igual. Encerrados entram, até o `finished_at`. Não
+  consulta o banco.
+  """
+  results = []
+  for habit in habits:
+    if habit.goal is None:
+      continue
+    results += period_results(
+      habit.goal,
+      days_by_habit.get(habit.id, set()),
+      window_start,
+      today,
+      today,
+      habit.finished_at,
+    )
+
+  return GoalCompletion(**to_completion_rate(results).model_dump(), days=days)
 
 
 def build_consistency(
