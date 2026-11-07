@@ -7,7 +7,7 @@ from app.auth.models import User
 from app.goals import repository as goals_repository
 from app.goals import service as goals_service
 from app.goals.repository import APP_TIMEZONE_NAME
-from app.goals.streak import ProgressStatus
+from app.goals.streak import ProgressStatus, period_results
 from app.habits import service as habits_service
 from app.habits.models import Habit, HabitStatus
 from app.statistics import repository as statistics_repository
@@ -15,6 +15,7 @@ from app.statistics.calculations import (
   calculate_activity_streak,
   days_window,
   fill_series,
+  to_completion_rate,
   window_starts,
 )
 from app.statistics.schemas import (
@@ -176,4 +177,12 @@ def build_goal_completion_block(
 def build_consistency(
   habit: Habit, days: set[date], today: date, window_start: date
 ) -> CompletionRate:
-  return CompletionRate(completed_periods=0, total_periods=0, rate=0.0)
+  """Taxa de períodos cumpridos do hábito na janela. Não consulta o banco."""
+  if habit.goal is None:
+    return to_completion_rate([])
+
+  results = period_results(
+    habit.goal, days, window_start, today, today, habit.finished_at
+  )
+
+  return to_completion_rate(results)
