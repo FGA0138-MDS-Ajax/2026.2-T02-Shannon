@@ -7,7 +7,7 @@ from app.auth.models import User
 from app.goals import repository as goals_repository
 from app.goals import service as goals_service
 from app.goals.repository import APP_TIMEZONE_NAME
-from app.goals.streak import ProgressStatus, period_results
+from app.goals.streak import ProgressStatus, completion_dates, period_results
 from app.habits import service as habits_service
 from app.habits.models import Habit, HabitStatus
 from app.statistics import repository as statistics_repository
@@ -161,7 +161,27 @@ def build_completed_habits_block(
   today: date,
   mode: StatisticsMode,
 ) -> CompletedHabitsSummary:
-  return CompletedHabitsSummary(today=0, week=0, month=0)
+  """Hábitos que cumpriram a meta hoje, na semana e no mês. Não consulta o banco.
+
+  Cada hábito conta uma vez por janela. Encerrados entram, até o `finished_at`.
+  """
+  week_start, month_start = window_starts(today, mode)
+  dates_by_habit = [
+    completion_dates(
+      habit.goal, days_by_habit.get(habit.id, set()), today, habit.finished_at
+    )
+    for habit in habits
+    if habit.goal is not None
+  ]
+
+  def count_since(start: date) -> int:
+    return sum(any(day >= start for day in dates) for dates in dates_by_habit)
+
+  return CompletedHabitsSummary(
+    today=count_since(today),
+    week=count_since(week_start),
+    month=count_since(month_start),
+  )
 
 
 def build_goal_completion_block(
