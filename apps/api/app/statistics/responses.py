@@ -16,7 +16,7 @@ EXAMPLE_STATISTICS = {
   "goal_completion": {
     "completed_periods": 18,
     "total_periods": 24,
-    "rate": 0.75,
+    "rate": 75.0,
     "days": 30,
   },
   "activity_streak": {"current": 3, "best": 9},
@@ -44,7 +44,7 @@ EXAMPLE_STATISTICS = {
       },
       "name": "Correr",
       "checked_today": True,
-      "consistency": {"completed_periods": 3, "total_periods": 5, "rate": 0.6},
+      "consistency": {"completed_periods": 3, "total_periods": 5, "rate": 60.0},
     }
   ],
   "series": {
