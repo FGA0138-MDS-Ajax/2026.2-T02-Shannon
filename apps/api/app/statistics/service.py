@@ -32,6 +32,7 @@ from app.statistics.schemas import (
   GoalCompletion,
   HabitCalendar,
   HabitsSummary,
+  HabitStatistics,
   HabitStatisticsItem,
   Series,
   StatisticsMode,
@@ -269,3 +270,69 @@ def build_consistency(
   )
 
   return to_completion_rate(results)
+
+
+def get_habit_statistics(
+  db: Session, habit_id: UUID, user: User, query: StatisticsQuery
+) -> HabitStatistics:
+  """Monta as estatísticas de um hábito específico do usuário."""
+
+  try:
+    habit = habits_service.get_owned_habit(db, habit_id, user)
+  except HabitForbiddenError as exc:
+    raise HabitNotFoundError from exc
+
+  today = habits_service.today()
+
+  window_start, window_end = days_window(today, query.days)
+  week_start, month_start = window_starts(today, query.mode)
+
+  total, today_count, week_count, month_count = (
+    statistics_repository.count_habit_check_ins(
+      db, user.id, habit.id, today, week_start, month_start
+    )
+  )
+
+  check_ins = CheckInsSummary(
+    total=total,
+    today=today_count,
+    week=week_count,
+    month=month_count,
+  )
+
+  progress = None
+  if habit.goal is not None:
+    days_by_habit = goals_repository.list_check_in_days(db, [habit.id])
+    days = days_by_habit.get(habit.id, set())
+
+    calculated = goals_service.build_habits_progress([habit], days_by_habit, today)[
+      habit.id
+    ]
+
+    progress = HabitStatisticsItem(
+      **calculated.model_dump(),
+      name=habit.name,
+      checked_today=today in days,
+      consistency=build_consistency(habit, days, today, window_start),
+    )
+
+  counts_by_day = statistics_repository.count_habit_check_ins_by_day(
+    db, user.id, habit.id, window_start, window_end
+  )
+  series = Series(
+    start=window_start,
+    end=window_end,
+    points=fill_series(counts_by_day, window_start, window_end),
+  )
+
+  return HabitStatistics(
+    reference_date=today,
+    timezone=APP_TIMEZONE_NAME,
+    mode=query.mode,
+    habit_id=habit.id,
+    name=habit.name,
+    habit_status=habit.status,
+    check_ins=check_ins,
+    series=series,
+    progress=progress,
+  )

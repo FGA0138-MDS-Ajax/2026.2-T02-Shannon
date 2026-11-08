@@ -197,3 +197,103 @@ RESPONSES_CALENDAR = {
     },
   },
 }
+
+
+EXAMPLE_HABIT_STATISTICS = {
+  "reference_date": "2026-11-07",
+  "timezone": "America/Sao_Paulo",
+  "mode": "calendar",
+  "habit_id": "8b6f1c52-3a4e-4d7b-9c1a-2f5e6d7c8b90",
+  "name": "Correr",
+  "habit_status": "active",
+  "check_ins": {
+    "total": 42,
+    "today": 1,
+    "week": 3,
+    "month": 4,
+  },
+  "series": {
+    "start": "2026-10-09",
+    "end": "2026-11-07",
+    "points": [
+      # Outubro: 23 dias, de 09/10 a 31/10.
+      {"date": "2026-10-09", "count": 0},
+      {"date": "2026-10-10", "count": 2},
+      {"date": "2026-10-11", "count": 0},
+      {"date": "2026-10-12", "count": 0},
+      {"date": "2026-10-13", "count": 0},
+      {"date": "2026-10-14", "count": 0},
+      {"date": "2026-10-15", "count": 0},
+      {"date": "2026-10-16", "count": 0},
+      {"date": "2026-10-17", "count": 0},
+      {"date": "2026-10-18", "count": 0},
+      {"date": "2026-10-19", "count": 0},
+      {"date": "2026-10-20", "count": 0},
+      {"date": "2026-10-21", "count": 0},
+      {"date": "2026-10-22", "count": 0},
+      {"date": "2026-10-23", "count": 0},
+      {"date": "2026-10-24", "count": 0},
+      {"date": "2026-10-25", "count": 0},
+      {"date": "2026-10-26", "count": 0},
+      {"date": "2026-10-27", "count": 0},
+      {"date": "2026-10-28", "count": 0},
+      {"date": "2026-10-29", "count": 0},
+      {"date": "2026-10-30", "count": 0},
+      {"date": "2026-10-31", "count": 0},
+      # Novembro: 4 check-ins no mês, sendo 3 na semana e 1 hoje.
+      {"date": "2026-11-01", "count": 1},
+      {"date": "2026-11-02", "count": 1},
+      {"date": "2026-11-03", "count": 0},
+      {"date": "2026-11-04", "count": 0},
+      {"date": "2026-11-05", "count": 1},
+      {"date": "2026-11-06", "count": 0},
+      {"date": "2026-11-07", "count": 1},
+    ],
+  },
+  "progress": {
+    "current_period": {
+      "start": "2026-11-02",
+      "end": "2026-11-08",
+      "done": 3,
+      "target_count": 4,
+    },
+    "status": "in_progress",
+    "current_streak": 3,
+    "best_streak": 8,
+    "streak_started_on": "2026-11-05",
+    "consistent_days": 20,
+    "habit_id": "8b6f1c52-3a4e-4d7b-9c1a-2f5e6d7c8b90",
+    "goal": {
+      "schedule_type": "frequency",
+      "period": "week",
+      "target_count": 4,
+      "period_end_weekday": 7,
+      "starts_on": "2026-09-01",
+    },
+    "name": "Correr",
+    "checked_today": True,
+    "consistency": {
+      "completed_periods": 3,
+      "total_periods": 5,
+      "rate": 0.6,
+    },
+  },
+}
+
+RESPONSES_HABIT_STATISTICS = {
+  status.HTTP_200_OK: {
+    "description": "Estatísticas do hábito solicitado.",
+    "content": {"application/json": {"example": EXAMPLE_HABIT_STATISTICS}},
+  },
+  status.HTTP_401_UNAUTHORIZED: {
+    "description": "Usuário não autenticado ou token inválido.",
+    "content": {"application/json": {"example": {"detail": MSG_NOT_AUTHENTICATED}}},
+  },
+  status.HTTP_404_NOT_FOUND: {
+    "description": "Hábito não encontrado ou não pertence ao usuário.",
+    "content": {"application/json": {"example": {"detail": MSG_HABIT_NOT_FOUND}}},
+  },
+  status.HTTP_422_UNPROCESSABLE_ENTITY: RESPONSES_STATISTICS[
+    status.HTTP_422_UNPROCESSABLE_ENTITY
+  ],
+}

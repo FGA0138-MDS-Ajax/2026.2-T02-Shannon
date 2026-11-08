@@ -7,16 +7,17 @@ from app.auth.dependencies import get_current_user
 from app.auth.models import User
 from app.database import SessionDep
 from app.goals.exceptions import MSG_GOAL_NOT_FOUND, GoalNotFoundError
-from app.habits.exceptions import (
-  MSG_HABIT_NOT_FOUND,
-  HabitForbiddenError,
-  HabitNotFoundError,
-)
+from app.habits.exceptions import MSG_HABIT_NOT_FOUND, HabitNotFoundError
 from app.statistics import service
-from app.statistics.responses import RESPONSES_CALENDAR, RESPONSES_STATISTICS
+from app.statistics.responses import (
+  RESPONSES_CALENDAR,
+  RESPONSES_HABIT_STATISTICS,
+  RESPONSES_STATISTICS,
+)
 from app.statistics.schemas import (
   CalendarQuery,
   HabitCalendar,
+  HabitStatistics,
   StatisticsQuery,
   UserStatistics,
 )
@@ -52,6 +53,34 @@ def get_user_statistics(
 
 
 @statistics_router.get(
+  "/habits/{habit_id}",
+  response_model=HabitStatistics,
+  status_code=status.HTTP_200_OK,
+  summary="Estatísticas de um hábito",
+  description=(
+    "Devolve as estatísticas de um hábito pertencente ao usuário logado. "
+    "Inclui resumo de check-ins, série diária e progresso da meta, quando "
+    "existente. Hábitos encerrados também são aceitos."
+  ),
+  responses=RESPONSES_HABIT_STATISTICS,
+)
+def get_habit_statistics(
+  habit_id: UUID,
+  db: SessionDep,
+  query: Annotated[StatisticsQuery, Query()],
+  user: Annotated[User, Depends(get_current_user)],
+) -> HabitStatistics:
+  """Devolve as estatísticas de um hábito do usuário logado."""
+  try:
+    return service.get_habit_statistics(db, habit_id, user, query)
+  except HabitNotFoundError:
+    raise HTTPException(
+      status_code=status.HTTP_404_NOT_FOUND,
+      detail=MSG_HABIT_NOT_FOUND,
+    ) from None
+
+
+@statistics_router.get(
   "/habits/{habit_id}/calendar",
   response_model=HabitCalendar,
   status_code=status.HTTP_200_OK,
@@ -80,7 +109,13 @@ def get_habit_calendar(
   """Devolve o calendário mensal de um hábito do usuário."""
   try:
     return service.get_habit_calendar(db, habit_id, user, query)
-  except (HabitNotFoundError, HabitForbiddenError):
-    raise HTTPException(status.HTTP_404_NOT_FOUND, MSG_HABIT_NOT_FOUND) from None
+  except HabitNotFoundError:
+    raise HTTPException(
+      status_code=status.HTTP_404_NOT_FOUND,
+      detail=MSG_HABIT_NOT_FOUND,
+    ) from None
   except GoalNotFoundError:
-    raise HTTPException(status.HTTP_404_NOT_FOUND, MSG_GOAL_NOT_FOUND) from None
+    raise HTTPException(
+      status_code=status.HTTP_404_NOT_FOUND,
+      detail=MSG_GOAL_NOT_FOUND,
+    ) from None
