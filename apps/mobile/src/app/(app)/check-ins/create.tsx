@@ -14,6 +14,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import useSWR from "swr";
 import Button from "@/components/button";
 import Input from "@/components/input";
+import { describeProgressStatus, formatStreak } from "@/config/goal-labels";
 import { habitCategoryLabels } from "@/config/habit-categories";
 import { theme } from "@/config/theme";
 import { request, toQueryString } from "@/services/api";
@@ -27,10 +28,15 @@ import { createCheckIn, listHabitOptions } from "@/services/check-ins-api";
 import type {
   CheckInCategoriesResponse,
   CheckInCreate,
+  GoalPeriod,
   HabitCategory,
   HabitOption,
   HabitOptionsPage,
 } from "@/services/types/habits";
+import {
+  type CheckInProgressItem,
+  matchCheckInProgress,
+} from "@/utils/check-in-progress";
 import { minutesToIsoDuration } from "@/utils/duration";
 
 type Step = "categories" | "habits" | "details";
@@ -44,6 +50,13 @@ type FieldErrors = {
 // Limite de hábitos por check-in aceito pela API
 const MAX_HABITS = 20;
 const EXTRA_PAGE_SIZE = 3;
+
+// Completa o "2 de 3 ..." do resumo pós check-in
+const currentPeriodLabels: Record<GoalPeriod, string> = {
+  day: "hoje",
+  week: "nesta semana",
+  month: "neste mês",
+};
 
 export default function CreateCheckInScreen() {
   // Em qual tela do fluxo a pessoa está
@@ -73,6 +86,13 @@ export default function CreateCheckInScreen() {
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  // Check-in recém-criado com o progresso de cada hábito. O GET do detalhe
+  // não traz o progress, então o resumo tem que ser mostrado aqui
+  const [created, setCreated] = useState<{
+    id: string;
+    items: CheckInProgressItem[];
+  } | null>(null);
 
   // ── Categorias ──────────────────────────────────────────────────────────────
   const {
@@ -144,6 +164,11 @@ export default function CreateCheckInScreen() {
     resetSelection();
     setStep("categories");
     setCategory(null);
+  };
+
+  const openCheckIn = (id: string) => {
+    // Cast: os tipos gerados pelo Expo ainda não reconhecem o [id]
+    router.replace(`/check-ins/${id}` as Href);
   };
 
   // ── Pré-seleção dos sugeridos pela API ──────────────────────────────────────
@@ -249,12 +274,22 @@ export default function CreateCheckInScreen() {
       setRejection(null);
       const checkIn = await createCheckIn(body);
 
+      // Junta nome + progresso antes do backToCategories: ele zera a
+      // categoria, a chave do SWR vira null e o `options` deixa de existir
+      const chosen = (options ?? []).filter((habit) => selected.has(habit.id));
+      const items = matchCheckInProgress(chosen, checkIn.progress);
+
       backToCategories();
       setTitle("");
       setDescription("");
       setDuration("");
-      // Cast: os tipos gerados pelo Expo ainda não reconhecem o [id]
-      router.replace(`/check-ins/${checkIn.id}` as Href);
+
+      // Nenhum hábito com meta: não há o que resumir, segue direto pro detalhe
+      if (items.length === 0) {
+        openCheckIn(checkIn.id);
+        return;
+      }
+      setCreated({ id: checkIn.id, items });
     } catch (err: unknown) {
       // Recusa (404, 403 ou 409): nada foi gravado. Volta pra lista com os
       // recusados destacados, mantendo o resto da seleção
@@ -479,7 +514,56 @@ export default function CreateCheckInScreen() {
     </>
   );
 
+  const renderProgressItem = ({ name, progress }: CheckInProgressItem) => {
+    const { period } = progress.goal;
+    const { done, target_count } = progress.current_period;
+
+    return (
+      <View
+        key={progress.habit_id}
+        testID={`progress-${progress.habit_id}`}
+        style={[styles.card, styles.progressCard]}
+      >
+        <Text style={styles.cardTitle}>{name}</Text>
+        <Text style={styles.cardDetail}>
+          {done} de {target_count} {currentPeriodLabels[period]}
+        </Text>
+        <Text
+          style={[
+            styles.cardDetail,
+            progress.status === "at_risk" && styles.atRiskText,
+          ]}
+        >
+          {describeProgressStatus(progress)}
+        </Text>
+        <Text style={styles.cardDetail}>
+          Streak: {formatStreak(progress.current_streak, period)}
+        </Text>
+      </View>
+    );
+  };
+
+  const renderCreated = (result: NonNullable<typeof created>) => (
+    <>
+      <ScrollView contentContainerStyle={styles.list}>
+        {result.items.map(renderProgressItem)}
+      </ScrollView>
+
+      <View style={styles.footer}>
+        <Button
+          testID="view-check-in-button"
+          variant="primary"
+          onPress={() => openCheckIn(result.id)}
+        >
+          Ver check-in
+        </Button>
+      </View>
+    </>
+  );
+
   const renderContent = () => {
+    if (created) return renderCreated(created);
+
     // O erro vale pras duas primeiras telas; o botão repete o que falhou
     if (errorMessage) {
       return (
@@ -505,6 +589,12 @@ export default function CreateCheckInScreen() {
   };
 
   const renderSubtitle = () => {
+    if (created) {
+      return (
+        <Text style={styles.subtitle}>Check-in salvo! Seu progresso:</Text>
+      );
+    }
+
     if (step === "categories") {
       return <Text style={styles.subtitle}>Escolha uma categoria</Text>;
     }
@@ -541,7 +631,9 @@ export default function CreateCheckInScreen() {
             style={styles.cancelButton}
             disabled={submitting}
           >
-            <Text style={styles.cancelText}>Cancelar</Text>
+            <Text style={styles.cancelText}>
+              {created ? "Fechar" : "Cancelar"}
+            </Text>
           </Pressable>
         </View>
         {renderSubtitle()}
@@ -660,6 +752,15 @@ const styles = StyleSheet.create({
     fontFamily: theme.font.bold,
     fontSize: 18,
     color: theme.colors.primary,
+  },
+  progressCard: {
+    flexDirection: "column",
+    justifyContent: "flex-start",
+    gap: 4,
+  },
+  atRiskText: {
+    fontFamily: theme.font.medium,
+    color: "#B45309",
   },
   footer: {
     flexDirection: "row",
