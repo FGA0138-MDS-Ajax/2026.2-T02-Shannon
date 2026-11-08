@@ -257,11 +257,11 @@ EXAMPLE_HABIT_STATISTICS = {
       "done": 3,
       "target_count": 4,
     },
-    "status": "in_progress",
-    "current_streak": 3,
+    "status": "at_risk",
+    "current_streak": 0,
     "best_streak": 8,
-    "streak_started_on": "2026-11-05",
-    "consistent_days": 20,
+    "streak_started_on": "2026-11-02",
+    "consistent_days": 6,
     "habit_id": "8b6f1c52-3a4e-4d7b-9c1a-2f5e6d7c8b90",
     "goal": {
       "schedule_type": "frequency",
@@ -273,16 +273,23 @@ EXAMPLE_HABIT_STATISTICS = {
     "name": "Correr",
     "checked_today": True,
     "consistency": {
-      "completed_periods": 3,
-      "total_periods": 5,
-      "rate": 0.6,
+      "completed_periods": 0,
+      "total_periods": 4,
+      "rate": 0.0,
     },
   },
 }
 
 RESPONSES_HABIT_STATISTICS = {
   status.HTTP_200_OK: {
-    "description": "Estatísticas do hábito solicitado.",
+    "description": (
+      "Estatísticas do hábito solicitado. Os números de `check_ins` e `series`"
+      " são só deste hábito.\n\n"
+      "Um check-in ligado a vários hábitos conta uma vez em cada um deles. Por"
+      " isso, a soma dos hábitos pode passar do `check_ins.total` de"
+      " `GET /user/statistics`.\n\n"
+      "`progress` é `null` quando o hábito não tem meta."
+    ),
     "content": {"application/json": {"example": EXAMPLE_HABIT_STATISTICS}},
   },
   status.HTTP_401_UNAUTHORIZED: {
