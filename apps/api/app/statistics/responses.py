@@ -1,6 +1,9 @@
 from fastapi import status
 
 from app.auth.exceptions import MSG_NOT_AUTHENTICATED
+from app.goals.exceptions import MSG_GOAL_NOT_FOUND
+from app.habits.exceptions import MSG_HABIT_NOT_FOUND
+from app.statistics.exceptions import MSG_CALENDAR_MONTH_INVALID
 
 # Valores ilustrativos: mostram o formato da resposta, não um cálculo real.
 EXAMPLE_STATISTICS = {
@@ -93,6 +96,98 @@ RESPONSES_STATISTICS = {
                   "msg": "Input should be less than or equal to 365",
                   "input": "366",
                   "ctx": {"le": 365},
+                }
+              ]
+            },
+          },
+        }
+      }
+    },
+  },
+}
+
+EXAMPLE_CALENDAR = {
+  "habit_id": "8b6f1c52-3a4e-4d7b-9c1a-2f5e6d7c8b90",
+  "month": "2026-10",
+  "period": "week",
+  "target_count": 4,
+  "days": [
+    {"date": "2026-10-01", "state": "outside"},
+    {"date": "2026-10-12", "state": "completed"},
+    {"date": "2026-10-14", "state": "none"},
+    {"date": "2026-10-19", "state": "partial"},
+  ],
+}
+
+RESPONSES_CALENDAR = {
+  status.HTTP_200_OK: {
+    "description": (
+      "Calendário mensal do hábito com o estado de cada dia:\n\n"
+      "- `outside`: fora da vida do hábito (antes do início da meta, depois do"
+      " encerramento do hábito ou depois de hoje).\n"
+      "- `completed`: o dia tem check-in e o período da meta que contém o dia"
+      " foi cumprido.\n"
+      "- `partial`: o dia tem check-in, mas o período não foi cumprido (aberto"
+      " ou fechado).\n"
+      "- `none`: dentro da vida do hábito e sem check-in.\n\n"
+      "Na meta diária, `partial` nunca aparece: o dia com check-in é sempre"
+      " `completed`."
+    ),
+    "content": {"application/json": {"example": EXAMPLE_CALENDAR}},
+  },
+  status.HTTP_401_UNAUTHORIZED: {
+    "description": "Usuário não autenticado ou token inválido.",
+    "content": {"application/json": {"example": {"detail": MSG_NOT_AUTHENTICATED}}},
+  },
+  status.HTTP_404_NOT_FOUND: {
+    "description": (
+      "Hábito inexistente ou de outro usuário (privado ou público), ou hábito sem meta."
+    ),
+    "content": {
+      "application/json": {
+        "examples": {
+          "habito_nao_encontrado": {
+            "summary": "Hábito inexistente, privado ou público de outro usuário",
+            "value": {"detail": MSG_HABIT_NOT_FOUND},
+          },
+          "habito_sem_meta": {
+            "summary": "Hábito criado antes das metas, ainda sem uma",
+            "value": {"detail": MSG_GOAL_NOT_FOUND},
+          },
+        }
+      }
+    },
+  },
+  status.HTTP_422_UNPROCESSABLE_ENTITY: {
+    "description": (
+      "Parâmetro de consulta inválido (mês fora do formato AAAA-MM) ou"
+      " identificador do hábito inválido (não é um UUID)."
+    ),
+    "content": {
+      "application/json": {
+        "examples": {
+          "mes_invalido": {
+            "summary": "Mês fora do formato AAAA-MM ou com mês inválido",
+            "value": {
+              "detail": [
+                {
+                  "type": "value_error",
+                  "loc": ["query", "month"],
+                  "msg": f"Value error, {MSG_CALENDAR_MONTH_INVALID}",
+                  "input": "2026-13",
+                  "ctx": {"error": {}},
+                }
+              ]
+            },
+          },
+          "id_invalido": {
+            "summary": "Identificador do hábito não é um UUID",
+            "value": {
+              "detail": [
+                {
+                  "type": "uuid_parsing",
+                  "loc": ["path", "habit_id"],
+                  "msg": "Input should be a valid UUID",
                 }
               ]
             },

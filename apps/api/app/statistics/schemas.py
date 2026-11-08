@@ -1,10 +1,15 @@
+import re
 from datetime import date
 from enum import StrEnum
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
+from app.goals.models import GoalPeriod
 from app.goals.schemas import HabitProgressPublic
+from app.statistics.exceptions import MSG_CALENDAR_MONTH_INVALID
+
+MONTH_PATTERN = re.compile(r"^\d{4}-(0[1-9]|1[0-2])$")
 
 
 class StatisticsMode(StrEnum):
@@ -85,3 +90,36 @@ class UserStatistics(BaseModel):
 class StatisticsQuery(BaseModel):
   mode: StatisticsMode = StatisticsMode.CALENDAR
   days: int = Field(default=30, ge=1, le=365)
+
+
+class CalendarDayState(StrEnum):
+  COMPLETED = "completed"
+  PARTIAL = "partial"
+  NONE = "none"
+  OUTSIDE = "outside"
+
+
+class CalendarDay(BaseModel):
+  date: date
+  state: CalendarDayState
+
+
+class HabitCalendar(BaseModel):
+  habit_id: UUID
+  month: str
+  period: GoalPeriod
+  target_count: int
+  days: list[CalendarDay]
+
+
+class CalendarQuery(BaseModel):
+  month: str | None = None
+
+  @field_validator("month")
+  @classmethod
+  def check_month(cls, value: str | None) -> str | None:
+    if value is None:
+      return None
+    if not MONTH_PATTERN.match(value):
+      raise ValueError(MSG_CALENDAR_MONTH_INVALID)
+    return value

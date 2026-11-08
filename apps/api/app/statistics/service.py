@@ -6,25 +6,31 @@ from sqlmodel import Session
 from app.auth.models import User
 from app.goals import repository as goals_repository
 from app.goals import service as goals_service
+from app.goals.exceptions import GoalNotFoundError
 from app.goals.repository import APP_TIMEZONE_NAME
 from app.goals.streak import ProgressStatus, completion_dates, period_results
 from app.habits import service as habits_service
+from app.habits.exceptions import HabitForbiddenError, HabitNotFoundError
 from app.habits.models import Habit, HabitStatus
 from app.statistics import repository as statistics_repository
 from app.statistics.calculations import (
+  build_calendar_days,
   calculate_activity_streak,
   days_window,
   fill_series,
+  month_bounds,
   to_completion_rate,
   window_starts,
 )
 from app.statistics.schemas import (
   ActivityStreak,
   AtRiskSummary,
+  CalendarQuery,
   CheckInsSummary,
   CompletedHabitsSummary,
   CompletionRate,
   GoalCompletion,
+  HabitCalendar,
   HabitsSummary,
   HabitStatisticsItem,
   Series,
@@ -65,6 +71,44 @@ def get_user_statistics(
     at_risk=build_at_risk_block(habit_progress),
     habit_progress=habit_progress,
     series=build_series_block(db, user.id, window_start, window_end),
+  )
+
+
+def get_habit_calendar(
+  db: Session, habit_id: UUID, user: User, query: CalendarQuery
+) -> HabitCalendar:
+  """Devolve o calendário mensal de um hábito do usuário logado."""
+  try:
+    habit = habits_service.get_owned_habit(db, habit_id, user)
+  except HabitForbiddenError:
+    raise HabitNotFoundError from None
+
+  if habit.goal is None:
+    raise GoalNotFoundError
+
+  today = habits_service.today()
+  month_start, month_end = month_bounds(query.month, today)
+
+  days_by_habit = goals_repository.list_check_in_days(db, [habit.id])
+  days = days_by_habit.get(habit.id, set())
+
+  calendar_days = build_calendar_days(
+    goal=habit.goal,
+    days=days,
+    month_start=month_start,
+    month_end=month_end,
+    today=today,
+    finished_at=habit.finished_at,
+  )
+
+  month_str = f"{month_start.year:04d}-{month_start.month:02d}"
+
+  return HabitCalendar(
+    habit_id=habit.id,
+    month=month_str,
+    period=habit.goal.period,
+    target_count=habit.goal.target_count,
+    days=calendar_days,
   )
 
 
