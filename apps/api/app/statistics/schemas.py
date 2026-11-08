@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field, field_validator
 
 from app.goals.models import GoalPeriod
 from app.goals.schemas import HabitProgressPublic
+from app.habits.models import HabitStatus
 from app.statistics.exceptions import MSG_CALENDAR_MONTH_INVALID
 
 MONTH_PATTERN = re.compile(r"^\d{4}-(0[1-9]|1[0-2])$")
@@ -85,6 +86,18 @@ class UserStatistics(BaseModel):
   at_risk: AtRiskSummary
   habit_progress: list[HabitStatisticsItem]
   series: Series
+
+
+class HabitStatistics(BaseModel):
+  reference_date: date
+  timezone: str
+  mode: StatisticsMode
+  habit_id: UUID
+  name: str
+  habit_status: HabitStatus
+  check_ins: CheckInsSummary
+  series: Series
+  progress: HabitStatisticsItem | None
 
 
 class StatisticsQuery(BaseModel):
