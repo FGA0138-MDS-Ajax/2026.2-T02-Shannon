@@ -65,16 +65,19 @@ def test_calendar_marks_each_day_state(
   assert _states(data) == expected
 
 
+@pytest.mark.parametrize(
+  "month", ["2026-13", "10-2026", "2026-10\n", "0000-05", "9999-12"]
+)
 def test_calendar_rejects_invalid_month(
-  client, auth_headers, weekly_habit, freeze_today
+  client, auth_headers, weekly_habit, freeze_today, month
 ):
-  # Garante a mensagem de erro para um mês fora do formato AAAA-MM.
+  # Garante 422 com a mensagem, e não 500, para mês fora do formato ou da faixa.
   freeze_today(date(2026, 10, 28))
 
   response = client.get(
     f"/user/statistics/habits/{weekly_habit.id}/calendar",
     headers=auth_headers,
-    params={"month": "2026-13"},
+    params={"month": month},
   )
 
   assert response.status_code == 422

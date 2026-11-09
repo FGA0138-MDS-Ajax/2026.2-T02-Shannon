@@ -10,7 +10,11 @@ from app.goals.schemas import HabitProgressPublic
 from app.habits.models import HabitStatus
 from app.statistics.exceptions import MSG_CALENDAR_MONTH_INVALID
 
-MONTH_PATTERN = re.compile(r"^\d{4}-(0[1-9]|1[0-2])$")
+MONTH_PATTERN = re.compile(r"\d{4}-(0[1-9]|1[0-2])")
+# O ano 0 não existe em `date`, e uma semana que fecha em janeiro de 10000 estoura
+# o limite. Fora dessa faixa o mês é inválido (422), não um erro 500.
+MIN_CALENDAR_YEAR = 1
+MAX_CALENDAR_YEAR = 9998
 
 
 class StatisticsMode(StrEnum):
@@ -133,6 +137,8 @@ class CalendarQuery(BaseModel):
   def check_month(cls, value: str | None) -> str | None:
     if value is None:
       return None
-    if not MONTH_PATTERN.match(value):
+    if not MONTH_PATTERN.fullmatch(value):
+      raise ValueError(MSG_CALENDAR_MONTH_INVALID)
+    if not MIN_CALENDAR_YEAR <= int(value[:4]) <= MAX_CALENDAR_YEAR:
       raise ValueError(MSG_CALENDAR_MONTH_INVALID)
     return value
