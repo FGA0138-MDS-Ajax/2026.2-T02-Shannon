@@ -5,11 +5,12 @@ import type {
   HabitCreate,
   HabitStatus,
   HabitUpdate,
+  HabitWithProgress,
 } from "@/services/types/habits";
 
 /** Hábitos do usuário logado, do mais novo para o mais antigo. */
-export function listHabits(status?: HabitStatus): Promise<Habit[]> {
-  return request<Habit[]>(`/habits${toQueryString({ status })}`);
+export function listHabits(status?: HabitStatus): Promise<HabitWithProgress[]> {
+  return request<HabitWithProgress[]>(`/habits${toQueryString({ status })}`);
 }
 
 export function createHabit(body: HabitCreate): Promise<Habit> {

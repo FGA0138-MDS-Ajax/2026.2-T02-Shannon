@@ -17,13 +17,14 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import useSWR from "swr";
 import Button from "@/components/button";
+import GoalProgress from "@/components/goal-progress";
 import { habitCategoryLabels } from "@/config/habit-categories";
 import { theme } from "@/config/theme";
 import { useSession } from "@/hooks/useSession";
 import { request } from "@/services/api";
 import { getErrorMessage } from "@/services/api-errors";
 import { deleteHabit, finishHabit } from "@/services/habits-api";
-import type { CheckIn, Habit } from "@/services/types/habits";
+import type { CheckIn, Habit, HabitProgress } from "@/services/types/habits";
 import { formatDate, formatDateTime, parseApiDate } from "@/utils/date";
 import { formatDuration } from "@/utils/duration";
 
@@ -32,6 +33,7 @@ export default function HabitDetailScreen() {
   const { user } = useSession();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [checkInsError, setCheckInsError] = useState<string | null>(null);
+  const [progressError, setProgressError] = useState<string | null>(null);
   const [acting, startActing] = useTransition();
 
   const {
@@ -54,13 +56,25 @@ export default function HabitDetailScreen() {
     },
   );
 
+  // Hábito antigo não tem meta: sem `goal`, nem chama a rota (ela responderia 404)
+  const { data: progress, mutate: refreshProgress } = useSWR<HabitProgress>(
+    habit?.goal ? `/goals/habits/${id}/progress` : null,
+    request,
+    {
+      onError: (err) => setProgressError(getErrorMessage(err)),
+    },
+  );
+
+  // Recarrega ao voltar para a tela: reflete check-ins novos ou excluídos
   useFocusEffect(
     useCallback(() => {
       setErrorMessage(null);
       setCheckInsError(null);
+      setProgressError(null);
       refreshHabit();
       refreshCheckIns();
-    }, [refreshHabit, refreshCheckIns]),
+      refreshProgress();
+    }, [refreshHabit, refreshCheckIns, refreshProgress]),
   );
 
   const handleFinish = () => {
@@ -76,6 +90,8 @@ export default function HabitDetailScreen() {
               try {
                 const updated = await finishHabit(id);
                 refreshHabit(updated, { revalidate: false });
+                // O progresso passa a "encerrado"
+                refreshProgress();
               } catch (err: unknown) {
                 Alert.alert("Não foi possível encerrar", getErrorMessage(err));
               }
@@ -106,6 +122,50 @@ export default function HabitDetailScreen() {
         },
       ],
     );
+  };
+
+  const renderGoal = (habit: Habit, canChangeGoal: boolean) => {
+    if (!habit.goal) {
+      return (
+        <>
+          <Text style={styles.sectionText}>
+            Este hábito ainda não tem meta.
+          </Text>
+          {canChangeGoal && (
+            <Button
+              variant="secondary"
+              width="full"
+              style={styles.defineGoalButton}
+              // Cast: os tipos gerados pelo Expo ainda não reconhecem o [id]
+              onPress={() => router.push(`/habits/${habit.id}/goal` as Href)}
+            >
+              Definir meta
+            </Button>
+          )}
+        </>
+      );
+    }
+
+    if (progressError) {
+      return (
+        <Pressable
+          onPress={() => {
+            setProgressError(null);
+            refreshProgress();
+          }}
+        >
+          <Text style={styles.checkInsError}>
+            {progressError} Toque para tentar novamente.
+          </Text>
+        </Pressable>
+      );
+    }
+
+    if (!progress) {
+      return <ActivityIndicator color={theme.colors.primary} />;
+    }
+
+    return <GoalProgress progress={progress} />;
   };
 
   const renderCheckIns = () => {
@@ -181,6 +241,8 @@ export default function HabitDetailScreen() {
     const isFinished = habit.status === "finished";
     // Só quem criou o hábito pode alterá-lo
     const isAuthor = habit.author_user_id === user?.id;
+    // Hábito encerrado não aceita alteração de meta
+    const canChangeGoal = isAuthor && !isFinished;
 
     return (
       <ScrollView>
@@ -220,6 +282,11 @@ export default function HabitDetailScreen() {
         </View>
 
         <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Meta</Text>
+          {renderGoal(habit, canChangeGoal)}
+        </View>
+
+        <View style={styles.section}>
           <Text style={styles.sectionTitle}>Check-ins</Text>
           {renderCheckIns()}
         </View>
@@ -236,6 +303,17 @@ export default function HabitDetailScreen() {
             >
               Editar
             </Button>
+            {canChangeGoal && habit.goal && (
+              <Button
+                variant="secondary"
+                width="full"
+                disabled={acting}
+                style={styles.actionButton}
+                onPress={() => router.push(`/habits/${habit.id}/goal` as Href)}
+              >
+                Editar meta
+              </Button>
+            )}
             {!isFinished && (
               <Button
                 variant="primary"
@@ -383,6 +461,10 @@ const styles = StyleSheet.create({
   // da borda direita e seria cortado pela ScrollView
   actionButton: {
     marginHorizontal: 0,
+  },
+  defineGoalButton: {
+    marginHorizontal: 0,
+    marginTop: 8,
   },
   deleteButton: {
     alignSelf: "center",

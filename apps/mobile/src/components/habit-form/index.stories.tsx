@@ -17,6 +17,12 @@ type Story = StoryObj<typeof HabitForm>;
 
 export const Default: Story = {};
 
+export const WithGoal: Story = {
+  args: {
+    withGoal: true,
+  },
+};
+
 export const Filled: Story = {
   args: {
     submitLabel: "Salvar",

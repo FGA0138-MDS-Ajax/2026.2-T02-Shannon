@@ -13,8 +13,10 @@ import { theme } from "@/config/theme";
 import { createHabit } from "@/services/habits-api";
 
 export default function NewHabitScreen() {
-  const handleSubmit = async (values: HabitFormValues) => {
-    await createHabit(values);
+  const handleSubmit = async ({ goal, ...values }: HabitFormValues) => {
+    // Com `withGoal`, o formulário só envia depois de a meta ser escolhida
+    if (!goal) return;
+    await createHabit({ ...values, goal });
     router.back();
   };
 
@@ -32,6 +34,7 @@ export default function NewHabitScreen() {
         </View>
 
         <HabitForm
+          withGoal
           submitLabel="Criar hábito"
           submittingLabel="Criando..."
           onSubmit={handleSubmit}
