@@ -1,0 +1,12 @@
+# Ignora artefatos de código de outras branches e pastas de build do MkDocs
+apps/
+site/
+.cache/
+.venv/
+venv/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+node_modules/
+.DS_Store
+.vscode

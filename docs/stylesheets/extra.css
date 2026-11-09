@@ -1,0 +1,205 @@
+/* Alinhamento justificado para textos da documentação */
+.md-typeset p,
+.md-typeset li,
+.md-typeset td,
+.md-typeset .admonition {
+  text-align: justify;
+}
+
+/* Mantém cabeçalhos de tabela e códigos alinhados à esquerda */
+.md-typeset th,
+.md-typeset pre,
+.md-typeset code {
+  text-align: left;
+}
+
+/* Container interativo para diagramas Mermaid (Sequência, BPMN, C4, etc.) */
+.md-typeset .mermaid {
+  position: relative;
+  display: block;
+  width: 100%;
+  text-align: center;
+  margin: 1.8rem 0;
+  border: 1px solid var(--md-default-fg-color--lightest);
+  border-radius: 10px;
+  background-color: var(--md-code-bg-color);
+  padding: 3.2rem 1rem 1.2rem; /* Espaço superior dedicado para a barra de ferramentas */
+  overflow: hidden;
+  cursor: grab;
+  user-select: none;
+  transition: box-shadow 0.25s ease, border-color 0.25s ease;
+}
+
+.md-typeset .mermaid:active {
+  cursor: grabbing;
+}
+
+.md-typeset .mermaid:hover {
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.09);
+  border-color: var(--md-accent-fg-color--transparent);
+}
+
+.md-typeset .mermaid svg {
+  display: block;
+  margin: 0 auto;
+  max-width: 100%;
+  height: auto;
+  transform-origin: center center;
+  transition: transform 0.1s ease-out;
+}
+
+/* ==========================================================================
+   MODO ROLAGEM HORIZONTAL NÍTIDO (Evita necessidade de pinça no celular/tablet)
+   ========================================================================== */
+.md-typeset .mermaid.mermaid-scroll-mode {
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  cursor: default !important;
+  text-align: left !important;
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+  padding-bottom: 1.5rem;
+}
+
+.md-typeset .mermaid.mermaid-scroll-mode svg {
+  max-width: none !important;
+  width: auto !important;
+  height: auto !important;
+  min-width: 950px; /* Garante tamanho real e legibilidade total para BPMN e Sequência */
+  transform: none !important;
+  margin: 0 !important;
+}
+
+/* Estilização suave da barra de rolagem */
+.md-typeset .mermaid.mermaid-scroll-mode::-webkit-scrollbar {
+  height: 8px;
+}
+.md-typeset .mermaid.mermaid-scroll-mode::-webkit-scrollbar-track {
+  background: var(--md-default-fg-color--lightest);
+  border-radius: 4px;
+}
+.md-typeset .mermaid.mermaid-scroll-mode::-webkit-scrollbar-thumb {
+  background: var(--md-accent-fg-color);
+  border-radius: 4px;
+}
+
+/* ==========================================================================
+   BARRA DE FERRAMENTAS FLUTUANTE (TOOLBAR)
+   ========================================================================== */
+.mermaid-toolbar {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  z-index: 50;
+  background: var(--md-default-bg-color);
+  border: 1px solid var(--md-default-fg-color--lighter);
+  border-radius: 8px;
+  padding: 3px 6px;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.15);
+  opacity: 0.95;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: opacity 0.2s ease, box-shadow 0.2s ease;
+  pointer-events: auto;
+  cursor: default;
+}
+
+.mermaid-toolbar:hover {
+  opacity: 1;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
+}
+
+.mermaid-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--md-default-fg-color--light);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  user-select: none;
+}
+
+.mermaid-btn:hover {
+  background-color: var(--md-accent-fg-color--transparent);
+  color: var(--md-accent-fg-color);
+  border-color: var(--md-accent-fg-color--transparent);
+  transform: translateY(-1px);
+}
+
+.mermaid-btn:active {
+  transform: translateY(1px);
+}
+
+.mermaid-btn.active {
+  background-color: var(--md-accent-fg-color);
+  color: var(--md-default-bg-color);
+}
+
+/* ==========================================================================
+   MODO TELA CHEIA (FULLSCREEN)
+   ========================================================================== */
+.md-typeset .mermaid:fullscreen {
+  width: 100vw !important;
+  height: 100vh !important;
+  background-color: var(--md-default-bg-color) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 4rem 2rem 2rem !important;
+  margin: 0 !important;
+  border: none !important;
+  border-radius: 0 !important;
+  overflow: hidden !important;
+}
+
+.md-typeset .mermaid:fullscreen svg {
+  max-width: 94vw !important;
+  max-height: 88vh !important;
+}
+
+.md-typeset .mermaid:fullscreen .mermaid-toolbar {
+  top: 16px;
+  right: 20px;
+  padding: 6px 10px;
+  gap: 8px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+}
+
+.md-typeset .mermaid:fullscreen .mermaid-btn {
+  width: 38px;
+  height: 38px;
+}
+
+/* ==========================================================================
+   ADAPTAÇÃO PARA DISPOSITIVOS MÓVEIS (Touchscreen & Telas Estreitas)
+   ========================================================================== */
+@media (max-width: 768px) {
+  .md-typeset .mermaid {
+    padding-top: 3.5rem;
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+    border-radius: 6px;
+  }
+
+  .mermaid-toolbar {
+    top: 6px;
+    right: 6px;
+    gap: 3px;
+    padding: 2px 4px;
+    opacity: 1; /* Sempre 100% visível em mobile */
+  }
+
+  .mermaid-btn {
+    width: 34px;
+    height: 34px;
+  }
+}
