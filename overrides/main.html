@@ -1,0 +1,303 @@
+{% extends "base.html" %}
+
+{% block extrahead %}
+  {{ super() }}
+  <script>
+    /* Intercepta attachShadow antes de qualquer bundle para desarmar o modo closed do Material for MkDocs */
+    (function() {
+      if (typeof Element !== 'undefined' && Element.prototype && Element.prototype.attachShadow) {
+        const _origAttachShadow = Element.prototype.attachShadow;
+        Element.prototype.attachShadow = function(init) {
+          const shadow = _origAttachShadow.call(this, Object.assign({}, init, { mode: 'open' }));
+          this._capturedShadowRoot = shadow;
+          return shadow;
+        };
+      }
+    })();
+  </script>
+{% endblock %}
+
+{% block scripts %}
+  {{ super() }}
+  <script>
+  (function() {
+    const ICONS = {
+      zoomIn: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="11" y1="8" x2="11" y2="14"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>',
+      zoomOut: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>',
+      reset: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>',
+      scrollMode: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline><polyline points="9 18 3 12 9 6"></polyline><polyline points="21 18 15 12 21 6"></polyline></svg>',
+      fitMode: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 14 10 14 10 20"></polyline><polyline points="20 10 14 10 14 4"></polyline><polyline points="14 10 21 3"></polyline><polyline points="3 21 10 14"></polyline></svg>',
+      fullscreen: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>',
+      download: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>'
+    };
+
+    function getDiagramTitle(container) {
+      let prev = container.previousElementSibling;
+      while (prev) {
+        if (/^H[1-6]$/i.test(prev.tagName)) {
+          return prev.textContent.trim();
+        }
+        prev = prev.previousElementSibling;
+      }
+      return document.title.split('—')[0].trim() || 'Diagrama';
+    }
+
+    function downloadDiagramSvg(svgElement, title) {
+      try {
+        const clone = svgElement.cloneNode(true);
+        clone.style.transform = '';
+        clone.style.transformOrigin = '';
+        clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+        clone.setAttribute('xmlns:xlink', 'http://www.w3.org/1999/xlink');
+
+        const svgXml = new XMLSerializer().serializeToString(clone);
+        const blob = new Blob([svgXml], { type: 'image/svg+xml;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        const fileName = (title ? title.toLowerCase().replace(/[^a-z0-9]+/g, '-') : 'diagrama') + '.svg';
+        a.href = url;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      } catch (err) {
+        console.error('Erro ao baixar SVG:', err);
+      }
+    }
+
+    function toggleScrollMode(container, btnToggle) {
+      const isScroll = container.classList.toggle('mermaid-scroll-mode');
+      if (isScroll) {
+        btnToggle.innerHTML = ICONS.fitMode;
+        btnToggle.title = 'Ajustar Diagrama à Largura da Tela';
+        btnToggle.classList.add('active');
+      } else {
+        btnToggle.innerHTML = ICONS.scrollMode;
+        btnToggle.title = 'Modo Rolagem Horizontal Nítido (Tamanho Real)';
+        btnToggle.classList.remove('active');
+      }
+    }
+
+    function toggleFullscreenMode(container) {
+      if (!document.fullscreenElement) {
+        if (container.requestFullscreen) {
+          container.requestFullscreen();
+        } else if (container.webkitRequestFullscreen) {
+          container.webkitRequestFullscreen();
+        }
+      } else {
+        if (document.exitFullscreen) {
+          document.exitFullscreen();
+        }
+      }
+    }
+
+    function setupDiagramTools(container, svg) {
+      if (!container || !svg || container.dataset.diagramToolsReady === 'true') return;
+      container.dataset.diagramToolsReady = 'true';
+      container.classList.add('mermaid-interactive');
+
+      const title = getDiagramTitle(container);
+
+      // Panzoom ou fallback nativo
+      let panzoomInstance = null;
+      let currentTransformScale = 1;
+
+      if (typeof Panzoom !== 'undefined') {
+        try {
+          panzoomInstance = Panzoom(svg, {
+            maxScale: 5,
+            minScale: 0.5,
+            step: 0.25,
+            canvas: true,
+            touchAction: 'pan-y'
+          });
+
+          container.addEventListener('wheel', function(event) {
+            if (event.ctrlKey || event.metaKey || document.fullscreenElement) {
+              event.preventDefault();
+              panzoomInstance.zoomWithWheel(event);
+            }
+          }, { passive: false });
+
+          container.addEventListener('dblclick', function(e) {
+            if (!e.target.closest('.mermaid-toolbar')) {
+              panzoomInstance.reset();
+            }
+          });
+        } catch (panzoomErr) {
+          console.warn('Panzoom init fallback:', panzoomErr);
+        }
+      }
+
+      const toolbar = document.createElement('div');
+      toolbar.className = 'mermaid-toolbar';
+
+      // 1. Zoom In (+)
+      const btnZoomIn = document.createElement('button');
+      btnZoomIn.type = 'button';
+      btnZoomIn.className = 'mermaid-btn';
+      btnZoomIn.title = 'Aumentar Zoom (+)';
+      btnZoomIn.setAttribute('aria-label', 'Aumentar Zoom');
+      btnZoomIn.innerHTML = ICONS.zoomIn;
+      btnZoomIn.onclick = (e) => {
+        e.stopPropagation();
+        if (panzoomInstance) {
+          panzoomInstance.zoomIn();
+        } else {
+          currentTransformScale = Math.min(currentTransformScale + 0.25, 4);
+          svg.style.transform = 'scale(' + currentTransformScale + ')';
+        }
+      };
+
+      // 2. Zoom Out (-)
+      const btnZoomOut = document.createElement('button');
+      btnZoomOut.type = 'button';
+      btnZoomOut.className = 'mermaid-btn';
+      btnZoomOut.title = 'Diminuir Zoom (-)';
+      btnZoomOut.setAttribute('aria-label', 'Diminuir Zoom');
+      btnZoomOut.innerHTML = ICONS.zoomOut;
+      btnZoomOut.onclick = (e) => {
+        e.stopPropagation();
+        if (panzoomInstance) {
+          panzoomInstance.zoomOut();
+        } else {
+          currentTransformScale = Math.max(currentTransformScale - 0.25, 0.4);
+          svg.style.transform = 'scale(' + currentTransformScale + ')';
+        }
+      };
+
+      // 3. Reset
+      const btnReset = document.createElement('button');
+      btnReset.type = 'button';
+      btnReset.className = 'mermaid-btn';
+      btnReset.title = 'Restaurar Escala Original (100%)';
+      btnReset.setAttribute('aria-label', 'Restaurar Escala Original');
+      btnReset.innerHTML = ICONS.reset;
+      btnReset.onclick = (e) => {
+        e.stopPropagation();
+        if (panzoomInstance) {
+          panzoomInstance.reset();
+        } else {
+          currentTransformScale = 1;
+          svg.style.transform = 'none';
+        }
+        container.classList.remove('mermaid-scroll-mode');
+        btnScrollMode.innerHTML = ICONS.scrollMode;
+        btnScrollMode.title = 'Modo Rolagem Horizontal Nítido (Tamanho Real)';
+        btnScrollMode.classList.remove('active');
+      };
+
+      // 4. Modo Rolagem Nítido (Tamanho Real)
+      const btnScrollMode = document.createElement('button');
+      btnScrollMode.type = 'button';
+      btnScrollMode.className = 'mermaid-btn mermaid-btn-toggle';
+      btnScrollMode.title = 'Modo Rolagem Horizontal Nítido (Tamanho Real)';
+      btnScrollMode.setAttribute('aria-label', 'Alternar Rolagem Horizontal Nítida');
+      btnScrollMode.innerHTML = ICONS.scrollMode;
+      btnScrollMode.onclick = (e) => {
+        e.stopPropagation();
+        if (panzoomInstance) panzoomInstance.reset();
+        svg.style.transform = 'none';
+        currentTransformScale = 1;
+        toggleScrollMode(container, btnScrollMode);
+      };
+
+      // 5. Tela Cheia
+      const btnFullscreen = document.createElement('button');
+      btnFullscreen.type = 'button';
+      btnFullscreen.className = 'mermaid-btn';
+      btnFullscreen.title = 'Alternar Modo Tela Cheia';
+      btnFullscreen.setAttribute('aria-label', 'Alternar Tela Cheia');
+      btnFullscreen.innerHTML = ICONS.fullscreen;
+      btnFullscreen.onclick = (e) => {
+        e.stopPropagation();
+        toggleFullscreenMode(container);
+      };
+
+      // 6. Baixar SVG
+      const btnDownload = document.createElement('button');
+      btnDownload.type = 'button';
+      btnDownload.className = 'mermaid-btn';
+      btnDownload.title = 'Baixar Arquivo SVG Vetorial';
+      btnDownload.setAttribute('aria-label', 'Baixar SVG');
+      btnDownload.innerHTML = ICONS.download;
+      btnDownload.onclick = (e) => {
+        e.stopPropagation();
+        downloadDiagramSvg(svg, title);
+      };
+
+      toolbar.appendChild(btnZoomIn);
+      toolbar.appendChild(btnZoomOut);
+      toolbar.appendChild(btnReset);
+      toolbar.appendChild(btnScrollMode);
+      toolbar.appendChild(btnFullscreen);
+      toolbar.appendChild(btnDownload);
+
+      container.appendChild(toolbar);
+    }
+
+    function resolveDiagramElement(container) {
+      if (!container || container.dataset.diagramToolsReady === 'true') return null;
+
+      // 1. SVG já no Light DOM
+      let svg = container.querySelector('svg');
+      if (svg) {
+        return { container, svg };
+      }
+
+      // 2. SVG dentro de Shadow DOM
+      const shadow = container.shadowRoot || container._capturedShadowRoot;
+      if (shadow) {
+        svg = shadow.querySelector('svg');
+        if (svg) {
+          if (!container.parentNode) return null;
+          const wrapper = document.createElement('div');
+          wrapper.className = 'mermaid mermaid-interactive';
+          wrapper.appendChild(svg);
+          container.replaceWith(wrapper);
+          return { container: wrapper, svg };
+        }
+      }
+
+      return null;
+    }
+
+    function scanAndInitMermaid() {
+      const containers = document.querySelectorAll('.md-typeset div.mermaid, .md-typeset .mermaid');
+      containers.forEach(container => {
+        const resolved = resolveDiagramElement(container);
+        if (resolved) {
+          setupDiagramTools(resolved.container, resolved.svg);
+        }
+      });
+    }
+
+    function startMermaidObserver() {
+      scanAndInitMermaid();
+
+      const observer = new MutationObserver(() => {
+        scanAndInitMermaid();
+      });
+
+      observer.observe(document.body, { childList: true, subtree: true });
+
+      let ticks = 0;
+      const timer = setInterval(() => {
+        scanAndInitMermaid();
+        ticks++;
+        if (ticks >= 24) clearInterval(timer);
+      }, 250);
+    }
+
+    if (typeof document$ !== 'undefined') {
+      document$.subscribe(() => {
+        startMermaidObserver();
+      });
+    } else {
+      document.addEventListener('DOMContentLoaded', startMermaidObserver);
+    }
+  })();
+  </script>
+{% endblock %}

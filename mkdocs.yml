@@ -1,9 +1,110 @@
-site_name: Documentação
+site_name: HABBIT — Equipe Shannon
+site_description: Aplicativo móvel de acompanhamento de hábitos, constância por metas e streaks, estatísticas e grupos gamificados (UnB / FCTE — MDS 2026.2)
+site_author: Equipe Shannon - UnB / FCTE
+repo_name: FGA0138-MDS-Ajax/2026.2-T02-Shannon
+repo_url: https://github.com/FGA0138-MDS-Ajax/2026.2-T02-Shannon
+edit_uri: edit/docs/docs/
 
-nav:
-  - Instruções mkdocs: "index.md"
-  - Atas de Reunião:
-    - Ata 1: "atas-reuniao/ata-reuniao-1.md"
+docs_dir: docs
+site_dir: site
 
 theme:
   name: material
+  custom_dir: overrides
+  language: pt-BR
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Alternar para modo escuro
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Alternar para modo claro
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.code.annotate
+  icon:
+    repo: fontawesome/brands/github
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.arithmatex:
+      generic: true
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - attr_list
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+
+extra_css:
+  - stylesheets/extra.css
+
+extra_javascript:
+  - javascripts/mathjax.js
+  - https://unpkg.com/mathjax@3/es5/tex-mml-chtml.js
+  - javascripts/panzoom.min.js
+  - javascripts/panzoom-init.js
+
+plugins:
+  - search
+  - minify:
+      minify_html: true
+
+nav:
+  - Início: index.md
+  - "Visão do Produto & Projeto":
+      - "1. Visão Geral do Produto": visao-produto/visao-produto.md
+      - "2. Visão do Projeto & Processo": visao-produto/visao-projeto.md
+      - "3. Cronograma de Sprints & Riscos": visao-produto/cronograma-riscos.md
+      - "4. Métricas e Medições (GQM)": visao-produto/metricas-gqm.md
+  - "Requisitos & Backlog":
+      - "Perfis de Acesso e Cenários": requisitos/perfis-cenarios.md
+      - "Requisitos & Decisões de Produto": requisitos/requisitos.md
+      - "Histórias de Usuários (US-01 a US-36)": requisitos/historias-usuario.md
+  - Arquitetura:
+      - "Visão Geral, Metas e Restrições": arquitetura/visao-geral.md
+      - "Visão de Uso e Organização Lógica": arquitetura/visoes-uso-logica.md
+      - "Visão Estrutural e Modelo de Dados": arquitetura/modelo-dados.md
+      - "Motor de Metas, Streaks e Estatísticas": arquitetura/motor-metas-estatisticas.md
+      - "Visão de Implantação e CI/CD": arquitetura/implantacao.md
+      - "Decisões de Arquitetura (ADRs)": arquitetura/adrs.md
+  - "API (OpenAPI)":
+      - "Especificação da API REST": api/index.md
+  - "Testes e QA":
+      - "Estratégia e Roteiro de Testes": testes/estrategia-testes.md
+  - "Governança & Atas":
+      - "Definition of Ready & Done (DoR/DoD)": governanca/dod-dor.md
+      - "Matriz de Rastreabilidade": governanca/rastreabilidade.md
+      - "Atas de Reunião":
+          - "Ata de Reunião 1": atas-reuniao/ata-reuniao-1.md
