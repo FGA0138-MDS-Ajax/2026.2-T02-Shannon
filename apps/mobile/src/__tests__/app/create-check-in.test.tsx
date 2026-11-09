@@ -149,7 +149,7 @@ describe("CreateCheckInScreen", () => {
     ).toBeTruthy();
     expect(screen.getByText("Correr 5 km")).toBeTruthy();
     expect(screen.getByText("3 de 3 nesta semana")).toBeTruthy();
-    expect(screen.getByText("Meta do período cumprida ✓")).toBeTruthy();
+    expect(screen.getByText("Meta do período cumprida")).toBeTruthy();
     expect(screen.getByText("Treino intervalado")).toBeTruthy();
     expect(screen.getByText("Não pode faltar nenhum dia")).toBeTruthy();
     expect(router.replace).not.toHaveBeenCalled();

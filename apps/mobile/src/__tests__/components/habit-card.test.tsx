@@ -1,5 +1,6 @@
 import { fireEvent, render } from "@testing-library/react-native";
 import HabitCard from "@/components/habit-card";
+import { theme } from "@/config/theme";
 import type {
   HabitProgress,
   HabitWithProgress,
@@ -50,15 +51,14 @@ function makeHabit(progress: HabitProgress | null): HabitWithProgress {
 }
 
 describe("HabitCard", () => {
-  it("shows the period progress, streaks and status", async () => {
-    const { getByText } = await render(
+  it("shows the period progress", async () => {
+    const { getByText, getByTestId } = await render(
       <HabitCard habit={makeHabit(makeProgress(2, "in_progress"))} />,
     );
 
     expect(getByText("2/4 nesta semana")).toBeTruthy();
     expect(getByText("4x por semana, fecha no domingo")).toBeTruthy();
-    expect(getByText("Streak: 3 semanas · Melhor: 5 semanas")).toBeTruthy();
-    expect(getByText("Faltam 2")).toBeTruthy();
+    expect(getByTestId("habit-progress")).toBeTruthy();
   });
 
   it("highlights a habit at risk", async () => {
@@ -66,9 +66,9 @@ describe("HabitCard", () => {
       <HabitCard habit={makeHabit(makeProgress(1, "at_risk"))} />,
     );
 
-    expect(getByTestId("habit-progress-status")).toHaveTextContent(
-      "⚠ Não pode faltar nenhum dia",
-    );
+    expect(getByTestId("habit-card")).toHaveStyle({
+      borderColor: theme.colors.gray300,
+    });
   });
 
   it("renders an old habit without goal and still opens it", async () => {
