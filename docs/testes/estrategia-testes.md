@@ -6,16 +6,15 @@ Esta seção detalha a estratégia de verificação e validação do **HABBIT**,
 
 ## 1. Estratégia e Níveis de Teste
 
-A pirâmide de testes do **HABBIT** estrutura-se em quatro níveis complementares:
+A estratégia de testes automatizados do **HABBIT** estrutura-se em **três níveis complementares**:
 
 ```mermaid
 flowchart TB
-    L4["Nível 4: Testes de Sistema / Ponta a Ponta\nFluxos completos no emulador Android / iOS / Web integrados à API"]
-    L3["Nível 3: Testes de Componentes e Fluxos Mobile (Jest + RNTL + Storybook)\nTelas, formulários, calendário, AuthContext, interceptors Axios e durações"]
+    L3["Nível 3: Testes de Componentes e Telas Mobile (Jest + RNTL + Storybook)\nTelas, formulários, calendário, AuthContext, interceptors Axios e durações"]
     L2["Nível 2: Testes de Integração Back-end (Pytest + FastAPI TestClient + Testcontainers)\nRotas REST, autorização, transações PostgreSQL 17 real em contêiner e migrações Alembic"]
     L1["Nível 1: Testes Unitários Puros (Pytest / Jest)\nMotores matemáticos de streaks (day/week/month), estatísticas, calendário, bcrypt, JWT e validadores"]
 
-    L4 --- L3 --- L2 --- L1
+    L3 --- L2 --- L1
 ```
 
 | Nível | Escopo Verificado | Ferramental Adotado |
@@ -23,7 +22,11 @@ flowchart TB
 | **1. Unitário** | Funções matemáticas e utilitárias isoladas de banco e rede: cálculo de progresso e streaks (`day`, `week`, `month`), taxas de cumprimento, séries e calendário mensal, hashing de senhas com `bcrypt`, emissão/decodificação de JWT, validadores Pydantic e formatação de durações ISO 8601. | **Pytest** (`apps/api/tests/goals/unit/`, `apps/api/tests/statistics/unit/`, `apps/api/tests/auth/`) e **Jest** (`apps/mobile/src/__tests__/utils/`) |
 | **2. Integração** | Comunicação completa entre rotas FastAPI (`TestClient`), injeção de dependências (`SessionDep`, `get_current_user`), regras de negócio nos `services` e persistência real no **PostgreSQL 17** provisionado automaticamente em contêiner via **Testcontainers**, além da verificação de migrações **Alembic** (`test_migrations.py`). | **Pytest** + **FastAPI TestClient** + **Testcontainers (`postgres:17`)** |
 | **3. Componente / Interface** | Renderização, estados visuais, interações de toque, armazenamento de tokens (`expo-secure-store` / `localStorage`), fila de refresh no Axios e fluxos em etapas (como o check-in guiado por categorias) no React Native, além da documentação visual isolada no **Storybook**. | **Jest (`jest-expo`)** + **React Native Testing Library** + **Storybook React Native** |
-| **4. Sistema** | Execução ponta a ponta dos fluxos das User Stories e verificação dos Requisitos Não Funcionais (como usabilidade do check-in em até dois toques `C3-RNF-04`). | Aplicativo Expo em emulador/dispositivo integrado à API e banco PostgreSQL |
+
+!!! note "Decisão sobre Testes Automatizados E2E (End-to-End)"
+    O projeto **não adota testes automatizados de ponta a ponta (E2E)** por meio de frameworks como Maestro, Appium ou Cypress, visando manter a suíte de testes rápida, confiável e livre de instabilidades (*flakiness*) em emuladores móveis na pipeline de CI. 
+    
+    A garantia de qualidade integrada é assegurada em nível automatizado pela combinação de **testes de integração da API (com PostgreSQL 17 real em contêiner via Testcontainers)** e **testes de fluxos e telas no React Native com mocks de rede**. A validação dos fluxos completos de aceitação e critérios de usabilidade (como o registro de check-in em até dois toques `C3-RNF-04`) é conduzida por **homologação manual exploratória** pela equipe e pelo analista de qualidade (QA).
 
 ---
 
@@ -86,5 +89,5 @@ flowchart TB
 | **CT-06** | Calendário mensal e estatísticas (`US-16`, `US-17`) | Verificar a classificação de cada dia do mês (`completed`, `partial`, `none`, `outside`) e o cálculo da série temporal nos modos `calendar` e `rolling`. | Unitário / Funcional | Estados do calendário e taxas de cumprimento (`CompletionRate`) calculados sem distorção por períodos abertos. | **Passou** (`test_calculations.py`, `calendar.test.tsx`) |
 | **CT-07** | Fluxo de check-in em etapas no Mobile (`US-09`, `C3-RNF-04`) | Validar seleção de categorias, paginação de hábitos ("ver mais") e submissão do check-in no React Native. | Componente / Funcional | Categorias e hábitos são listados, selecionados e enviados via `POST /check-ins` com feedback visual. | **Passou** (`check-in.test.tsx`) |
 | **CT-08** | Restrição de permissão de Admin em grupo (`US-20`) | Bloquear remoção ou promoção de membros feita por membro comum do grupo. | Integração / Segurança | Retornar `HTTP 403 Forbidden` ao tentar invocar rotas administrativas sem `is_admin = true`. | **Planejado (Sprint 5)** |
-| **CT-09** | Fluxo inicial de ponta a ponta (`US-01`, `US-04`, `US-09`) | Verificar cadastro, criação de hábito com meta e primeiro check-in retornando progresso atualizado. | Sistema / Funcional | Usuário conclui o fluxo e visualiza `done = 1`, `status = completed` (para meta diária) e `current_streak = 1`. | **Passou** |
-| **CT-10** | Usabilidade do check-in em até dois toques (`C3-RNF-04`) | Verificar o requisito não funcional de agilidade no registro de check-in. | Sistema / Usabilidade | Acesso direto ao fluxo de check-in a partir da navegação principal com retorno imediato do progresso na mesma requisição. | **Passou** |
+| **CT-09** | Fluxo inicial de ponta a ponta (`US-01`, `US-04`, `US-09`) | Verificar cadastro, criação de hábito com meta e primeiro check-in retornando progresso atualizado. | Homologação Manual / Aceitação | Usuário conclui o fluxo e visualiza `done = 1`, `status = completed` (para meta diária) e `current_streak = 1`. | **Passou** |
+| **CT-10** | Usabilidade do check-in em até dois toques (`C3-RNF-04`) | Verificar o requisito não funcional de agilidade no registro de check-in. | Homologação Manual / Usabilidade | Acesso direto ao fluxo de check-in a partir da navegação principal com retorno imediato do progresso na mesma requisição. | **Passou** |

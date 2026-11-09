@@ -12,18 +12,20 @@ theme:
   name: material
   custom_dir: overrides
   language: pt-BR
+  logo: assets/images/logo.png
+  favicon: assets/images/favicon.png
   palette:
     - media: "(prefers-color-scheme: light)"
       scheme: default
-      primary: indigo
-      accent: indigo
+      primary: custom
+      accent: custom
       toggle:
         icon: material/brightness-7
         name: Alternar para modo escuro
     - media: "(prefers-color-scheme: dark)"
       scheme: slate
-      primary: indigo
-      accent: indigo
+      primary: custom
+      accent: custom
       toggle:
         icon: material/brightness-4
         name: Alternar para modo claro

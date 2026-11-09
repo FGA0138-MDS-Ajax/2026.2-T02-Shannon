@@ -1,3 +1,38 @@
+/* ==========================================================================
+   PALETA DE CORES PRINCIPAIS DO HABBIT (#F5652F e #D15528)
+   ========================================================================== */
+:root,
+[data-md-color-scheme="default"] {
+  --md-primary-fg-color: #F5652F;
+  --md-primary-fg-color--light: #ff7d4a;
+  --md-primary-fg-color--dark: #D15528;
+  --md-accent-fg-color: #F5652F;
+}
+
+[data-md-color-scheme="slate"] {
+  --md-primary-fg-color: #F5652F;
+  --md-primary-fg-color--light: #ff7d4a;
+  --md-primary-fg-color--dark: #D15528;
+  --md-accent-fg-color: #F5652F;
+}
+
+/* Fixação da cor primária do Habbit na Top Bar (header) e na barra de abas */
+.md-header {
+  background-color: #F5652F !important;
+}
+
+.md-tabs {
+  background-color: #D15528 !important;
+}
+
+/* Realce e alinhamento do logo do Habbit na barra superior */
+.md-header__button.md-logo img,
+.md-header__button.md-logo svg {
+  height: 1.6rem !important;
+  width: auto !important;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.15));
+}
+
 /* Alinhamento justificado para textos da documentação */
 .md-typeset p,
 .md-typeset li,
