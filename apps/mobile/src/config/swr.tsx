@@ -17,7 +17,7 @@ export default function SWR({ children }: SWRProps) {
           let appState = AppState.currentState;
           const onAppStateChange = (state: AppStateStatus) => {
             /* If it's resuming from background or inactive mode to active one */
-            if (appState.match(/inactive|background/) && state === "active") {
+            if (appState?.match(/inactive|background/) && state === "active") {
               callback();
             }
             appState = state;

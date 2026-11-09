@@ -8,7 +8,7 @@ export default function Index() {
   const { user, isLoading } = useSession();
 
   if (!isLoading && user) {
-    return <Redirect href="/(app)" />;
+    return <Redirect href="/(app)/(tabs)" />;
   }
 
   return (

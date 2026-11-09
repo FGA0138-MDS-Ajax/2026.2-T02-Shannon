@@ -1,5 +1,5 @@
 import { fireEvent, render, waitFor } from "@testing-library/react-native";
-import UserScreen from "@/app/(app)/user";
+import UserScreen from "@/app/(app)/(tabs)/user";
 import { useSession } from "@/hooks/useSession";
 
 jest.mock("@/hooks/useSession", () => ({

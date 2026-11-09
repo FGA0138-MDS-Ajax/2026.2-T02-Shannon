@@ -1,65 +1,20 @@
-import { Lucide } from "@react-native-vector-icons/lucide";
-import { Tabs } from "expo-router/tabs";
-import { theme } from "@/config/theme";
+import { Stack } from "expo-router";
+
+export const unstable_settings = {
+  anchor: "(tabs)",
+};
 
 export default function AppLayout() {
   return (
-    <Tabs
-      // "Voltar" retorna à tela anterior (ex.: do detalhe para a lista)
-      backBehavior="history"
-      screenOptions={{
-        headerShown: false,
-        tabBarActiveTintColor: theme.colors.primary,
-        tabBarInactiveTintColor: "#6B6560",
-        tabBarLabelStyle: { fontFamily: theme.font.medium, fontSize: 13 },
-        tabBarStyle: {
-          backgroundColor: theme.colors.gray100,
-        },
-      }}
-    >
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: "Painel",
-          tabBarIcon: ({ color }) => (
-            <Lucide name="home" size={20} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="habits"
-        options={{
-          title: "Hábitos",
-          tabBarIcon: ({ color }) => (
-            <Lucide name="rabbit" size={20} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="check-in"
-        options={{
-          title: "Check-in",
-          tabBarIcon: ({ color }) => (
-            <Lucide name="book-open-check" size={20} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="user"
-        options={{
-          title: "Usuário",
-          tabBarIcon: ({ color }) => (
-            <Lucide name="user" size={20} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen name="habits/create" options={{ href: null }} />
-      <Tabs.Screen name="habits/[id]/index" options={{ href: null }} />
-      <Tabs.Screen name="habits/[id]/edit" options={{ href: null }} />
-      <Tabs.Screen name="habits/[id]/goal" options={{ href: null }} />
-      <Tabs.Screen name="check-ins/[id]/index" options={{ href: null }} />
-      <Tabs.Screen name="check-ins/create" options={{ href: null }} />
-      <Tabs.Screen name="check-ins/[id]/edit" options={{ href: null }} />
-    </Tabs>
+    <Stack screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="(tabs)" />
+      <Stack.Screen name="habits/create" />
+      <Stack.Screen name="habits/[id]/index" />
+      <Stack.Screen name="habits/[id]/edit" />
+      <Stack.Screen name="habits/[id]/goal" />
+      <Stack.Screen name="check-ins/create" />
+      <Stack.Screen name="check-ins/[id]/index" />
+      <Stack.Screen name="check-ins/[id]/edit/index" />
+    </Stack>
   );
 }

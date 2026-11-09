@@ -94,7 +94,9 @@ export default function HabitsScreen() {
         refreshControl={
           <RefreshControl
             refreshing={isLoading}
-            onRefresh={() => refreshHabits()}
+            onRefresh={() => {
+              refreshHabits();
+            }}
             colors={[theme.colors.primary]}
             tintColor={theme.colors.primary}
           />

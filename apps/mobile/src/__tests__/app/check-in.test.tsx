@@ -1,5 +1,5 @@
 import { fireEvent, render, waitFor } from "@testing-library/react-native";
-import CheckInScreen from "@/app/(app)/check-in";
+import CheckInScreen from "@/app/(app)/(tabs)/check-in";
 import { listUserCheckIns } from "@/services/check-ins-api";
 import type { CheckIn } from "@/services/types/habits";
 import { toApiDate } from "@/utils/date";

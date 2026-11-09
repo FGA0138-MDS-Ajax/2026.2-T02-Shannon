@@ -6,6 +6,10 @@ import useFonts from "@/hooks/useFonts";
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
+export const unstable_settings = {
+  anchor: "index",
+};
+
 function RootNavigation() {
   const areFontsLoaded = useFonts();
   const { isLoading: isSessionLoading, session } = useSession();
@@ -21,10 +25,7 @@ function RootNavigation() {
   }
 
   return (
-    <Stack
-      screenOptions={{ headerShown: false }}
-      initialRouteName={session ? "(app)" : "index"}
-    >
+    <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="index" />
 
       <Stack.Protected guard={!!session}>

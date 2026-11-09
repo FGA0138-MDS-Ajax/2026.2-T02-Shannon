@@ -1,4 +1,4 @@
-import { forwardRef, useState } from "react";
+import { type ComponentRef, forwardRef, useState } from "react";
 import {
   Pressable,
   StyleSheet,
@@ -14,7 +14,7 @@ export interface InputProps extends TextInputProps {
   error?: string;
 }
 
-const Input = forwardRef<TextInput, InputProps>(
+const Input = forwardRef<ComponentRef<typeof TextInput>, InputProps>(
   ({ label, error, secureTextEntry, style, ...props }, ref) => {
     const [isPasswordVisible, setIsPasswordVisible] = useState(false);
     const [isFocused, setIsFocused] = useState(false);

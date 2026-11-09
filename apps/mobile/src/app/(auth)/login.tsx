@@ -39,7 +39,7 @@ export default function LoginScreen() {
     try {
       setSubmitting(true);
       await signIn({ login: trimmedLogin, password });
-      router.replace("/(app)");
+      router.replace("/(app)/(tabs)");
     } catch (err: unknown) {
       setErrorMessage(
         err instanceof Error ? err.message : "Erro ao realizar login.",

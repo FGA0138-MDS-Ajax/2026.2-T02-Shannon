@@ -160,7 +160,9 @@ export default function CheckInScreen() {
         refreshControl={
           <RefreshControl
             refreshing={isValidating && !isLoading}
-            onRefresh={refreshCheckIns}
+            onRefresh={() => {
+              refreshCheckIns();
+            }}
             colors={[theme.colors.primary]}
             tintColor={theme.colors.primary}
           />

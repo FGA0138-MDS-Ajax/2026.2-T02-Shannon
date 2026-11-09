@@ -40,7 +40,7 @@ export default function SignupScreen() {
         email: trimmedEmail,
         password,
       });
-      router.replace("/(app)");
+      router.replace("/(app)/(tabs)");
     } catch (err: unknown) {
       setErrorMessage(
         err instanceof Error ? err.message : "Erro ao realizar cadastro.",
