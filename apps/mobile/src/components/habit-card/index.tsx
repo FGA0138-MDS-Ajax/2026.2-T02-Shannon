@@ -1,9 +1,5 @@
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import {
-  describeGoal,
-  describeProgressStatus,
-  formatStreak,
-} from "@/config/goal-labels";
+import { describeGoal } from "@/config/goal-labels";
 import { habitCategoryLabels } from "@/config/habit-categories";
 import { theme } from "@/config/theme";
 import type {
@@ -68,7 +64,6 @@ const periodPhrases: Record<GoalPeriod, string> = {
 function HabitProgressSummary({ progress }: { progress: HabitProgress }) {
   const { done, target_count } = progress.current_period;
   const { period } = progress.goal;
-  const isAtRisk = progress.status === "at_risk";
   const isCompleted = progress.status === "completed";
   // `done` pode passar da meta; a barra para em 100%
   const ratio = target_count > 0 ? Math.min(done / target_count, 1) : 0;
@@ -95,23 +90,6 @@ function HabitProgressSummary({ progress }: { progress: HabitProgress }) {
           ]}
         />
       </View>
-
-      <Text style={styles.streak}>
-        Streak: {formatStreak(progress.current_streak, period)} · Melhor:{" "}
-        {formatStreak(progress.best_streak, period)}
-      </Text>
-
-      <Text
-        testID="habit-progress-status"
-        style={[
-          styles.status,
-          isAtRisk && styles.statusAtRisk,
-          isCompleted && styles.statusCompleted,
-        ]}
-      >
-        {isAtRisk ? "⚠ " : ""}
-        {describeProgressStatus(progress)}
-      </Text>
     </View>
   );
 }
@@ -134,8 +112,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   cardAtRisk: {
-    borderColor: theme.colors.primary,
-    borderWidth: 2,
+    borderColor: theme.colors.gray300,
   },
   cardPressed: {
     opacity: 0.8,

@@ -1,9 +1,5 @@
 import { StyleSheet, Text, View } from "react-native";
-import {
-  describeGoal,
-  describeProgressStatus,
-  formatStreak,
-} from "@/config/goal-labels";
+import { describeGoal, describeProgressStatus } from "@/config/goal-labels";
 import { theme } from "@/config/theme";
 import type { HabitProgress, ProgressStatus } from "@/services/types/habits";
 import { formatDate, parseApiDate } from "@/utils/date";
@@ -50,10 +46,19 @@ export default function GoalProgress({ progress }: GoalProgressProps) {
       <View style={styles.doneRow}>
         <Text style={styles.done}>
           {period.done} de {period.target_count}
-          {isDone ? " ✓" : ""}
         </Text>
         <View style={styles.track}>
-          <View style={[styles.fill, { width: `${percent}%` }]} />
+          <View
+            style={[
+              styles.fill,
+              {
+                width: `${percent}%`,
+                backgroundColor: isDone
+                  ? statusStyles.completed.color
+                  : theme.colors.primary,
+              },
+            ]}
+          />
         </View>
       </View>
 
@@ -68,15 +73,6 @@ export default function GoalProgress({ progress }: GoalProgressProps) {
           style={[styles.statusText, { color: statusColors.color }]}
         >
           {describeProgressStatus(progress)}
-        </Text>
-      </View>
-
-      <View style={styles.streakRow}>
-        <Text style={styles.streak}>
-          🔥 {formatStreak(progress.current_streak, goal.period)}
-        </Text>
-        <Text style={styles.best}>
-          Recorde: {formatStreak(progress.best_streak, goal.period)}
         </Text>
       </View>
 
@@ -108,17 +104,19 @@ const styles = StyleSheet.create({
   },
   period: {
     fontFamily: theme.font.regular,
-    fontSize: 13,
+    fontSize: 12,
     color: "#6B6560",
   },
   doneRow: {
+    display: "flex",
+    justifyContent: "center",
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
   },
   done: {
     fontFamily: theme.font.medium,
-    fontSize: 15,
+    fontSize: 14,
     color: "#1C1917",
   },
   track: {
@@ -134,7 +132,9 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.primary,
   },
   status: {
-    borderRadius: 8,
+    borderRadius: 99999999,
+    display: "flex",
+    alignItems: "center",
     paddingVertical: 6,
     paddingHorizontal: 10,
   },

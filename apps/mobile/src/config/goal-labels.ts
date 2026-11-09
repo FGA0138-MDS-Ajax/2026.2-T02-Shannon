@@ -67,7 +67,7 @@ const progressStatusLabels: Record<
   Exclude<ProgressStatus, "in_progress">,
   string
 > = {
-  completed: "Meta do período cumprida ✓",
+  completed: "Meta do período cumprida",
   at_risk: "Não pode faltar nenhum dia",
   failed: "Este período não fecha mais; recomece no próximo",
   ended: "Streak final",

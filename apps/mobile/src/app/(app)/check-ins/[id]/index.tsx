@@ -102,7 +102,6 @@ export default function CheckInDetailScreen() {
       );
     }
 
-    // Só quem registrou o check-in pode alterá-lo
     const isOwner = checkIn.user_id === user?.id;
 
     return (

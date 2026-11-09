@@ -8,13 +8,12 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import HabitForm, { type HabitFormValues } from "@/components/habit-form";
+import { HabitForm, type HabitFormValues } from "@/components/forms/habit-form";
 import { theme } from "@/config/theme";
 import { createHabit } from "@/services/habits-api";
 
-export default function NewHabitScreen() {
+export default function CreateHabitScreen() {
   const handleSubmit = async ({ goal, ...values }: HabitFormValues) => {
-    // Com `withGoal`, o formulário só envia depois de a meta ser escolhida
     if (!goal) return;
     await createHabit({ ...values, goal });
     router.back();

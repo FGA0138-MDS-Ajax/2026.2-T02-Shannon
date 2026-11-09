@@ -21,7 +21,6 @@ export const buttonVariants = createVariants({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    marginHorizontal: 8,
     gap: 8,
   },
   variants: {

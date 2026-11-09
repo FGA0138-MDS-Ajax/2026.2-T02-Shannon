@@ -80,7 +80,10 @@ export default function HabitsScreen() {
             onPress={() => router.push(`/habits/${item.id}` as Href)}
           />
         )}
-        contentContainerStyle={!habits && styles.emptyContainer}
+        contentContainerStyle={[
+          { paddingBottom: 74 },
+          !habits && styles.emptyContainer,
+        ]}
         ListEmptyComponent={
           <Text style={styles.emptyText}>
             {filter === "active"
@@ -101,7 +104,13 @@ export default function HabitsScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView
+      edges={{
+        top: "additive",
+        bottom: "off",
+      }}
+      style={styles.container}
+    >
       <View style={styles.header}>
         <Text style={styles.title}>Meus hábitos</Text>
       </View>
@@ -137,7 +146,7 @@ export default function HabitsScreen() {
         <Button
           variant="primary"
           width="full"
-          onPress={() => router.push("/(app)/new-habit")}
+          onPress={() => router.push("/(app)/habits/create" as Href)}
         >
           Novo hábito
         </Button>

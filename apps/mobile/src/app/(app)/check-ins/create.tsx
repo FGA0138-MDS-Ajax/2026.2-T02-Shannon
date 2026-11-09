@@ -58,6 +58,8 @@ const currentPeriodLabels: Record<GoalPeriod, string> = {
   month: "neste mês",
 };
 
+// TODO: refazer o flow de criação do checkin
+
 export default function CreateCheckInScreen() {
   // Em qual tela do fluxo a pessoa está
   const [step, setStep] = useState<Step>("categories");

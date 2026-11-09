@@ -1,4 +1,9 @@
-import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
+import {
+  type Href,
+  router,
+  useFocusEffect,
+  useLocalSearchParams,
+} from "expo-router";
 import { useCallback, useState } from "react";
 import {
   ActivityIndicator,
@@ -12,7 +17,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import useSWR from "swr";
 import Button from "@/components/button";
-import HabitForm, { type HabitFormValues } from "@/components/habit-form";
+import { HabitForm, type HabitFormValues } from "@/components/forms/habit-form";
 import { theme } from "@/config/theme";
 import { request } from "@/services/api";
 import { getErrorMessage } from "@/services/api-errors";
@@ -102,7 +107,6 @@ export default function EditHabitScreen() {
           is_public: habit.is_public,
           target_end_date: habit.target_end_date,
         }}
-        // A data final não pode ser anterior à criação do hábito
         minimumDate={parseApiDate(habit.created_at)}
         submitLabel="Salvar"
         submittingLabel="Salvando..."
@@ -125,6 +129,14 @@ export default function EditHabitScreen() {
         </View>
 
         {renderContent()}
+
+        <Button
+          variant="secondary"
+          width="full"
+          onPress={() => router.push(`/habits/${id}/goal` as Href)}
+        >
+          Editar meta
+        </Button>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -134,7 +146,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     paddingHorizontal: 24,
-    paddingVertical: 16,
+    paddingTop: 16,
     backgroundColor: theme.colors.gray,
   },
   keyboardView: {

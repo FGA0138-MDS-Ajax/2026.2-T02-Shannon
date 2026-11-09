@@ -1,3 +1,4 @@
+import { Lucide } from "@react-native-vector-icons/lucide";
 import {
   type Href,
   router,
@@ -12,6 +13,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TouchableOpacity,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -47,7 +49,6 @@ export default function HabitDetailScreen() {
 
   const notFound = habitError?.status === 404;
 
-  // O histórico carrega à parte: se falhar, os dados do hábito continuam na tela
   const { data: checkIns, mutate: refreshCheckIns } = useSWR<CheckIn[]>(
     `/habits/${id}/check-ins`,
     request,
@@ -56,7 +57,6 @@ export default function HabitDetailScreen() {
     },
   );
 
-  // Hábito antigo não tem meta: sem `goal`, nem chama a rota (ela responderia 404)
   const { data: progress, mutate: refreshProgress } = useSWR<HabitProgress>(
     habit?.goal ? `/goals/habits/${id}/progress` : null,
     request,
@@ -65,7 +65,6 @@ export default function HabitDetailScreen() {
     },
   );
 
-  // Recarrega ao voltar para a tela: reflete check-ins novos ou excluídos
   useFocusEffect(
     useCallback(() => {
       setErrorMessage(null);
@@ -196,7 +195,6 @@ export default function HabitDetailScreen() {
         key={checkIn.id}
         testID="check-in-item"
         style={styles.checkIn}
-        // Cast: os tipos gerados pelo Expo ainda não reconhecem o [id]
         onPress={() => router.push(`/check-ins/${checkIn.id}` as Href)}
       >
         <Text style={styles.checkInTitle}>{checkIn.title}</Text>
@@ -239,9 +237,7 @@ export default function HabitDetailScreen() {
     }
 
     const isFinished = habit.status === "finished";
-    // Só quem criou o hábito pode alterá-lo
     const isAuthor = habit.author_user_id === user?.id;
-    // Hábito encerrado não aceita alteração de meta
     const canChangeGoal = isAuthor && !isFinished;
 
     return (
@@ -293,45 +289,50 @@ export default function HabitDetailScreen() {
 
         {isAuthor && (
           <View style={styles.actions}>
-            <Button
-              variant="secondary"
-              width="full"
+            <TouchableOpacity
+              activeOpacity={0.8}
               disabled={acting}
               style={styles.actionButton}
-              // Cast: os tipos gerados pelo Expo ainda não reconhecem o [id]
               onPress={() => router.push(`/habits/${habit.id}/edit` as Href)}
             >
-              Editar
-            </Button>
-            {canChangeGoal && habit.goal && (
-              <Button
-                variant="secondary"
-                width="full"
-                disabled={acting}
-                style={styles.actionButton}
-                onPress={() => router.push(`/habits/${habit.id}/goal` as Href)}
-              >
-                Editar meta
-              </Button>
-            )}
+              <View style={styles.actionTitleRow}>
+                <Lucide name="edit-2" size={16} />
+                <Text style={styles.actionTitle}>Editar</Text>
+              </View>
+              <Text style={styles.actionButtonText}>
+                Editar metas, descrição e configurações
+              </Text>
+            </TouchableOpacity>
             {!isFinished && (
-              <Button
-                variant="primary"
-                width="full"
+              <TouchableOpacity
+                activeOpacity={0.8}
                 disabled={acting}
                 style={styles.actionButton}
                 onPress={handleFinish}
               >
-                Encerrar hábito
-              </Button>
+                <View style={styles.actionTitleRow}>
+                  <Lucide name="archive" size={16} />
+                  <Text style={styles.actionTitle}>Finalizar</Text>
+                </View>
+                <Text style={styles.actionButtonText}>
+                  Encerrar o hábito e movê-lo para a lista de encerrados
+                </Text>
+              </TouchableOpacity>
             )}
-            <Pressable
+            <TouchableOpacity
+              activeOpacity={0.8}
               disabled={acting}
+              style={styles.actionButton}
               onPress={handleDelete}
-              style={styles.deleteButton}
             >
-              <Text style={styles.deleteText}>Excluir hábito</Text>
-            </Pressable>
+              <View style={styles.actionTitleRow}>
+                <Lucide name="delete" size={16} />
+                <Text style={styles.actionTitle}>Deletar</Text>
+              </View>
+              <Text style={styles.deleteText}>
+                Excluir o hábito permanentemente
+              </Text>
+            </TouchableOpacity>
           </View>
         )}
       </ScrollView>
@@ -339,9 +340,16 @@ export default function HabitDetailScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView
+      edges={{
+        bottom: "off",
+        top: "additive",
+      }}
+      style={styles.container}
+    >
       <Pressable onPress={() => router.back()} style={styles.backButton}>
-        <Text style={styles.backButtonText}>← Voltar</Text>
+        <Lucide name="arrow-left" size={16} color={theme.colors.primaryDark} />
+        <Text style={styles.backButtonText}>Voltar</Text>
       </Pressable>
       {renderContent()}
     </SafeAreaView>
@@ -361,7 +369,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     paddingHorizontal: 24,
-    paddingVertical: 16,
+    paddingTop: 16,
     backgroundColor: theme.colors.gray,
   },
   backButton: {
@@ -369,6 +377,9 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     alignSelf: "flex-start",
     paddingVertical: 4,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
   },
   backButtonText: {
     fontFamily: theme.font.medium,
@@ -457,18 +468,33 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     gap: 8,
   },
-  // O Button tem margem lateral de 8; somada à largura total, ele passaria
-  // da borda direita e seria cortado pela ScrollView
+  actionTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 4,
+  },
   actionButton: {
-    marginHorizontal: 0,
+    backgroundColor: theme.colors.gray100,
+    padding: 12,
+    borderRadius: 12,
+    width: "100%",
+    borderWidth: 1,
+    borderColor: theme.colors.gray300,
+  },
+  actionTitle: {
+    fontFamily: theme.font.bold,
+    fontSize: 16,
+    color: "#1C1917",
+  },
+  actionButtonText: {
+    fontFamily: theme.font.regular,
+    fontSize: 14,
+    color: "#6B6560",
   },
   defineGoalButton: {
     marginHorizontal: 0,
     marginTop: 8,
-  },
-  deleteButton: {
-    alignSelf: "center",
-    paddingVertical: 8,
   },
   deleteText: {
     fontFamily: theme.font.medium,

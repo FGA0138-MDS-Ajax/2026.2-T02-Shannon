@@ -166,14 +166,12 @@ export default function CheckInScreen() {
           />
         }
       >
-        {/* Componente de Calendário */}
         <Calendar
           checkInDates={checkInDates}
           selectedDate={selectedDate}
           onSelectDate={setSelectedDate}
         />
 
-        {/* Mensagem de Erro se houver */}
         {errorMessage && (
           <View style={styles.errorBanner}>
             <Text style={styles.errorText}>{errorMessage}</Text>
@@ -187,7 +185,6 @@ export default function CheckInScreen() {
           </View>
         )}
 
-        {/* Seção dos Check-ins do Dia Selecionado */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>
             Check-ins de {formattedSelectedDate}
@@ -219,7 +216,6 @@ export default function CheckInScreen() {
         )}
       </ScrollView>
 
-      {/* Botão de Check-in Flutuante */}
       <View style={styles.action}>
         <Button
           testID="new-check-in-button"

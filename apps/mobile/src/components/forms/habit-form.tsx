@@ -57,7 +57,7 @@ type FieldErrors = {
   target_end_date?: string;
 };
 
-export default function HabitForm({
+export function HabitForm({
   initialValues,
   withGoal = false,
   minimumDate,
