@@ -60,7 +60,7 @@ uv sync
 
 ---
 
-## 🗄️ Banco de Dados
+## 🗄️ Banco de Dados e Migrações
 
 Você pode subir uma instância do PostgreSQL localmente utilizando o Docker Compose configurado na raiz do projeto:
 
@@ -69,7 +69,82 @@ Você pode subir uma instância do PostgreSQL localmente utilizando o Docker Com
 docker compose up -d postgresql
 ```
 
-As tabelas do banco de dados são geradas automaticamente na inicialização da aplicação pelo ciclo de vida (`lifespan`) do FastAPI.
+### ⚡ Procedimento de Execução das Migrações
+
+Com o banco de dados ativo, aplique as migrações para criar as tabelas ou atualizar o esquema para a versão mais recente:
+
+```bash
+# Dentro do diretório apps/api:
+uv run alembic upgrade head
+```
+
+> ⚠️ **Importante:** Sempre execute `uv run alembic upgrade head` antes de iniciar a API pela primeira vez ou após atualizar sua branch (`git pull`) com alterações da equipe.
+
+---
+
+### 🧭 Guia de Desenvolvimento de Migrações (Alembic)
+
+As alterações no esquema do banco de dados são gerenciadas através de migrações versionadas com o **Alembic**.
+
+Dentro do diretório `apps/api`:
+
+#### 1. Comandos do dia a dia
+- **Aplicar todas as migrações pendentes:**
+  ```bash
+  uv run alembic upgrade head
+  ```
+- **Criar uma nova migração (após alterar modelos em `app/*/models.py`):**
+  ```bash
+  uv run alembic revision --autogenerate -m "descricao_da_mudanca"
+  ```
+  > ⚠️ **Sempre revise o arquivo gerado em `migrations/versions/` antes de commitar!** O autogenerate serve de rascunho, mas requer validação manual.
+- **Voltar (desfazer) a última migração aplicada:**
+  ```bash
+  uv run alembic downgrade -1
+  ```
+- **Conferir se o banco local bate com os modelos do código:**
+  ```bash
+  uv run alembic check
+  ```
+
+#### 2. O que o `autogenerate` NÃO detecta automaticamente
+- **Renomear colunas ou tabelas:** O Alembic interpreta renomeações como "remover coluna antiga e criar coluna nova", o que causa **perda de dados**. Em caso de renomeação, ajuste manualmente para `op.alter_column(..., new_column_name=...)`.
+- **Alterações em restrições `CHECK`:** Modificações em cláusulas `CheckConstraint` existentes não são comparadas automaticamente.
+- **Novos valores em ENUM nativo do PostgreSQL:** Adicionar valores a um tipo `ENUM` existente exige instruções manuais (`ALTER TYPE ... ADD VALUE`).
+
+#### 3. Resolvendo "Multiple Heads" (conflito de migrações concorrentes)
+Se duas branches criarem migrações simultaneamente, o Alembic acusará múltiplas pontas (*multiple heads*). Para resolver:
+- **Opção 1:** Rodar o merge de heads gerando uma revisão de mesclagem:
+  ```bash
+  uv run alembic merge heads -m "merge branch heads"
+  ```
+- **Opção 2:** Fazer `git rebase` com a branch principal, excluir o arquivo da sua migração e gerá-lo novamente com o banco atualizado.
+
+#### 4. Guia de Transição do Banco Local (Pós-Merge da Issue #83)
+Após o merge desta funcionalidade, todo o time deve alinhar o banco local com o Alembic:
+
+- **Opção A (Recomendada - Reset limpo):**
+  ```bash
+  # Na raiz do repositório:
+  docker compose down -v
+  docker compose up -d postgresql
+
+  # Em apps/api:
+  uv run alembic upgrade head
+  ```
+- **Opção B (Manter os dados locais existentes):**
+  Se você já possui dados de teste no seu banco e quer mantê-los:
+  ```bash
+  # Em apps/api:
+  # 1. Marca o banco no baseline inicial (f6976b737c1c):
+  uv run alembic stamp f6976b737c1c
+
+  # 2. Aplica as migrações mais recentes (ex: statistics_is_public):
+  uv run alembic upgrade head
+
+  # 3. Confere a consistência:
+  uv run alembic check
+  ```
 
 ---
 
@@ -77,7 +152,7 @@ As tabelas do banco de dados são geradas automaticamente na inicialização da 
 
 ### Modo Desenvolvimento (Hot Reload)
 
-Com o banco de dados ativo e o ambiente sincronizado, execute o servidor de desenvolvimento:
+Com o banco de dados ativo, as migrações aplicadas (`uv run alembic upgrade head`) e o ambiente sincronizado, execute o servidor de desenvolvimento:
 
 ```bash
 uv run fastapi dev app/main.py
