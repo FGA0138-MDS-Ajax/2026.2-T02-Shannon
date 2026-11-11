@@ -60,7 +60,7 @@ def delete_group(db: Session, group: Group) -> None:
 
 
 def list_groups_of_user(db: Session, user_id: UUID) -> list[tuple[Group, Member]]:
-  """Lista pares (Group, Member) dos grupos em que o usuário participa. Não faz commit."""
+  """Lista pares (Group, Member) dos grupos do usuário. Não faz commit."""
   statement = (
     select(Group, Member)
     .join(Member, col(Member.group_id) == col(Group.id))

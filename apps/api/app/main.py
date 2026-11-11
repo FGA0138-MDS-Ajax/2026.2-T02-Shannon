@@ -6,9 +6,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.auth.router import auth_router
 from app.checkins.router import check_ins_router
 from app.goals.router import goals_router
+from app.group.router import group_router
 from app.habits.router import habit_router
 from app.statistics.router import statistics_router
-from app.group.router import group_router
 
 
 @asynccontextmanager

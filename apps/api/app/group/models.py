@@ -5,7 +5,6 @@ from uuid import UUID, uuid4
 from sqlalchemy import CheckConstraint
 from sqlmodel import DateTime, Field, SQLModel, func
 
-
 GROUP_MAX_MEMBERS = 30
 
 
