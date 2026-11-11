@@ -4,13 +4,13 @@ from alembic import context
 from sqlmodel import SQLModel
 
 # 1. Importa todos os módulos de modelos para registrar
-# as 6 tabelas no SQLModel.metadata
+# as 8 tabelas no SQLModel.metadata
 import app.auth.models  # noqa: F401 (tabela: users)
 import app.auth.session.models  # noqa: F401 (tabela: auth_sessions)
 import app.checkins.models  # noqa: F401 (tabelas: check_ins, check_in_habits)
 import app.goals.models  # noqa: F401 (tabela: goals)
-import app.habits.models  # noqa: F401 (tabela: habits)
 import app.group.models  # noqa: F401 (tabelas: groups, group_members)
+import app.habits.models  # noqa: F401 (tabela: habits)
 from app.config import settings
 from app.database import engine
 

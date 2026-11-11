@@ -63,7 +63,7 @@ class Habit(SQLModel, table=True):
   author_user_id: UUID | None = Field(
     default=None,
     foreign_key="users.id",
-    nullable=False,
+    nullable=True,
     ondelete="CASCADE",
     index=True,
   )
