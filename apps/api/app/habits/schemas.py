@@ -58,7 +58,8 @@ class HabitPublic(BaseModel):
   category: HabitCategory
   is_public: bool
   status: HabitStatus
-  author_user_id: UUID
+  author_user_id: UUID | None = None
+  author_group_id: UUID | None = None
   created_at: date
   target_end_date: date | None
   finished_at: date | None

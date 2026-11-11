@@ -44,11 +44,14 @@ STATUS_FINISHED_AT_CHECK = (
   f"(status = '{HabitStatus.FINISHED.name}' AND finished_at IS NOT NULL)"
 )
 
+SINGLE_AUTHOR_CHECK = "(author_user_id IS NULL) <> (author_group_id IS NULL)"
+
 
 class Habit(SQLModel, table=True):
   __tablename__ = "habits"
   __table_args__ = (
     CheckConstraint(STATUS_FINISHED_AT_CHECK, name="ck_habits_status_finished_at"),
+    CheckConstraint(SINGLE_AUTHOR_CHECK, name="ck_habits_single_author"),
   )
 
   id: UUID = Field(default_factory=uuid4, primary_key=True)
@@ -57,8 +60,19 @@ class Habit(SQLModel, table=True):
   category: str = Field(max_length=50, nullable=False)
   is_public: bool = Field(default=False, nullable=False)
   status: HabitStatus = Field(default=HabitStatus.ACTIVE, nullable=False, index=True)
-  author_user_id: UUID = Field(
-    foreign_key="users.id", nullable=False, ondelete="CASCADE", index=True
+  author_user_id: UUID | None = Field(
+    default=None,
+    foreign_key="users.id",
+    nullable=False,
+    ondelete="CASCADE",
+    index=True,
+  )
+  author_group_id: UUID | None = Field(
+    default=None,
+    foreign_key="groups.id",
+    nullable=True,
+    ondelete="CASCADE",
+    index=True,
   )
   created_at: date = Field(nullable=False)
   target_end_date: date | None = Field(default=None)
