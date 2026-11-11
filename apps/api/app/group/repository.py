@@ -51,6 +51,19 @@ def list_members_with_users(db: Session, group_id: UUID) -> list[tuple[Member, U
   return list(db.exec(statement).all())
 
 
+def list_members_with_users(
+  db: Session, group_id: UUID
+) -> list[tuple[Member, User]]:
+  """Lista membros e usuários do grupo em um join só. Não faz commit."""
+  statement = (
+    select(Member, User)
+    .join(User, col(Member.user_id) == col(User.id))
+    .where(col(Member.group_id) == group_id)
+    .order_by(col(Member.joined_at), col(Member.user_id))
+  )
+  return list(db.exec(statement).all())
+
+
 def count_members(db: Session, group_id: UUID) -> int:
   """Conta quantos membros pertencem ao grupo. Não faz commit."""
   statement = (
