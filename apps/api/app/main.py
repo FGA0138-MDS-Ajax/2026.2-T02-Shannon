@@ -8,6 +8,7 @@ from app.checkins.router import check_ins_router
 from app.goals.router import goals_router
 from app.habits.router import habit_router
 from app.statistics.router import statistics_router
+from app.group.router import group_router
 
 
 @asynccontextmanager
@@ -37,6 +38,7 @@ app.include_router(habit_router)
 app.include_router(check_ins_router)
 app.include_router(goals_router)
 app.include_router(statistics_router)
+app.include_router(group_router)
 
 
 @app.get("/")
