@@ -175,7 +175,7 @@ def service_get_group_detail(db: Session, group_id: UUID, user: User) -> GroupDe
 
 
 @groups_router.post(
-  "",
+  "/",
   response_model=GroupDetail,
   status_code=status.HTTP_201_CREATED,
   summary="Criar grupo",
@@ -192,7 +192,7 @@ def create_group(
 
 
 @groups_router.get(
-  "",
+  "/",
   response_model=list[GroupListItem],
   status_code=status.HTTP_200_OK,
   summary="Listar grupos",
