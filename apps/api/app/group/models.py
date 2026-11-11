@@ -6,6 +6,9 @@ from sqlalchemy import CheckConstraint
 from sqlmodel import DateTime, Field, SQLModel, func
 
 
+GROUP_MAX_MEMBERS = 30
+
+
 class GroupRole(StrEnum):
   ADMIN = "admin"
   MEMBER = "member"
