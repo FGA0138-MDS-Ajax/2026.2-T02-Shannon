@@ -237,9 +237,14 @@ export default function HabitDetailScreen() {
         <View style={styles.errorBanner}>
           <Text style={styles.errorBannerText}>
             {errorMessage ?? "Não foi possível carregar o hábito."}
-          </Text> <Button variant="secondary" onPress={() => { setErrorMessage(null); 
-            refreshHabit();
-            }}>
+          </Text>
+          <Button
+            variant="secondary"
+            onPress={() => {
+              setErrorMessage(null);
+              refreshHabit();
+            }}
+          >
             Tentar novamente
           </Button>
         </View>
