@@ -1,5 +1,9 @@
 import { StyleSheet, Text, View } from "react-native";
-import { describeGoal, describeProgressStatus } from "@/config/goal-labels";
+import {
+  describeGoal,
+  describeProgressStatus,
+  formatStreak,
+} from "@/config/goal-labels";
 import { theme } from "@/config/theme";
 import type { HabitProgress, ProgressStatus } from "@/services/types/habits";
 import { formatDate, parseApiDate } from "@/utils/date";
@@ -49,6 +53,7 @@ export default function GoalProgress({ progress }: GoalProgressProps) {
         </Text>
         <View style={styles.track}>
           <View
+          testID="goal-progress-fill"
             style={[
               styles.fill,
               {
@@ -73,6 +78,15 @@ export default function GoalProgress({ progress }: GoalProgressProps) {
           style={[styles.statusText, { color: statusColors.color }]}
         >
           {describeProgressStatus(progress)}
+        </Text>
+      </View>
+
+      <View style={styles.streakRow}>
+        <Text style={styles.streak}>
+          Streak: {formatStreak(progress.current_streak, goal.period)}
+        </Text>
+        <Text style={styles.best}>
+          Recorde: {formatStreak(progress.best_streak, goal.period)}
         </Text>
       </View>
 

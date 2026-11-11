@@ -161,7 +161,12 @@ export default function HabitDetailScreen() {
     }
 
     if (!progress) {
-      return <ActivityIndicator color={theme.colors.primary} />;
+      return (
+        <ActivityIndicator
+          testID="habit-progress-loading"
+          color={theme.colors.primary}
+        />
+      );
     }
 
     return <GoalProgress progress={progress} />;
@@ -210,7 +215,11 @@ export default function HabitDetailScreen() {
     if (isLoading && !habit) {
       return (
         <View style={styles.centered}>
-          <ActivityIndicator size="large" color={theme.colors.primary} />
+          <ActivityIndicator
+            testID="habit-detail-loading"
+            size="large"
+            color={theme.colors.primary}
+          />
         </View>
       );
     }
@@ -228,8 +237,9 @@ export default function HabitDetailScreen() {
         <View style={styles.errorBanner}>
           <Text style={styles.errorBannerText}>
             {errorMessage ?? "Não foi possível carregar o hábito."}
-          </Text>
-          <Button variant="secondary" onPress={() => refreshHabit()}>
+          </Text> <Button variant="secondary" onPress={() => { setErrorMessage(null); 
+            refreshHabit();
+            }}>
             Tentar novamente
           </Button>
         </View>
