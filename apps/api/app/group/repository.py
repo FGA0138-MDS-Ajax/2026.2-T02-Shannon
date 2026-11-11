@@ -3,6 +3,7 @@ from uuid import UUID
 from sqlalchemy import func
 from sqlmodel import Session, col, select
 
+from app.auth.models import User
 from app.group.models import Group, Member
 
 
@@ -15,6 +16,13 @@ def get_group_for_update(db: Session, group_id: UUID) -> Group | None:
   """Busca o grupo pelo id com lock de linha (FOR UPDATE). Não faz commit."""
   statement = select(Group).where(col(Group.id) == group_id).with_for_update()
   return db.exec(statement).first()
+
+
+def create_group(db: Session, group: Group) -> Group:
+  """Adiciona o grupo e faz flush. Não faz commit."""
+  db.add(group)
+  db.flush()
+  return group
 
 
 def get_member(db: Session, group_id: UUID, user_id: UUID) -> Member | None:
@@ -32,12 +40,37 @@ def list_members(db: Session, group_id: UUID) -> list[Member]:
   return list(db.exec(statement).all())
 
 
+def list_members_with_users(db: Session, group_id: UUID) -> list[tuple[Member, User]]:
+  """Lista membros e usuários do grupo em um join só. Não faz commit."""
+  statement = (
+    select(Member, User)
+    .join(User, col(Member.user_id) == col(User.id))
+    .where(col(Member.group_id) == group_id)
+    .order_by(col(Member.joined_at), col(Member.user_id))
+  )
+  return list(db.exec(statement).all())
+
+
 def count_members(db: Session, group_id: UUID) -> int:
   """Conta quantos membros pertencem ao grupo. Não faz commit."""
   statement = (
     select(func.count()).select_from(Member).where(col(Member.group_id) == group_id)
   )
   return db.exec(statement).one()
+
+
+def count_members_by_group(db: Session, group_ids: list[UUID]) -> dict[UUID, int]:
+  """Conta membros de vários grupos numa consulta só com GROUP BY. Não faz commit."""
+  if not group_ids:
+    return {}
+
+  statement = (
+    select(col(Member.group_id), func.count())
+    .where(col(Member.group_id).in_(group_ids))
+    .group_by(col(Member.group_id))
+  )
+  counts = dict(db.exec(statement).all())
+  return {group_id: counts.get(group_id, 0) for group_id in group_ids}
 
 
 def add_member(db: Session, member: Member) -> Member:
