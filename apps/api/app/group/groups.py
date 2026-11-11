@@ -14,7 +14,7 @@ from app.group.exceptions import (
   GroupNotFoundError,
 )
 from app.group.invite import generate_invite_code
-from app.group.models import Group, GroupRole, Member
+from app.group.models import Group, GroupRole, Member, RankingCriterion
 from app.group.permissions import require_member
 from app.group.responses import (
   RESPONSES_CREATE_GROUP,
@@ -35,8 +35,6 @@ MSG_ENDS_ON_BEFORE_TODAY = (
   "A data de término deve ser igual ou posterior à data de hoje."
 )
 
-groups_router = APIRouter()
-
 
 def service_create_group(db: Session, user: User, data: GroupCreate) -> GroupDetail:
   """Cria um grupo novo, vincula o criador como admin e devolve os detalhes."""
@@ -46,12 +44,12 @@ def service_create_group(db: Session, user: User, data: GroupCreate) -> GroupDet
   if data.ends_on is not None:
     if data.ends_on < starts_on:
       raise HTTPException(
-        status.HTTP_422_UNPROCESSABLE_ENTITY,
+        status.HTTP_422_UNPROCESSABLE_CONTENT,
         MSG_ENDS_ON_BEFORE_STARTS_ON,
       )
     if data.ends_on < today:
       raise HTTPException(
-        status.HTTP_422_UNPROCESSABLE_ENTITY,
+        status.HTTP_422_UNPROCESSABLE_CONTENT,
         MSG_ENDS_ON_BEFORE_TODAY,
       )
 
@@ -95,7 +93,7 @@ def service_create_group(db: Session, user: User, data: GroupCreate) -> GroupDet
     description=group.description,
     starts_on=group.starts_on,
     ends_on=group.ends_on,
-    ranking_criterion=group.ranking_criterion,
+    ranking_criterion=RankingCriterion(group.ranking_criterion),
     status=group_status(group, today),
     members_count=1,
     my_role=GroupRole.ADMIN,
@@ -134,7 +132,7 @@ def service_list_my_groups(db: Session, user: User) -> list[GroupListItem]:
       my_role=GroupRole(member.role),
       status=status_str,
       ends_on=group.ends_on,
-      ranking_criterion=group.ranking_criterion,
+      ranking_criterion=RankingCriterion(group.ranking_criterion),
     )
     items.append((status_order, -timestamp, group.name, item))
 
@@ -165,7 +163,7 @@ def service_get_group_detail(db: Session, group_id: UUID, user: User) -> GroupDe
     description=group.description,
     starts_on=group.starts_on,
     ends_on=group.ends_on,
-    ranking_criterion=group.ranking_criterion,
+    ranking_criterion=RankingCriterion(group.ranking_criterion),
     status=group_status(group, today),
     members_count=len(members_public),
     my_role=GroupRole(member.role),
@@ -174,14 +172,6 @@ def service_get_group_detail(db: Session, group_id: UUID, user: User) -> GroupDe
   )
 
 
-@groups_router.post(
-  "/",
-  response_model=GroupDetail,
-  status_code=status.HTTP_201_CREATED,
-  summary="Criar grupo",
-  description="Cria um novo grupo e torna o usuário criador o primeiro administrador.",
-  responses=RESPONSES_CREATE_GROUP,
-)
 def create_group(
   db: SessionDep,
   data: GroupCreate,
@@ -191,14 +181,6 @@ def create_group(
   return service_create_group(db, user, data)
 
 
-@groups_router.get(
-  "/",
-  response_model=list[GroupListItem],
-  status_code=status.HTTP_200_OK,
-  summary="Listar grupos",
-  description="Lista os grupos em que o usuário autenticado participa.",
-  responses=RESPONSES_LIST_GROUPS,
-)
 def list_my_groups(
   db: SessionDep,
   user: Annotated[User, Depends(get_current_user)],
@@ -207,17 +189,6 @@ def list_my_groups(
   return service_list_my_groups(db, user)
 
 
-@groups_router.get(
-  "/{group_id}",
-  response_model=GroupDetail,
-  status_code=status.HTTP_200_OK,
-  summary="Detalhar grupo",
-  description=(
-    "Devolve os detalhes do grupo para um membro. O código de convite só é"
-    " visível para administradores."
-  ),
-  responses=RESPONSES_GET_GROUP,
-)
 def get_group(
   db: SessionDep,
   group_id: UUID,
@@ -228,3 +199,36 @@ def get_group(
     return service_get_group_detail(db, group_id, user)
   except GroupNotFoundError:
     raise HTTPException(status.HTTP_404_NOT_FOUND, MSG_GROUP_NOT_FOUND) from None
+
+
+def register_routes(router: APIRouter) -> None:
+  """Registra as rotas de criação, listagem e detalhe no router `/groups`."""
+  router.post(
+    "",
+    response_model=GroupDetail,
+    status_code=status.HTTP_201_CREATED,
+    summary="Criar grupo",
+    description=(
+      "Cria um novo grupo e torna o usuário criador o primeiro administrador."
+    ),
+    responses=RESPONSES_CREATE_GROUP,
+  )(create_group)
+  router.get(
+    "",
+    response_model=list[GroupListItem],
+    status_code=status.HTTP_200_OK,
+    summary="Listar grupos",
+    description="Lista os grupos em que o usuário autenticado participa.",
+    responses=RESPONSES_LIST_GROUPS,
+  )(list_my_groups)
+  router.get(
+    "/{group_id}",
+    response_model=GroupDetail,
+    status_code=status.HTTP_200_OK,
+    summary="Detalhar grupo",
+    description=(
+      "Devolve os detalhes do grupo para um membro. O código de convite só é"
+      " visível para administradores."
+    ),
+    responses=RESPONSES_GET_GROUP,
+  )(get_group)

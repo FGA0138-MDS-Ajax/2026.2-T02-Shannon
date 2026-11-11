@@ -1,12 +1,19 @@
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
+from unittest.mock import patch
+from uuid import uuid4
 
+import pytest
+from fastapi import HTTPException
 from fastapi.testclient import TestClient
 from sqlmodel import Session
 
 from app.auth.models import User
+from app.group import groups as groups_module
 from app.group import repository
 from app.group.models import Group, GroupRole, Member, RankingCriterion
+from app.group.schemas import GroupCreate
 from app.habits import service as habits_service
+from app.main import app
 
 
 def test_create_group_defaults_starts_on_to_today(
@@ -20,7 +27,12 @@ def test_create_group_defaults_starts_on_to_today(
     "ranking_criterion": "goals",
   }
 
-  response = client.post("/groups", json=payload, headers=auth_headers)
+  response = client.post(
+    "/groups",
+    json=payload,
+    headers=auth_headers,
+    follow_redirects=False,
+  )
   assert response.status_code == 201
 
   data = response.json()
@@ -134,7 +146,7 @@ def test_list_groups_sorting_and_counts(
     )
     session.commit()
 
-  response = client.get("/groups", headers=auth_headers)
+  response = client.get("/groups", headers=auth_headers, follow_redirects=False)
   assert response.status_code == 200
 
   items = response.json()
@@ -227,6 +239,119 @@ def test_get_group_detail_permissions_and_invite_code(
   assert resp_bad_id.status_code == 422
 
   # 5. Sem autenticação retorna 401
-  assert client.get("/groups").status_code == 401
-  assert client.post("/groups", json={}).status_code == 401
+  assert client.get("/groups", follow_redirects=False).status_code == 401
+  assert client.post("/groups", json={}, follow_redirects=False).status_code == 401
   assert client.get(f"/groups/{group_id}").status_code == 401
+
+  # 6. Grupo inexistente retorna 404
+  resp_missing = client.get(f"/groups/{uuid4()}", headers=auth_headers)
+  assert resp_missing.status_code == 404
+  assert resp_missing.json()["detail"] == "Grupo não encontrado."
+
+
+def test_list_groups_empty_and_tiebreak_by_name(
+  client: TestClient,
+  auth_headers: dict[str, str],
+  user: User,
+  test_engine,
+) -> None:
+  resp_empty = client.get("/groups", headers=auth_headers, follow_redirects=False)
+  assert resp_empty.status_code == 200
+  assert resp_empty.json() == []
+
+  today = habits_service.today()
+  same_ts = datetime(2026, 11, 10, 12, 0, tzinfo=UTC)
+
+  with Session(test_engine) as session:
+    g_b = Group(
+      name="Beta",
+      starts_on=today,
+      ends_on=today,
+      ranking_criterion=RankingCriterion.CHECK_INS,
+      invite_code="TIE00002",
+      created_at=same_ts,
+    )
+    g_a = Group(
+      name="Alpha",
+      starts_on=today,
+      ranking_criterion=RankingCriterion.GOALS,
+      invite_code="TIE00001",
+      created_at=same_ts,
+    )
+    session.add_all([g_b, g_a])
+    session.flush()
+    repository.add_member(
+      session, Member(group_id=g_b.id, user_id=user.id, role=GroupRole.ADMIN)
+    )
+    repository.add_member(
+      session, Member(group_id=g_a.id, user_id=user.id, role=GroupRole.ADMIN)
+    )
+    session.commit()
+
+  resp = client.get("/groups", headers=auth_headers, follow_redirects=False)
+  assert resp.status_code == 200
+  items = resp.json()
+  assert [item["name"] for item in items] == ["Alpha", "Beta"]
+  assert all(item["status"] == "active" for item in items)
+
+
+def test_create_group_invite_collision_retries_and_exhaustion(
+  test_engine,
+  user: User,
+) -> None:
+  with Session(test_engine) as session:
+    session.add(
+      Group(
+        name="Existente",
+        starts_on=date(2026, 11, 11),
+        ranking_criterion=RankingCriterion.GOALS,
+        invite_code="DUPCODE1",
+      )
+    )
+    session.commit()
+
+    db_user = session.get(User, user.id)
+    assert db_user is not None
+
+    with patch(
+      "app.group.groups.generate_invite_code",
+      side_effect=["DUPCODE1", "DUPCODE1", "DUPCODE1", "DUPCODE1", "UNIQ9999"],
+    ):
+      created = groups_module.service_create_group(
+        session,
+        db_user,
+        GroupCreate(name="Recuperado", ranking_criterion=RankingCriterion.GOALS),
+      )
+    assert created.invite_code == "UNIQ9999"
+
+    with (
+      patch("app.group.groups.generate_invite_code", return_value="DUPCODE1"),
+      pytest.raises(HTTPException) as exc_info,
+    ):
+      groups_module.service_create_group(
+        session,
+        db_user,
+        GroupCreate(name="Falha", ranking_criterion=RankingCriterion.GOALS),
+      )
+    assert exc_info.value.status_code == 500
+
+
+def test_groups_openapi_paths_and_examples() -> None:
+  paths = app.openapi()["paths"]
+  assert "/groups" in paths
+  assert "/groups/{group_id}" in paths
+
+  post_responses = paths["/groups"]["post"]["responses"]
+  assert "example" in post_responses["201"]["content"]["application/json"]
+  assert "401" in post_responses
+  assert len(post_responses["422"]["content"]["application/json"]["examples"]) >= 2
+
+  list_responses = paths["/groups"]["get"]["responses"]
+  assert "example" in list_responses["200"]["content"]["application/json"]
+  assert "401" in list_responses
+
+  detail_responses = paths["/groups/{group_id}"]["get"]["responses"]
+  assert "example" in detail_responses["200"]["content"]["application/json"]
+  assert "401" in detail_responses
+  assert "404" in detail_responses
+  assert "422" in detail_responses

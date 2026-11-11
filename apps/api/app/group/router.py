@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from app.group.groups import groups_router
+from app.group.groups import register_routes
 
 group_router = APIRouter(prefix="/groups", tags=["groups"])
-group_router.include_router(groups_router)
+register_routes(group_router)
