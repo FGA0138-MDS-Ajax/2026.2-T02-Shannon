@@ -38,7 +38,7 @@ from app.group.exceptions import (
   MemberNotFoundError,
   UserToAddNotFoundError,
 )
-from app.group.models import GROUP_MAX_MEMBERS, GroupRole, Member
+from app.group.models import GROUP_MAX_MEMBERS, Group, GroupRole, Member
 from app.group.permissions import require_admin, require_member
 from app.group.responses import (
   RESPONSES_ADD_MEMBER,
@@ -72,6 +72,36 @@ def choose_successor(members: list[Member], leaving_user_id: UUID) -> Member | N
   return candidates[0]
 
 
+def service_create_member(
+  db: Session,
+  group: Group,
+  target_user: User,
+) -> Member:
+  """Valida e cria o vínculo de um usuário com um grupo.
+
+  Não realiza commit: a transação pertence ao serviço chamador.
+  """
+  if group_status(group, habits_service.today()) == "ended":
+    raise GroupEndedError
+
+  existing_member = repository.get_member(db, group.id, target_user.id)
+  if existing_member is not None:
+    raise AlreadyMemberError
+
+  current_count = repository.count_members(db, group.id)
+  if current_count >= GROUP_MAX_MEMBERS:
+    raise GroupFullError
+
+  new_member = Member(
+    group_id=group.id,
+    user_id=target_user.id,
+    role=GroupRole.MEMBER.value,
+  )
+  repository.add_member(db, new_member)
+
+  return new_member
+
+
 def service_add_member(
   db: Session, group_id: UUID, user: User, data: MemberAdd
 ) -> MemberPublic:
@@ -88,24 +118,8 @@ def service_add_member(
   if target_user is None:
     raise UserToAddNotFoundError
 
-  today = habits_service.today()
-  if group_status(group, today) == "ended":
-    raise GroupEndedError
+  new_member = service_create_member(db, group, target_user)
 
-  existing_member = repository.get_member(db, group_id, target_user.id)
-  if existing_member is not None:
-    raise AlreadyMemberError
-
-  current_count = repository.count_members(db, group_id)
-  if current_count >= GROUP_MAX_MEMBERS:
-    raise GroupFullError
-
-  new_member = Member(
-    group_id=group_id,
-    user_id=target_user.id,
-    role=GroupRole.MEMBER.value,
-  )
-  repository.add_member(db, new_member)
   db.commit()
   db.refresh(new_member)
 

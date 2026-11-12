@@ -47,3 +47,16 @@ class CannotRemoveSelfError(Exception):
 
 class MemberNotFoundError(Exception):
   """Usuário alvo não participa do grupo."""
+
+
+# Invite -----------------------------------------
+MSG_INVITE_CODE_INVALID = "Código de convite inválido."
+MSG_ALREADY_IN_GROUP = "Você já participa deste grupo."
+
+
+class InviteCodeInvalidError(Exception):
+  """Código de convite inexistente ou inválido."""
+
+
+class AlreadyInGroupError(Exception):
+  """Usuário já participa do grupo ao tentar entrar por convite."""

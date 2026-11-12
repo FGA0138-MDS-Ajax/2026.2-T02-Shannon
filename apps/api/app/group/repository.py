@@ -12,6 +12,12 @@ def get_group(db: Session, group_id: UUID) -> Group | None:
   return db.get(Group, group_id)
 
 
+def get_group_by_invite_code(db: Session, code: str) -> Group | None:
+  """Busca um grupo pelo código de convite. Não faz commit."""
+  statement = select(Group).where(col(Group.invite_code) == code)
+  return db.exec(statement).first()
+
+
 def get_group_for_update(db: Session, group_id: UUID) -> Group | None:
   """Busca o grupo pelo id com lock de linha (FOR UPDATE). Não faz commit."""
   statement = select(Group).where(col(Group.id) == group_id).with_for_update()
@@ -30,6 +36,14 @@ def update_group(db: Session, group: Group, updates: dict[str, object]) -> Group
   for field, value in updates.items():
     setattr(group, field, value)
 
+  db.add(group)
+  db.flush()
+  return group
+
+
+def set_invite_code(db: Session, group: Group, code: str) -> Group:
+  """Atualiza o código de convite e faz flush. Não faz commit."""
+  group.invite_code = code
   db.add(group)
   db.flush()
   return group
