@@ -5,14 +5,13 @@ from app.group.exceptions import (
   MSG_GROUP_FORBIDDEN,
   MSG_GROUP_NOT_FOUND,
 )
+from app.group.schemas import MSG_ENDS_ON_BEFORE_STARTS_ON
 from app.habits.exceptions import MSG_HABIT_ALREADY_FINISHED, MSG_HABIT_NOT_FOUND
 from app.habits.responses import (
   RESPONSES_422_CREATE,
   RESPONSES_422_LIST,
   RESPONSES_UPDATE,
 )
-from app.group.exceptions import MSG_GROUP_FORBIDDEN, MSG_GROUP_NOT_FOUND
-from app.group.schemas import MSG_ENDS_ON_BEFORE_STARTS_ON
 
 GROUP_NOT_FOUND_RESPONSE = {
   status.HTTP_404_NOT_FOUND: {
@@ -28,30 +27,6 @@ GROUP_FORBIDDEN_RESPONSE = {
   },
 }
 
-RESPONSES_CREATE_GROUP_HABIT = {
-  status.HTTP_401_UNAUTHORIZED: {
-    "description": "Usuário não autenticado ou token inválido.",
-  },
-  **GROUP_FORBIDDEN_RESPONSE,
-  **GROUP_NOT_FOUND_RESPONSE,
-  status.HTTP_409_CONFLICT: {
-    "description": "Grupo encerrado: não aceita novos hábitos.",
-    "content": {"application/json": {"example": {"detail": MSG_GROUP_ENDED}}},
-  },
-  **RESPONSES_422_CREATE,
-}
-
-_RESPONSE_401 = {
-  status.HTTP_401_UNAUTHORIZED: {
-    "description": "Usuário não autenticado ou token inválido.",
-  },
-}
-
-_GROUP_HABIT_NOT_FOUND_RESPONSE = {
-  status.HTTP_404_NOT_FOUND: {
-    "description": (
-      "Grupo inexistente ou usuário não é membro; ou hábito inexistente ou de"
-      " outro grupo."
 _EXAMPLE_GROUP_ID = "c8e1d9b4-2a7f-4d6e-9c12-3f8a5b7e0d21"
 _EXAMPLE_USER_ID = "a3c9b6e2-4f1d-4c8a-9b7e-2d5f8a1c3e60"
 
@@ -105,61 +80,6 @@ RESPONSES_CREATE_GROUP = {
     "content": {
       "application/json": {
         "examples": {
-          "grupo_nao_encontrado": {
-            "summary": "Grupo inexistente ou usuário não é membro",
-            "value": {"detail": MSG_GROUP_NOT_FOUND},
-          },
-          "habito_nao_encontrado": {
-            "summary": "Hábito inexistente ou de outro grupo",
-            "value": {"detail": MSG_HABIT_NOT_FOUND},
-          },
-        }
-      }
-    },
-  },
-}
-
-RESPONSES_LIST_GROUP_HABITS = {
-  **_RESPONSE_401,
-  **GROUP_NOT_FOUND_RESPONSE,
-  **RESPONSES_422_LIST,
-}
-
-RESPONSES_GET_GROUP_HABIT = {
-  **_RESPONSE_401,
-  **_GROUP_HABIT_NOT_FOUND_RESPONSE,
-}
-
-RESPONSES_UPDATE_GROUP_HABIT = {
-  **_RESPONSE_401,
-  **GROUP_FORBIDDEN_RESPONSE,
-  **_GROUP_HABIT_NOT_FOUND_RESPONSE,
-  status.HTTP_409_CONFLICT: {
-    "description": "Grupo encerrado: os hábitos não podem mais ser editados.",
-    "content": {"application/json": {"example": {"detail": MSG_GROUP_ENDED}}},
-  },
-  status.HTTP_422_UNPROCESSABLE_ENTITY: RESPONSES_UPDATE[
-    status.HTTP_422_UNPROCESSABLE_ENTITY
-  ],
-}
-
-RESPONSES_FINISH_GROUP_HABIT = {
-  **_RESPONSE_401,
-  **GROUP_FORBIDDEN_RESPONSE,
-  **_GROUP_HABIT_NOT_FOUND_RESPONSE,
-  status.HTTP_409_CONFLICT: {
-    "description": "Grupo encerrado ou hábito já encerrado.",
-    "content": {
-      "application/json": {
-        "examples": {
-          "grupo_encerrado": {
-            "summary": "Grupo encerrado",
-            "value": {"detail": MSG_GROUP_ENDED},
-          },
-          "habito_ja_encerrado": {
-            "summary": "Hábito já encerrado",
-            "value": {"detail": MSG_HABIT_ALREADY_FINISHED},
-          },
           "periodo_invalido": {
             "summary": "Data final anterior à data inicial",
             "value": {
@@ -217,6 +137,90 @@ RESPONSES_GET_GROUP = {
               "type": "uuid_parsing",
             }
           ]
+        }
+      }
+    },
+  },
+}
+
+RESPONSES_CREATE_GROUP_HABIT = {
+  status.HTTP_401_UNAUTHORIZED: {
+    "description": "Usuário não autenticado ou token inválido.",
+  },
+  **GROUP_FORBIDDEN_RESPONSE,
+  **GROUP_NOT_FOUND_RESPONSE,
+  status.HTTP_409_CONFLICT: {
+    "description": "Grupo encerrado: não aceita novos hábitos.",
+    "content": {"application/json": {"example": {"detail": MSG_GROUP_ENDED}}},
+  },
+  **RESPONSES_422_CREATE,
+}
+
+
+_GROUP_HABIT_NOT_FOUND_RESPONSE = {
+  status.HTTP_404_NOT_FOUND: {
+    "description": (
+      "Grupo inexistente ou usuário não é membro; ou hábito inexistente ou de"
+      " outro grupo."
+    ),
+    "content": {
+      "application/json": {
+        "examples": {
+          "grupo_nao_encontrado": {
+            "summary": "Grupo inexistente ou usuário não é membro",
+            "value": {"detail": MSG_GROUP_NOT_FOUND},
+          },
+          "habito_nao_encontrado": {
+            "summary": "Hábito inexistente ou de outro grupo",
+            "value": {"detail": MSG_HABIT_NOT_FOUND},
+          },
+        }
+      }
+    },
+  },
+}
+
+RESPONSES_LIST_GROUP_HABITS = {
+  status.HTTP_401_UNAUTHORIZED: _RESPONSE_401,
+  **GROUP_NOT_FOUND_RESPONSE,
+  **RESPONSES_422_LIST,
+}
+
+RESPONSES_GET_GROUP_HABIT = {
+  status.HTTP_401_UNAUTHORIZED: _RESPONSE_401,
+  **_GROUP_HABIT_NOT_FOUND_RESPONSE,
+}
+
+RESPONSES_UPDATE_GROUP_HABIT = {
+  status.HTTP_401_UNAUTHORIZED: _RESPONSE_401,
+  **GROUP_FORBIDDEN_RESPONSE,
+  **_GROUP_HABIT_NOT_FOUND_RESPONSE,
+  status.HTTP_409_CONFLICT: {
+    "description": "Grupo encerrado: os hábitos não podem mais ser editados.",
+    "content": {"application/json": {"example": {"detail": MSG_GROUP_ENDED}}},
+  },
+  status.HTTP_422_UNPROCESSABLE_ENTITY: RESPONSES_UPDATE[
+    status.HTTP_422_UNPROCESSABLE_ENTITY
+  ],
+}
+
+RESPONSES_FINISH_GROUP_HABIT = {
+  status.HTTP_401_UNAUTHORIZED: _RESPONSE_401,
+  **GROUP_FORBIDDEN_RESPONSE,
+  **_GROUP_HABIT_NOT_FOUND_RESPONSE,
+  status.HTTP_409_CONFLICT: {
+    "description": "Grupo encerrado ou hábito já encerrado.",
+    "content": {
+      "application/json": {
+        "examples": {
+          "grupo_encerrado": {
+            "summary": "Grupo encerrado",
+            "value": {"detail": MSG_GROUP_ENDED},
+          },
+          "habito_ja_encerrado": {
+            "summary": "Hábito já encerrado",
+            "value": {"detail": MSG_HABIT_ALREADY_FINISHED},
+          },
         }
       }
     },
