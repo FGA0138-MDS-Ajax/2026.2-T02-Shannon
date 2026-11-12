@@ -10,22 +10,26 @@ from app.auth.models import User
 from app.database import SessionDep
 from app.group import repository
 from app.group.exceptions import (
+  MSG_GROUP_FORBIDDEN,
   MSG_GROUP_NOT_FOUND,
+  GroupForbiddenError,
   GroupNotFoundError,
 )
 from app.group.invite import generate_invite_code
 from app.group.models import Group, GroupRole, Member, RankingCriterion
-from app.group.permissions import require_member
+from app.group.permissions import require_admin, require_member
 from app.group.responses import (
   RESPONSES_CREATE_GROUP,
   RESPONSES_GET_GROUP,
   RESPONSES_LIST_GROUPS,
+  RESPONSES_PATCH_GROUP,
 )
 from app.group.schemas import (
   MSG_ENDS_ON_BEFORE_STARTS_ON,
   GroupCreate,
   GroupDetail,
   GroupListItem,
+  GroupUpdate,
   MemberPublic,
 )
 from app.group.status import group_status
@@ -201,6 +205,21 @@ def get_group(
     raise HTTPException(status.HTTP_404_NOT_FOUND, MSG_GROUP_NOT_FOUND) from None
 
 
+def patch_group(
+  db: SessionDep,
+  group_id: UUID,
+  data: GroupUpdate,
+  user: Annotated[User, Depends(get_current_user)],
+) -> GroupDetail:
+  """Atualiza parcialmente os dados de um grupo administrado pelo usuário."""
+  try:
+    return service_update_group(db, group_id, user, data)
+  except GroupNotFoundError:
+    raise HTTPException(status.HTTP_404_NOT_FOUND, MSG_GROUP_NOT_FOUND) from None
+  except GroupForbiddenError:
+    raise HTTPException(status.HTTP_403_FORBIDDEN, MSG_GROUP_FORBIDDEN) from None
+
+
 def register_routes(router: APIRouter) -> None:
   """Registra as rotas de criação, listagem e detalhe no router `/groups`."""
   router.post(
@@ -232,3 +251,46 @@ def register_routes(router: APIRouter) -> None:
     ),
     responses=RESPONSES_GET_GROUP,
   )(get_group)
+  router.patch(
+    "/{group_id}",
+    response_model=GroupDetail,
+    status_code=status.HTTP_200_OK,
+    summary="Editar grupo",
+    description=(
+      "Atualiza parcialmente nome, descrição, data de término e critério do"
+      " ranking. Apenas administradores podem editar o grupo."
+    ),
+    responses=RESPONSES_PATCH_GROUP,
+  )(patch_group)
+
+
+def service_update_group(
+  db: Session,
+  group_id: UUID,
+  user: User,
+  data: GroupUpdate,
+) -> GroupDetail:
+  """Atualiza os dados permitidos de um grupo administrado pelo usuário."""
+  group, _ = require_admin(db, group_id, user)
+
+  updates = {field: getattr(data, field) for field in data.model_fields_set}
+
+  ends_on = updates.get("ends_on")
+  if ends_on is not None:
+    if ends_on < group.starts_on:
+      raise HTTPException(
+        status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+        detail=MSG_ENDS_ON_BEFORE_STARTS_ON,
+      )
+
+    if ends_on < habits_service.today():
+      raise HTTPException(
+        status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+        detail=MSG_ENDS_ON_BEFORE_TODAY,
+      )
+
+  if updates:
+    repository.update_group(db, group, updates)
+    db.commit()
+
+  return service_get_group_detail(db, group_id, user)

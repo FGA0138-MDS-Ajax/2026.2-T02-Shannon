@@ -133,7 +133,6 @@ def test_repository_functions_and_cascade(
     t1 = datetime(2026, 11, 1, 10, 0, tzinfo=UTC)
     t2 = datetime(2026, 11, 1, 11, 0, tzinfo=UTC)
 
-    # Dois membros com mesmo joined_at desempatam por user_id crescente
     repository.add_member(
       session,
       Member(
@@ -188,6 +187,18 @@ def test_repository_functions_and_cascade(
     assert repository.get_group(session, group_1.id) is not None
     assert repository.get_group(session, uuid4()) is None
     assert repository.get_group_for_update(session, group_1.id) is not None
+    repository.update_group(
+      session,
+      group_1,
+      {
+        "name": "Grupo Atualizado",
+        "description": "Nova descrição",
+        "ranking_criterion": RankingCriterion.GOALS,
+      },
+    )
+    assert group_1.name == "Grupo Atualizado"
+    assert group_1.description == "Nova descrição"
+    assert group_1.ranking_criterion == RankingCriterion.GOALS
     assert repository.get_member(session, group_1.id, user.id) is not None
     assert repository.get_member(session, group_1.id, uuid4()) is None
     assert repository.count_members(session, group_1.id) == 3
