@@ -4,7 +4,7 @@ from sqlalchemy import func
 from sqlmodel import Session, col, select
 
 from app.auth.models import User
-from app.group.models import GroupRole, Group, Member
+from app.group.models import Group, GroupRole, Member
 
 
 def get_group(db: Session, group_id: UUID) -> Group | None:
@@ -132,7 +132,8 @@ def count_admins(db: Session, group_id: UUID) -> int:
 def get_oldest_member(
   db: Session, group_id: UUID, excluding_user_id: UUID
 ) -> Member | None:
-  """Busca o integrante mais antigo do grupo, exceto o usuário informado. Não faz commit."""
+  """Busca o integrante mais antigo do grupo,
+  exceto o usuário informado. Não faz commit."""
   statement = (
     select(Member)
     .where(
