@@ -243,7 +243,16 @@ def test_get_group_detail_permissions_and_invite_code(
   assert client.post("/groups", json={}, follow_redirects=False).status_code == 401
   assert client.get(f"/groups/{group_id}").status_code == 401
 
-  # 6. Grupo inexistente retorna 404
+  # 6. PATCH sem autenticação retorna 401.
+  assert (
+    client.patch(
+      f"/groups/{group_id}",
+      json={"name": "Tentativa sem autenticação"},
+    ).status_code
+    == 401
+  )
+
+  # 7. Grupo inexistente retorna 404
   resp_missing = client.get(f"/groups/{uuid4()}", headers=auth_headers)
   assert resp_missing.status_code == 404
   assert resp_missing.json()["detail"] == "Grupo não encontrado."
@@ -355,3 +364,352 @@ def test_groups_openapi_paths_and_examples() -> None:
   assert "401" in detail_responses
   assert "404" in detail_responses
   assert "422" in detail_responses
+
+  patch_responses = paths["/groups/{group_id}"]["patch"]["responses"]
+  assert "example" in patch_responses["200"]["content"]["application/json"]
+  assert "401" in patch_responses
+  assert "403" in patch_responses
+  assert "404" in patch_responses
+  assert "422" in patch_responses
+
+
+def test_patch_group_updates_allowed_fields(
+  client: TestClient,
+  auth_headers: dict[str, str],
+  user: User,
+  test_engine,
+) -> None:
+  today = habits_service.today()
+  starts_on = today - timedelta(days=5)
+  new_ends_on = today + timedelta(days=30)
+
+  with Session(test_engine) as session:
+    group = Group(
+      name="Grupo Original",
+      description="Descrição original",
+      starts_on=starts_on,
+      ends_on=today + timedelta(days=10),
+      ranking_criterion=RankingCriterion.CHECK_INS,
+      invite_code="PATCH001",
+    )
+    session.add(group)
+    session.flush()
+
+    repository.add_member(
+      session,
+      Member(group_id=group.id, user_id=user.id, role=GroupRole.ADMIN),
+    )
+    session.commit()
+    group_id = group.id
+
+  response = client.patch(
+    f"/groups/{group_id}",
+    json={
+      "name": "Grupo Atualizado",
+      "description": "Nova descrição",
+      "ends_on": new_ends_on.isoformat(),
+      "ranking_criterion": "goals",
+    },
+    headers=auth_headers,
+  )
+
+  assert response.status_code == 200
+
+  data = response.json()
+  assert data["name"] == "Grupo Atualizado"
+  assert data["description"] == "Nova descrição"
+  assert data["starts_on"] == starts_on.isoformat()
+  assert data["ends_on"] == new_ends_on.isoformat()
+  assert data["ranking_criterion"] == "goals"
+  assert data["status"] == "active"
+  assert data["my_role"] == "admin"
+  assert data["invite_code"] == "PATCH001"
+
+
+def test_patch_group_permissions(
+  client: TestClient,
+  auth_headers: dict[str, str],
+  other_auth_headers: dict[str, str],
+  user: User,
+  other_user: User,
+  test_engine,
+) -> None:
+  today = habits_service.today()
+
+  with Session(test_engine) as session:
+    group = Group(
+      name="Grupo de Permissões",
+      starts_on=today,
+      ranking_criterion=RankingCriterion.CHECK_INS,
+      invite_code="PATCH002",
+    )
+    session.add(group)
+    session.flush()
+
+    repository.add_member(
+      session,
+      Member(group_id=group.id, user_id=user.id, role=GroupRole.ADMIN),
+    )
+    repository.add_member(
+      session,
+      Member(group_id=group.id, user_id=other_user.id, role=GroupRole.MEMBER),
+    )
+    session.commit()
+    group_id = group.id
+
+  payload = {"name": "Tentativa de alteração"}
+
+  response_member = client.patch(
+    f"/groups/{group_id}",
+    json=payload,
+    headers=other_auth_headers,
+  )
+  assert response_member.status_code == 403
+  assert response_member.json()["detail"] == (
+    "Apenas administradores podem realizar esta ação."
+  )
+
+  with Session(test_engine) as session:
+    from app.auth.tokens import create_access_token
+
+    outsider = User(
+      name="Outsider",
+      username="outsider_patch",
+      email="outsider_patch@teste.com",
+      password_hash="hash",
+    )
+    session.add(outsider)
+    session.commit()
+    token, _ = create_access_token(str(outsider.id))
+    outsider_headers = {"Authorization": f"Bearer {token}"}
+
+  response_outsider = client.patch(
+    f"/groups/{group_id}",
+    json=payload,
+    headers=outsider_headers,
+  )
+  assert response_outsider.status_code == 404
+  assert response_outsider.json()["detail"] == "Grupo não encontrado."
+
+  response_missing = client.patch(
+    f"/groups/{uuid4()}",
+    json=payload,
+    headers=auth_headers,
+  )
+  assert response_missing.status_code == 404
+
+
+def test_patch_group_validates_fields(
+  client: TestClient,
+  auth_headers: dict[str, str],
+  user: User,
+  test_engine,
+) -> None:
+  today = habits_service.today()
+
+  with Session(test_engine) as session:
+    group = Group(
+      name="Grupo Validação",
+      description="Descrição original",
+      starts_on=today,
+      ranking_criterion=RankingCriterion.CHECK_INS,
+      invite_code="PATCH003",
+    )
+    session.add(group)
+    session.flush()
+
+    repository.add_member(
+      session,
+      Member(group_id=group.id, user_id=user.id, role=GroupRole.ADMIN),
+    )
+    session.commit()
+    group_id = group.id
+
+  for payload in (
+    {"name": None},
+    {"ranking_criterion": None},
+  ):
+    response = client.patch(
+      f"/groups/{group_id}",
+      json=payload,
+      headers=auth_headers,
+    )
+    assert response.status_code == 422
+
+  for name in ("", "   "):
+    response = client.patch(
+      f"/groups/{group_id}",
+      json={"name": name},
+      headers=auth_headers,
+    )
+    assert response.status_code == 422
+
+  for description in (None, "", "   "):
+    response = client.patch(
+      f"/groups/{group_id}",
+      json={"description": description},
+      headers=auth_headers,
+    )
+    assert response.status_code == 200
+    assert response.json()["description"] is None
+
+  response = client.patch(
+    f"/groups/{group_id}",
+    json={"description": "a" * 501},
+    headers=auth_headers,
+  )
+  assert response.status_code == 422
+
+  response = client.patch(
+    f"/groups/{group_id}",
+    json={"ranking_criterion": "invalido"},
+    headers=auth_headers,
+  )
+  assert response.status_code == 422
+
+
+def test_patch_group_dates_and_empty_payload(
+  client: TestClient,
+  auth_headers: dict[str, str],
+  user: User,
+  test_engine,
+) -> None:
+  today = habits_service.today()
+  starts_on = today - timedelta(days=5)
+
+  with Session(test_engine) as session:
+    group = Group(
+      name="Grupo Datas",
+      description="Descrição original",
+      starts_on=starts_on,
+      ends_on=today + timedelta(days=10),
+      ranking_criterion=RankingCriterion.CHECK_INS,
+      invite_code="PATCH004",
+    )
+    session.add(group)
+    session.flush()
+
+    repository.add_member(
+      session,
+      Member(group_id=group.id, user_id=user.id, role=GroupRole.ADMIN),
+    )
+    session.commit()
+    group_id = group.id
+
+  response_before_start = client.patch(
+    f"/groups/{group_id}",
+    json={"ends_on": (starts_on - timedelta(days=1)).isoformat()},
+    headers=auth_headers,
+  )
+  assert response_before_start.status_code == 422
+
+  response_before_today = client.patch(
+    f"/groups/{group_id}",
+    json={"ends_on": (today - timedelta(days=1)).isoformat()},
+    headers=auth_headers,
+  )
+  assert response_before_today.status_code == 422
+
+  response_remove_end = client.patch(
+    f"/groups/{group_id}",
+    json={"ends_on": None},
+    headers=auth_headers,
+  )
+  assert response_remove_end.status_code == 200
+  assert response_remove_end.json()["ends_on"] is None
+  assert response_remove_end.json()["status"] == "active"
+
+  response_empty = client.patch(
+    f"/groups/{group_id}",
+    json={},
+    headers=auth_headers,
+  )
+  assert response_empty.status_code == 200
+  assert response_empty.json()["name"] == "Grupo Datas"
+  assert response_empty.json()["description"] == "Descrição original"
+  assert response_empty.json()["starts_on"] == starts_on.isoformat()
+  assert response_empty.json()["ends_on"] is None
+  assert response_empty.json()["ranking_criterion"] == "check_ins"
+
+
+def test_patch_group_reopens_ended_group(
+  client: TestClient,
+  auth_headers: dict[str, str],
+  user: User,
+  test_engine,
+) -> None:
+  today = habits_service.today()
+
+  with Session(test_engine) as session:
+    group_extend = Group(
+      name="Grupo Reabertura Extensão",
+      starts_on=today - timedelta(days=10),
+      ends_on=today - timedelta(days=1),
+      ranking_criterion=RankingCriterion.CHECK_INS,
+      invite_code="PATCH005",
+    )
+    group_remove_end = Group(
+      name="Grupo Reabertura Remoção",
+      starts_on=today - timedelta(days=10),
+      ends_on=today - timedelta(days=1),
+      ranking_criterion=RankingCriterion.CHECK_INS,
+      invite_code="PATCH006",
+    )
+    session.add(group_extend)
+    session.add(group_remove_end)
+    session.flush()
+
+    repository.add_member(
+      session,
+      Member(
+        group_id=group_extend.id,
+        user_id=user.id,
+        role=GroupRole.ADMIN,
+      ),
+    )
+    repository.add_member(
+      session,
+      Member(
+        group_id=group_remove_end.id,
+        user_id=user.id,
+        role=GroupRole.ADMIN,
+      ),
+    )
+    session.commit()
+
+    group_extend_id = group_extend.id
+    group_remove_end_id = group_remove_end.id
+
+  response_extend_before = client.get(
+    f"/groups/{group_extend_id}",
+    headers=auth_headers,
+  )
+  response_remove_before = client.get(
+    f"/groups/{group_remove_end_id}",
+    headers=auth_headers,
+  )
+
+  assert response_extend_before.status_code == 200
+  assert response_extend_before.json()["status"] == "ended"
+  assert response_remove_before.status_code == 200
+  assert response_remove_before.json()["status"] == "ended"
+
+  response_extend = client.patch(
+    f"/groups/{group_extend_id}",
+    json={"ends_on": (today + timedelta(days=10)).isoformat()},
+    headers=auth_headers,
+  )
+
+  assert response_extend.status_code == 200
+  assert response_extend.json()["status"] == "active"
+  assert response_extend.json()["ends_on"] == (today + timedelta(days=10)).isoformat()
+
+  response_remove_end = client.patch(
+    f"/groups/{group_remove_end_id}",
+    json={"ends_on": None},
+    headers=auth_headers,
+  )
+
+  assert response_remove_end.status_code == 200
+  assert response_remove_end.json()["status"] == "active"
+  assert response_remove_end.json()["ends_on"] is None

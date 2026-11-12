@@ -226,3 +226,19 @@ RESPONSES_FINISH_GROUP_HABIT = {
     },
   },
 }
+
+RESPONSES_PATCH_GROUP = {
+  status.HTTP_200_OK: {
+    "description": "Dados do grupo atualizados com sucesso.",
+    "content": {"application/json": {"example": EXAMPLE_GROUP_DETAIL}},
+  },
+  status.HTTP_401_UNAUTHORIZED: _RESPONSE_401,
+  **GROUP_FORBIDDEN_RESPONSE,
+  **GROUP_NOT_FOUND_RESPONSE,
+  status.HTTP_422_UNPROCESSABLE_CONTENT: {
+    "description": (
+      "Dados inválidos, incluindo nome ou critério nulo, critério inexistente,"
+      " descrição acima de 500 caracteres ou data de término inválida."
+    ),
+  },
+}
