@@ -1,9 +1,15 @@
 from fastapi import status
 
 from app.group.exceptions import (
+  MSG_ALREADY_ADMIN,
+  MSG_ALREADY_MEMBER,
+  MSG_CANNOT_REMOVE_SELF,
   MSG_GROUP_ENDED,
   MSG_GROUP_FORBIDDEN,
+  MSG_GROUP_FULL,
   MSG_GROUP_NOT_FOUND,
+  MSG_MEMBER_NOT_FOUND,
+  MSG_USER_TO_ADD_NOT_FOUND,
 )
 from app.group.schemas import MSG_ENDS_ON_BEFORE_STARTS_ON
 from app.habits.exceptions import MSG_HABIT_ALREADY_FINISHED, MSG_HABIT_NOT_FOUND
@@ -241,4 +247,109 @@ RESPONSES_PATCH_GROUP = {
       " descrição acima de 500 caracteres ou data de término inválida."
     ),
   },
+}
+
+RESPONSES_ADD_MEMBER = {
+  status.HTTP_401_UNAUTHORIZED: _RESPONSE_401,
+  status.HTTP_403_FORBIDDEN: GROUP_FORBIDDEN_RESPONSE[status.HTTP_403_FORBIDDEN],
+  status.HTTP_404_NOT_FOUND: {
+    "description": "Grupo inexistente ou usuário não encontrado.",
+    "content": {
+      "application/json": {
+        "examples": {
+          "grupo_nao_encontrado": {
+            "summary": "Grupo não encontrado",
+            "value": {"detail": MSG_GROUP_NOT_FOUND},
+          },
+          "usuario_nao_encontrado": {
+            "summary": "Usuário a ser adicionado não existe",
+            "value": {"detail": MSG_USER_TO_ADD_NOT_FOUND},
+          },
+        }
+      }
+    },
+  },
+  status.HTTP_409_CONFLICT: {
+    "description": "Conflito ao adicionar integrante.",
+    "content": {
+      "application/json": {
+        "examples": {
+          "ja_membro": {
+            "summary": "Usuário já participa do grupo",
+            "value": {"detail": MSG_ALREADY_MEMBER},
+          },
+          "grupo_encerrado": {
+            "summary": "Grupo já encerrado",
+            "value": {"detail": MSG_GROUP_ENDED},
+          },
+          "grupo_cheio": {
+            "summary": "Grupo já atingiu o limite de membros",
+            "value": {"detail": MSG_GROUP_FULL},
+          },
+        }
+      }
+    },
+  },
+}
+
+RESPONSES_LIST_MEMBERS = {
+  status.HTTP_401_UNAUTHORIZED: _RESPONSE_401,
+  status.HTTP_404_NOT_FOUND: GROUP_NOT_FOUND_RESPONSE[status.HTTP_404_NOT_FOUND],
+}
+
+RESPONSES_DELETE_MEMBER = {
+  status.HTTP_401_UNAUTHORIZED: _RESPONSE_401,
+  status.HTTP_403_FORBIDDEN: GROUP_FORBIDDEN_RESPONSE[status.HTTP_403_FORBIDDEN],
+  status.HTTP_404_NOT_FOUND: {
+    "description": "Grupo ou integrante não encontrado.",
+    "content": {
+      "application/json": {
+        "examples": {
+          "grupo_nao_encontrado": {
+            "summary": "Grupo não encontrado",
+            "value": {"detail": MSG_GROUP_NOT_FOUND},
+          },
+          "membro_nao_encontrado": {
+            "summary": "Usuário alvo não é membro",
+            "value": {"detail": MSG_MEMBER_NOT_FOUND},
+          },
+        }
+      }
+    },
+  },
+  status.HTTP_409_CONFLICT: {
+    "description": "Tentativa de remover a si mesmo.",
+    "content": {"application/json": {"example": {"detail": MSG_CANNOT_REMOVE_SELF}}},
+  },
+}
+
+RESPONSES_PROMOTE_MEMBER = {
+  status.HTTP_401_UNAUTHORIZED: _RESPONSE_401,
+  status.HTTP_403_FORBIDDEN: GROUP_FORBIDDEN_RESPONSE[status.HTTP_403_FORBIDDEN],
+  status.HTTP_404_NOT_FOUND: {
+    "description": "Grupo ou integrante não encontrado.",
+    "content": {
+      "application/json": {
+        "examples": {
+          "grupo_nao_encontrado": {
+            "summary": "Grupo não encontrado",
+            "value": {"detail": MSG_GROUP_NOT_FOUND},
+          },
+          "membro_nao_encontrado": {
+            "summary": "Usuário alvo não é membro",
+            "value": {"detail": MSG_MEMBER_NOT_FOUND},
+          },
+        }
+      }
+    },
+  },
+  status.HTTP_409_CONFLICT: {
+    "description": "Integrante já é administrador.",
+    "content": {"application/json": {"example": {"detail": MSG_ALREADY_ADMIN}}},
+  },
+}
+
+RESPONSES_LEAVE_GROUP = {
+  status.HTTP_401_UNAUTHORIZED: _RESPONSE_401,
+  status.HTTP_404_NOT_FOUND: GROUP_NOT_FOUND_RESPONSE[status.HTTP_404_NOT_FOUND],
 }

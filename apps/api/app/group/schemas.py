@@ -11,10 +11,18 @@ from pydantic import (
   model_validator,
 )
 
+from app.auth.schemas import normalize_identifier
 from app.checkins.schemas import GroupSummary
 from app.group.models import GroupRole, RankingCriterion
 from app.habits.schemas import HabitCreate, HabitPublic, HabitUpdate
 from app.validators import NoNul
+
+UsernameInput = Annotated[
+  str,
+  BeforeValidator(normalize_identifier),
+  StringConstraints(min_length=1, max_length=30),
+  NoNul,
+]
 
 
 def _blank_to_none(value: object) -> object:
@@ -150,3 +158,20 @@ class GroupHabitPublic(HabitPublic):
   """Hábito de grupo devolvido pelas rotas, com o resumo do grupo."""
 
   group: GroupSummary
+
+
+class MemberAdd(BaseModel):
+  """Dados para adicionar um membro ao grupo por username."""
+
+  model_config = ConfigDict(from_attributes=True)
+
+  username: UsernameInput
+
+
+class LeaveResult(BaseModel):
+  """Resultado da saída de um membro do grupo."""
+
+  model_config = ConfigDict(from_attributes=True)
+
+  group_deleted: bool
+  promoted_user_id: UUID | None = None

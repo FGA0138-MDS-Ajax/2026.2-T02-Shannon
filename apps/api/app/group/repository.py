@@ -4,7 +4,7 @@ from sqlalchemy import func
 from sqlmodel import Session, col, select
 
 from app.auth.models import User
-from app.group.models import Group, Member
+from app.group.models import Group, GroupRole, Member
 
 
 def get_group(db: Session, group_id: UUID) -> Group | None:
@@ -116,3 +116,41 @@ def list_group_ids_of_user(db: Session, user_id: UUID) -> set[UUID]:
   """Retorna o conjunto de IDs dos grupos em que o usuário participa. Não faz commit."""
   statement = select(col(Member.group_id)).where(col(Member.user_id) == user_id)
   return set(db.exec(statement).all())
+
+
+def set_member_role(db: Session, member: Member, role: GroupRole) -> Member:
+  """Atualiza o papel do membro e faz flush. Não faz commit."""
+  member.role = role.value
+  db.add(member)
+  db.flush()
+  return member
+
+
+def count_admins(db: Session, group_id: UUID) -> int:
+  """Conta quantos administradores o grupo possui. Não faz commit."""
+  statement = (
+    select(func.count())
+    .select_from(Member)
+    .where(
+      col(Member.group_id) == group_id,
+      col(Member.role) == GroupRole.ADMIN.value,
+    ),
+  )
+  return db.exec(statement).one()
+
+
+def get_oldest_member(
+  db: Session, group_id: UUID, excluding_user_id: UUID
+) -> Member | None:
+  """Busca o integrante mais antigo do grupo,
+  exceto o usuário informado. Não faz commit."""
+  statement = (
+    select(Member)
+    .where(
+      col(Member.group_id) == group_id,
+      col(Member.user_id) != excluding_user_id,
+    )
+    .order_by(col(Member.joined_at), col(Member.user_id))
+    .limit(1)
+  )
+  return db.exec(statement).first()
