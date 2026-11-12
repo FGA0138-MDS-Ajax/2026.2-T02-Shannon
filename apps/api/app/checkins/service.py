@@ -29,6 +29,7 @@ from app.checkins.schemas import (
   HabitOptionsQuery,
 )
 from app.goals import service as goals_service
+from app.habits import service as habits_service
 from app.habits.exceptions import MSG_HABIT_FINISHED, MSG_HABIT_NOT_FOUND
 from app.habits.models import HabitCategory
 from app.habits.repository import (
@@ -81,7 +82,7 @@ def build_check_ins_public(
 
 def list_check_in_categories(db: Session, user: User) -> CheckInCategoriesResponse:
   """Retorna a contagem dos hábitos disponíveis do usuário por categoria."""
-  rows = count_eligible_habits_by_category(db, user.id)
+  rows = count_eligible_habits_by_category(db, user.id, habits_service.today())
 
   rows = sorted(
     rows,
@@ -108,6 +109,7 @@ def list_check_in_habit_options(
   habits = list_eligible_habits_page(
     db,
     user.id,
+    habits_service.today(),
     category=query.category,
     exclude_category=query.exclude_category,
     limit=limit,

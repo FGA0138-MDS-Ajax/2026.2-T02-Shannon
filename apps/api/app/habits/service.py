@@ -65,8 +65,11 @@ def get_owned_habit(db: Session, habit_id: UUID, user: User) -> Habit:
 
 
 def get_check_in_eligible_habits(db: Session, user: User) -> list[Habit]:
-  """Hábitos em que o usuário pode fazer check-in: os dele que estão ativos."""
-  return list_check_in_eligible_habits(db, user.id)
+  """Hábitos em que o usuário pode fazer check-in.
+
+  Os dele que estão ativos e os ativos dos grupos ativos de que ele é membro.
+  """
+  return list_check_in_eligible_habits(db, user.id, today())
 
 
 def create_habit(db: Session, user: User, data: HabitCreate) -> Habit:
