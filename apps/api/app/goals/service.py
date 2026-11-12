@@ -5,12 +5,19 @@ from sqlmodel import Session
 
 from app.auth.models import User
 from app.goals import repository as goals_repository
-from app.goals.exceptions import GoalHabitFinishedError, GoalNotFoundError
+from app.goals.exceptions import (
+  GoalHabitFinishedError,
+  GoalNotFoundError,
+  GroupHabitGoalLockedError,
+)
 from app.goals.models import Goal
 from app.goals.schemas import GoalInput, HabitProgressPublic
 from app.goals.streak import calculate_progress
+from app.group.repository import get_member
 from app.habits import service as habits_service
+from app.habits.exceptions import HabitNotFoundError
 from app.habits.models import Habit, HabitStatus
+from app.habits.repository import get_habit_by_id
 from app.habits.schemas import HabitWithProgress
 
 
@@ -20,7 +27,18 @@ def set_goal(db: Session, habit_id: UUID, user: User, data: GoalInput) -> Goal:
   Cria a meta dos hábitos antigos, que não têm uma. Se a regra mudar, reinicia o
   streak com `starts_on` = hoje. A mesma regra enviada de novo não grava nada.
   Checa o acesso (404/403) antes do hábito encerrado (`GoalHabitFinishedError`).
+
+  A meta de hábito de grupo é compartilhada e não pode mudar, porque reiniciaria o
+  streak de todos os membros: membro do grupo recebe `GroupHabitGoalLockedError`
+  (409); quem não é membro recebe `HabitNotFoundError` (404), sem saber que o
+  hábito existe.
   """
+  group_habit = get_habit_by_id(db, habit_id)
+  if group_habit is not None and group_habit.author_group_id is not None:
+    if get_member(db, group_habit.author_group_id, user.id) is None:
+      raise HabitNotFoundError
+    raise GroupHabitGoalLockedError
+
   habit = habits_service.get_owned_habit(db, habit_id, user)
 
   if habit.status == HabitStatus.FINISHED:

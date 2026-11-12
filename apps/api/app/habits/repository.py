@@ -57,6 +57,22 @@ def list_habits_by_author(
   return list(db.exec(statement).all())
 
 
+def list_habits_by_group(
+  db: Session, group_id: UUID, status: HabitStatus | None = None
+) -> list[Habit]:
+  """Lista os hábitos do grupo, opcionalmente filtrados por status. Não faz commit.
+
+  Mesma ordem de `list_habits_by_author`: `created_at` decrescente e `name`.
+  """
+  statement = select(Habit).where(col(Habit.author_group_id) == group_id)
+  if status is not None:
+    statement = statement.where(col(Habit.status) == status)
+
+  statement = statement.order_by(col(Habit.created_at).desc(), col(Habit.name))
+
+  return list(db.exec(statement).all())
+
+
 def create_habit(db: Session, habit: Habit) -> Habit:
   """Adiciona e faz flush do novo hábito no banco. Não faz commit."""
   db.add(habit)

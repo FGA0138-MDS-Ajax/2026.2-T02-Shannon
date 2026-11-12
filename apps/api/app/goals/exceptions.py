@@ -7,6 +7,7 @@ MSG_GOAL_MONTH_TARGET = "A meta mensal deve ter de 1 a 28 vezes."
 MSG_GOAL_WEEKDAY_NOT_ALLOWED = "Só a meta semanal tem dia de fechamento."
 MSG_GOAL_NOT_FOUND = "Este hábito ainda não tem meta."
 MSG_GOAL_HABIT_FINISHED = "Hábito encerrado não aceita alteração de meta."
+MSG_GROUP_HABIT_GOAL_LOCKED = "A meta de um hábito de grupo não pode ser alterada."
 
 
 class GoalNotFoundError(Exception):
@@ -15,3 +16,7 @@ class GoalNotFoundError(Exception):
 
 class GoalHabitFinishedError(Exception):
   """Tentativa de alterar a meta de um hábito encerrado."""
+
+
+class GroupHabitGoalLockedError(Exception):
+  """Tentativa de alterar a meta de um hábito de grupo."""
