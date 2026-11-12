@@ -25,6 +25,16 @@ def create_group(db: Session, group: Group) -> Group:
   return group
 
 
+def update_group(db: Session, group: Group, updates: dict[str, object]) -> Group:
+  """Aplica alterações ao grupo e faz flush. Não faz commit."""
+  for field, value in updates.items():
+    setattr(group, field, value)
+
+  db.add(group)
+  db.flush()
+  return group
+
+
 def get_member(db: Session, group_id: UUID, user_id: UUID) -> Member | None:
   """Busca o vínculo de membro pela chave primária composta. Não faz commit."""
   return db.get(Member, (group_id, user_id))

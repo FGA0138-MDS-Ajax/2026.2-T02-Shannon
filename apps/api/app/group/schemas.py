@@ -69,6 +69,27 @@ class GroupCreate(BaseModel):
     return self
 
 
+class GroupUpdate(BaseModel):
+  """Dados para atualização parcial de um grupo."""
+
+  model_config = ConfigDict(from_attributes=True)
+
+  name: GroupName | None = None
+  description: GroupDescription = None
+  ends_on: date | None = None
+  ranking_criterion: RankingCriterion | None = None
+
+  @model_validator(mode="after")
+  def validate_explicit_nulls(self) -> Self:
+    if "name" in self.model_fields_set and self.name is None:
+      raise ValueError("O nome do grupo não pode ser nulo.")
+
+    if "ranking_criterion" in self.model_fields_set and self.ranking_criterion is None:
+      raise ValueError("O critério do ranking não pode ser nulo.")
+
+    return self
+
+
 class MemberPublic(BaseModel):
   """Dados públicos de um integrante do grupo."""
 
