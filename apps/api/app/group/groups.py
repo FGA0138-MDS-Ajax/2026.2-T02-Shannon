@@ -1,3 +1,10 @@
+"""Módulo temporário que agrupa regras de negócio (service) e rotas (router) de grupos.
+
+Refatoração pós-sprint:
+- Funções `service_*` migrarão para `app/group/service.py`.
+- Handlers de endpoint e `register_routes` migrarão para `app/group/router.py`.
+"""
+
 from typing import Annotated
 from uuid import UUID
 
@@ -37,7 +44,10 @@ MSG_ENDS_ON_BEFORE_TODAY = (
 
 
 def service_create_group(db: Session, user: User, data: GroupCreate) -> GroupDetail:
-  """Cria um grupo novo, vincula o criador como admin e devolve os detalhes."""
+  """Cria um grupo novo, vincula o criador como admin e devolve os detalhes.
+
+  [Refatoração pós-sprint]: Destino -> app/group/service.py
+  """
   today = habits_service.today()
   starts_on = data.starts_on or today
 
@@ -110,7 +120,10 @@ def service_create_group(db: Session, user: User, data: GroupCreate) -> GroupDet
 
 
 def service_list_my_groups(db: Session, user: User) -> list[GroupListItem]:
-  """Lista os grupos em que o usuário participa, com ativos primeiro."""
+  """Lista os grupos em que o usuário participa, com ativos primeiro.
+
+  [Refatoração pós-sprint]: Destino -> app/group/service.py
+  """
   pairs = repository.list_groups_of_user(db, user.id)
   if not pairs:
     return []
@@ -141,7 +154,10 @@ def service_list_my_groups(db: Session, user: User) -> list[GroupListItem]:
 
 
 def service_get_group_detail(db: Session, group_id: UUID, user: User) -> GroupDetail:
-  """Devolve os detalhes do grupo e seus membros para um participante."""
+  """Devolve os detalhes do grupo e seus membros para um participante.
+
+  [Refatoração pós-sprint]: Destino -> app/group/service.py
+  """
   group, member = require_member(db, group_id, user)
   members_with_users = repository.list_members_with_users(db, group_id)
   today = habits_service.today()
@@ -177,7 +193,10 @@ def create_group(
   data: GroupCreate,
   user: Annotated[User, Depends(get_current_user)],
 ) -> GroupDetail:
-  """Cria um novo grupo com o usuário autenticado como admin."""
+  """Cria um novo grupo com o usuário autenticado como admin.
+
+  [Refatoração pós-sprint]: Destino -> app/group/router.py
+  """
   return service_create_group(db, user, data)
 
 
@@ -185,7 +204,10 @@ def list_my_groups(
   db: SessionDep,
   user: Annotated[User, Depends(get_current_user)],
 ) -> list[GroupListItem]:
-  """Lista os grupos do usuário logado (ativos primeiro)."""
+  """Lista os grupos do usuário logado (ativos primeiro).
+
+  [Refatoração pós-sprint]: Destino -> app/group/router.py
+  """
   return service_list_my_groups(db, user)
 
 
@@ -194,7 +216,10 @@ def get_group(
   group_id: UUID,
   user: Annotated[User, Depends(get_current_user)],
 ) -> GroupDetail:
-  """Obtém os detalhes de um grupo em que o usuário é membro."""
+  """Obtém os detalhes de um grupo em que o usuário é membro.
+
+  [Refatoração pós-sprint]: Destino -> app/group/router.py
+  """
   try:
     return service_get_group_detail(db, group_id, user)
   except GroupNotFoundError:
@@ -202,7 +227,10 @@ def get_group(
 
 
 def register_routes(router: APIRouter) -> None:
-  """Registra as rotas de criação, listagem e detalhe no router `/groups`."""
+  """Registra as rotas de criação, listagem e detalhe no router `/groups`.
+
+  [Refatoração pós-sprint]: Destino -> app/group/router.py
+  """
   router.post(
     "",
     response_model=GroupDetail,

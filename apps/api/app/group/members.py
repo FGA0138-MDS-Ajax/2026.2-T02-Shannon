@@ -1,3 +1,12 @@
+"""Módulo temporário que agrupa regras de negócio (service) e rotas
+(router) de integrantes de grupos.
+
+Refatoração pós-sprint:
+- Funções `service_*` e helpers puros migrarão para `app/group/service.py`.
+- Handlers de endpoint (`post_*`, `get_*`, `delete_*`) e `register_routes`
+  migrarão para `app/group/router.py`.
+"""
+
 from typing import Annotated
 from uuid import UUID
 
@@ -47,6 +56,8 @@ def choose_successor(members: list[Member], leaving_user_id: UUID) -> Member | N
   """Função pura que escolhe o sucessor entre os membros restantes.
 
   Ordena por joined_at mais antigo e desempata por user_id crescente.
+
+  [Refatoração pós-sprint]: Destino -> app/group/service.py
   """
   candidates = [m for m in members if m.user_id != leaving_user_id]
   if not candidates:
@@ -64,7 +75,10 @@ def choose_successor(members: list[Member], leaving_user_id: UUID) -> Member | N
 def service_add_member(
   db: Session, group_id: UUID, user: User, data: MemberAdd
 ) -> MemberPublic:
-  """Adiciona um membro por username após validação com lock no grupo."""
+  """Adiciona um membro por username após validação com lock no grupo.
+
+  [Refatoração pós-sprint]: Destino -> app/group/service.py
+  """
   require_admin(db, group_id, user)
   group = repository.get_group_for_update(db, group_id)
   if group is None:
@@ -104,7 +118,10 @@ def service_add_member(
 
 
 def service_list_members(db: Session, group_id: UUID, user: User) -> list[MemberPublic]:
-  """Lista todos os integrantes do grupo."""
+  """Lista todos os integrantes do grupo.
+
+  [Refatoração pós-sprint]: Destino -> app/group/service.py
+  """
   require_member(db, group_id, user)
   members_with_users = repository.list_members_with_users(db, group_id)
 
@@ -122,7 +139,10 @@ def service_list_members(db: Session, group_id: UUID, user: User) -> list[Member
 def service_remove_member(
   db: Session, group_id: UUID, target_user_id: UUID, user: User
 ) -> None:
-  """Remove um integrante do grupo."""
+  """Remove um integrante do grupo.
+
+  [Refatoração pós-sprint]: Destino -> app/group/service.py
+  """
   require_admin(db, group_id, user)
   group = repository.get_group_for_update(db, group_id)
   if group is None:
@@ -142,7 +162,10 @@ def service_remove_member(
 def service_promote_member(
   db: Session, group_id: UUID, target_user_id: UUID, user: User
 ) -> MemberPublic:
-  """Promove um membro a administrador."""
+  """Promove um membro a administrador.
+
+  [Refatoração pós-sprint]: Destino -> app/group/service.py
+  """
   require_admin(db, group_id, user)
   group = repository.get_group_for_update(db, group_id)
   if group is None:
@@ -169,7 +192,10 @@ def service_promote_member(
 
 
 def service_leave_group(db: Session, group_id: UUID, user: User) -> LeaveResult:
-  """Processa a saída de um membro, cuidando de sucessão ou exclusão do grupo."""
+  """Processa a saída de um membro, cuidando de sucessão ou exclusão do grupo.
+
+  [Refatoração pós-sprint]: Destino -> app/group/service.py
+  """
   _, member = require_member(db, group_id, user)
   group = repository.get_group_for_update(db, group_id)
   if group is None:
@@ -216,6 +242,10 @@ def post_member(
   data: MemberAdd,
   user: Annotated[User, Depends(get_current_user)],
 ) -> MemberPublic:
+  """Adiciona um novo integrante ao grupo por username (apenas admin).
+
+  [Refatoração pós-sprint]: Destino -> app/group/router.py
+  """
   try:
     return service_add_member(db, group_id, user, data)
   except GroupNotFoundError:
@@ -237,6 +267,10 @@ def get_members(
   group_id: UUID,
   user: Annotated[User, Depends(get_current_user)],
 ) -> list[MemberPublic]:
+  """Lista todos os integrantes do grupo.
+
+  [Refatoração pós-sprint]: Destino -> app/group/router.py
+  """
   try:
     return service_list_members(db, group_id, user)
   except GroupNotFoundError:
@@ -249,6 +283,10 @@ def delete_member(
   user_id: UUID,
   user: Annotated[User, Depends(get_current_user)],
 ) -> None:
+  """Remove um integrante do grupo (apenas admin).
+
+  [Refatoração pós-sprint]: Destino -> app/group/router.py
+  """
   try:
     service_remove_member(db, group_id, user_id, user)
   except GroupNotFoundError:
@@ -267,6 +305,10 @@ def post_promote(
   user_id: UUID,
   user: Annotated[User, Depends(get_current_user)],
 ) -> MemberPublic:
+  """Promove um integrante do grupo a administrador (apenas admin).
+
+  [Refatoração pós-sprint]: Destino -> app/group/router.py
+  """
   try:
     return service_promote_member(db, group_id, user_id, user)
   except GroupNotFoundError:
@@ -284,6 +326,10 @@ def post_leave(
   group_id: UUID,
   user: Annotated[User, Depends(get_current_user)],
 ) -> LeaveResult:
+  """Sai do grupo (com sucessão automática se admin ou auto-exclusão do grupo).
+
+  [Refatoração pós-sprint]: Destino -> app/group/router.py
+  """
   try:
     return service_leave_group(db, group_id, user)
   except GroupNotFoundError:
@@ -291,7 +337,10 @@ def post_leave(
 
 
 def register_routes(router: APIRouter) -> None:
-  """Registra as rotas de integrantes no router `/groups`."""
+  """Registra as rotas de integrantes no router `/groups`.
+
+  [Refatoração pós-sprint]: Destino -> app/group/router.py
+  """
   router.post(
     "/{group_id}/members",
     response_model=MemberPublic,
