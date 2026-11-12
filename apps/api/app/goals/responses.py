@@ -4,6 +4,7 @@ from app.goals.exceptions import (
   MSG_GOAL_HABIT_FINISHED,
   MSG_GOAL_NOT_FOUND,
   MSG_GOAL_WEEK_TARGET,
+  MSG_GROUP_HABIT_GOAL_LOCKED,
 )
 from app.habits.exceptions import MSG_HABIT_FORBIDDEN, MSG_HABIT_NOT_FOUND
 
@@ -20,8 +21,24 @@ RESPONSES_SET_GOAL = {
     "content": {"application/json": {"example": {"detail": MSG_HABIT_NOT_FOUND}}},
   },
   status.HTTP_409_CONFLICT: {
-    "description": "Hábito encerrado não permite alterar a meta.",
-    "content": {"application/json": {"example": {"detail": MSG_GOAL_HABIT_FINISHED}}},
+    "description": (
+      "Hábito encerrado, ou hábito de grupo (a meta é compartilhada e não pode"
+      " ser alterada por um membro do grupo)."
+    ),
+    "content": {
+      "application/json": {
+        "examples": {
+          "habito_encerrado": {
+            "summary": "Hábito encerrado não permite alterar a meta",
+            "value": {"detail": MSG_GOAL_HABIT_FINISHED},
+          },
+          "habito_de_grupo": {
+            "summary": "Meta de hábito de grupo é bloqueada",
+            "value": {"detail": MSG_GROUP_HABIT_GOAL_LOCKED},
+          },
+        }
+      }
+    },
   },
   status.HTTP_422_UNPROCESSABLE_ENTITY: {
     "description": "Regra da meta inválida ou identificador do hábito inválido.",
