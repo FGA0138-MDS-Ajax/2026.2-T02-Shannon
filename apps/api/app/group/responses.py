@@ -2,12 +2,14 @@ from fastapi import status
 
 from app.group.exceptions import (
   MSG_ALREADY_ADMIN,
+  MSG_ALREADY_IN_GROUP,
   MSG_ALREADY_MEMBER,
   MSG_CANNOT_REMOVE_SELF,
   MSG_GROUP_ENDED,
   MSG_GROUP_FORBIDDEN,
   MSG_GROUP_FULL,
   MSG_GROUP_NOT_FOUND,
+  MSG_INVITE_CODE_INVALID,
   MSG_MEMBER_NOT_FOUND,
   MSG_USER_TO_ADD_NOT_FOUND,
 )
@@ -352,4 +354,59 @@ RESPONSES_PROMOTE_MEMBER = {
 RESPONSES_LEAVE_GROUP = {
   status.HTTP_401_UNAUTHORIZED: _RESPONSE_401,
   status.HTTP_404_NOT_FOUND: GROUP_NOT_FOUND_RESPONSE[status.HTTP_404_NOT_FOUND],
+}
+
+
+RESPONSES_JOIN = {
+  status.HTTP_401_UNAUTHORIZED: _RESPONSE_401,
+  status.HTTP_404_NOT_FOUND: {
+    "description": "Código de convite inválido.",
+    "content": {
+      "application/json": {
+        "example": {"detail": MSG_INVITE_CODE_INVALID},
+      }
+    },
+  },
+  status.HTTP_409_CONFLICT: {
+    "description": "Conflito ao entrar no grupo.",
+    "content": {
+      "application/json": {
+        "examples": {
+          "ja_participa": {
+            "summary": "Usuário já participa do grupo",
+            "value": {"detail": MSG_ALREADY_IN_GROUP},
+          },
+          "grupo_encerrado": {
+            "summary": "Grupo encerrado",
+            "value": {"detail": MSG_GROUP_ENDED},
+          },
+          "grupo_cheio": {
+            "summary": "Grupo cheio",
+            "value": {"detail": MSG_GROUP_FULL},
+          },
+        }
+      }
+    },
+  },
+}
+
+RESPONSES_PREVIEW = {
+  status.HTTP_401_UNAUTHORIZED: _RESPONSE_401,
+  status.HTTP_404_NOT_FOUND: {
+    "description": "Código de convite inválido.",
+    "content": {
+      "application/json": {
+        "example": {"detail": MSG_INVITE_CODE_INVALID},
+      }
+    },
+  },
+}
+
+RESPONSES_REGENERATE_INVITE = {
+  status.HTTP_401_UNAUTHORIZED: _RESPONSE_401,
+  status.HTTP_403_FORBIDDEN: GROUP_FORBIDDEN_RESPONSE[status.HTTP_403_FORBIDDEN],
+  status.HTTP_404_NOT_FOUND: GROUP_NOT_FOUND_RESPONSE[status.HTTP_404_NOT_FOUND],
+  status.HTTP_500_INTERNAL_SERVER_ERROR: {
+    "description": "Não foi possível gerar um código de convite único.",
+  },
 }

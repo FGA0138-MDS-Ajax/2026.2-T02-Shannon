@@ -25,6 +25,13 @@ UsernameInput = Annotated[
 ]
 
 
+def _normalize_invite_code(value: str) -> str:
+  """Normaliza o código sem criar dependência circular entre módulos."""
+  from app.group.invite import normalize_invite_code
+
+  return normalize_invite_code(value)
+
+
 def _blank_to_none(value: object) -> object:
   """Converte strings vazias ou compostas apenas por espaços em None."""
   if isinstance(value, str) and not value.strip():
@@ -166,6 +173,29 @@ class MemberAdd(BaseModel):
   model_config = ConfigDict(from_attributes=True)
 
   username: UsernameInput
+
+
+class JoinRequest(BaseModel):
+  """Dados para entrar em um grupo utilizando um código de convite."""
+
+  code: Annotated[str, BeforeValidator(_normalize_invite_code)]
+
+
+class GroupPreview(BaseModel):
+  """Resumo público de um grupo acessado por código de convite."""
+
+  model_config = ConfigDict(from_attributes=True)
+
+  id: UUID
+  name: str
+  members_count: int
+  status: Literal["active", "ended"]
+
+
+class InviteCodePublic(BaseModel):
+  """Código de convite disponibilizado após sua geração ou renovação."""
+
+  invite_code: str
 
 
 class LeaveResult(BaseModel):
