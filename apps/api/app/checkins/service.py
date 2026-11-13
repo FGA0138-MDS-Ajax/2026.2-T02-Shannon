@@ -9,6 +9,7 @@ from app.auth.models import User
 from app.checkins import repository as checkins_repository
 from app.checkins.exceptions import (
   MSG_CHECK_IN_HABIT_FORBIDDEN,
+  MSG_GROUP_ENDED_CHECK_IN,
   CheckInForbiddenError,
   CheckInNotFoundError,
   CheckInRefusedError,
@@ -29,9 +30,13 @@ from app.checkins.schemas import (
   HabitOptionsQuery,
 )
 from app.goals import service as goals_service
+from app.goals.schemas import HabitProgressPublic
+from app.group.habits import build_members_progress
+from app.group.repository import list_groups_of_user
+from app.group.status import group_status
 from app.habits import service as habits_service
 from app.habits.exceptions import MSG_HABIT_FINISHED, MSG_HABIT_NOT_FOUND
-from app.habits.models import HabitCategory
+from app.habits.models import Habit, HabitCategory
 from app.habits.repository import (
   count_eligible_habits_by_category,
   list_eligible_habits_page,
@@ -144,16 +149,38 @@ def list_check_in_habit_options(
 def _raise_refusal(db: Session, user: User, refused: list[UUID]) -> None:
   """Levanta a recusa do motivo mais grave: 404, depois 403, depois 409.
 
-  O erro leva só os ids desse motivo. Faz 1 consulta.
+  O erro leva só os ids desse motivo. Entre os 409, grupo encerrado vem antes de
+  hábito encerrado. Faz 1 consulta, mais 1 se algum hábito recusado for de grupo.
   """
   found = {habit.id: habit for habit in list_habits_by_ids(db, refused)}
+  has_group_habit = any(h.author_group_id is not None for h in found.values())
+  my_groups = (
+    {group.id: group for group, _ in list_groups_of_user(db, user.id)}
+    if has_group_habit
+    else {}
+  )
+  today = habits_service.today()
+
   not_found: list[UUID] = []
   forbidden: list[UUID] = []
+  group_ended: list[UUID] = []
   finished: list[UUID] = []
 
   for habit_id in refused:
     habit = found.get(habit_id)
-    if habit is None or not can_view_habit(habit, user):
+    if habit is None:
+      not_found.append(habit_id)
+    elif habit.author_group_id is not None:
+      group = my_groups.get(habit.author_group_id)
+      if group is None:
+        # Não é membro: 404, para não revelar o grupo.
+        not_found.append(habit_id)
+      elif group_status(group, today) == "ended":
+        group_ended.append(habit_id)
+      else:
+        # Membro de grupo ativo e não elegível, então o hábito está encerrado.
+        finished.append(habit_id)
+    elif not can_view_habit(habit, user):
       not_found.append(habit_id)
     elif habit.author_user_id != user.id:
       forbidden.append(habit_id)
@@ -167,7 +194,42 @@ def _raise_refusal(db: Session, user: User, refused: list[UUID]) -> None:
     raise CheckInRefusedError(
       status.HTTP_403_FORBIDDEN, MSG_CHECK_IN_HABIT_FORBIDDEN, forbidden
     )
+  if group_ended:
+    raise CheckInRefusedError(
+      status.HTTP_409_CONFLICT, MSG_GROUP_ENDED_CHECK_IN, group_ended
+    )
   raise CheckInRefusedError(status.HTTP_409_CONFLICT, MSG_HABIT_FINISHED, finished)
+
+
+def _group_habits_progress(
+  db: Session, user: User, habits: list[Habit]
+) -> dict[UUID, HabitProgressPublic]:
+  """Progresso de quem fez o check-in em cada hábito de grupo. Não faz commit.
+
+  Usa a função por membro da GRP-6 com um só usuário: 1 consulta para os grupos
+  e mais 1 por grupo presente no check-in.
+  """
+  if not habits:
+    return {}
+
+  today = habits_service.today()
+  groups = {group.id: group for group, _ in list_groups_of_user(db, user.id)}
+  habits_by_group: dict[UUID, list[Habit]] = defaultdict(list)
+  for habit in habits:
+    habits_by_group[habit.author_group_id].append(habit)
+
+  result: dict[UUID, HabitProgressPublic] = {}
+  for group_id, group_habits in habits_by_group.items():
+    members_progress = build_members_progress(
+      db, groups[group_id], group_habits, [user.id], today
+    )
+    for habit in group_habits:
+      progress = members_progress.get((habit.id, user.id))
+      if progress is not None:
+        result[habit.id] = HabitProgressPublic(
+          habit_id=habit.id, goal=habit.goal, **progress.model_dump()
+        )
+  return result
 
 
 def register_check_in(
@@ -177,7 +239,8 @@ def register_check_in(
 
   Levanta `CheckInRefusedError` se algum hábito não for elegível; nesse caso
   nada é gravado. Depois de gravar, devolve o progresso de cada hábito com meta,
-  já contando este check-in.
+  já contando este check-in. Nos hábitos de grupo, é o progresso de quem fez o
+  check-in.
   """
   eligible_ids = {habit.id for habit in get_check_in_eligible_habits(db, user)}
   refused = [habit_id for habit_id in data.habit_ids if habit_id not in eligible_ids]
@@ -199,8 +262,13 @@ def register_check_in(
   # (`expire_on_commit`) e ler `habit.goal` em cada um faria uma consulta por hábito.
   public = build_check_ins_public(db, [check_in], user)[0]
   habits = list_habits_by_ids(db, data.habit_ids)
-  progress = goals_service.calculate_habits_progress(db, habits)
-  return CheckInCreatedPublic(**public.model_dump(), progress=list(progress.values()))
+  personal = [habit for habit in habits if habit.author_group_id is None]
+  of_groups = [habit for habit in habits if habit.author_group_id is not None]
+
+  progress = goals_service.calculate_habits_progress(db, personal)
+  progress |= _group_habits_progress(db, user, of_groups)
+  items = [progress[habit.id] for habit in habits if habit.id in progress]
+  return CheckInCreatedPublic(**public.model_dump(), progress=items)
 
 
 def get_visible_check_in(db: Session, check_in_id: UUID, user: User) -> CheckIn:

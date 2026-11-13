@@ -48,11 +48,13 @@ check_ins_router = APIRouter(tags=["check-ins"])
   summary="Registrar check-in",
   description=(
     "Registra um check-in que conta para vários hábitos (de 1 a 20, sem repetidos)."
-    " Todos precisam ser hábitos ativos do usuário logado. Se algum for recusado,"
-    " nada é gravado e o erro traz `detail` e os `habit_ids` do motivo mais grave"
-    " (404, depois 403, depois 409). A resposta traz `progress`, um item por hábito"
-    " com meta, já contando este check-in. Hábitos sem meta não aparecem e a ordem"
-    " não é garantida."
+    " Valem os hábitos ativos do usuário logado e os hábitos ativos dos grupos"
+    " ativos de que ele é membro, misturados ou não. Se algum for recusado, nada é"
+    " gravado e o erro traz `detail` e os `habit_ids` do motivo mais grave (404,"
+    " depois 403, depois 409; entre os 409, grupo encerrado vem antes de hábito"
+    " encerrado). A resposta traz `progress`, um item por hábito com meta, já"
+    " contando este check-in. Nos hábitos de grupo, é o progresso de quem fez o"
+    " check-in. Hábitos sem meta não aparecem e a ordem não é garantida."
   ),
   responses=RESPONSES_CREATE,
 )
