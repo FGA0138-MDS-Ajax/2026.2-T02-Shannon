@@ -205,3 +205,59 @@ class LeaveResult(BaseModel):
 
   group_deleted: bool
   promoted_user_id: UUID | None = None
+
+
+# Feed -------------------------------------------
+MSG_FEED_ONE_DIRECTION = "Informe before ou after, não os dois."
+
+
+class FeedQuery(BaseModel):
+  """Paginação do feed por cursor.
+
+  `before` traz os itens mais antigos que o cursor (rolar para baixo); `after`,
+  os mais novos (polling). Os dois juntos são recusados.
+  """
+
+  limit: int = Field(default=20, ge=1, le=50)
+  before: str | None = None
+  after: str | None = None
+
+  @model_validator(mode="after")
+  def _one_direction(self) -> Self:
+    if self.before is not None and self.after is not None:
+      raise ValueError(MSG_FEED_ONE_DIRECTION)
+    return self
+
+
+class FeedAuthor(BaseModel):
+  """Quem fez o check-in."""
+
+  id: UUID
+  username: str
+
+
+class FeedHabit(BaseModel):
+  """Hábito do grupo ligado ao check-in."""
+
+  id: UUID
+  name: str
+
+
+class FeedItem(BaseModel):
+  """Check-in no feed do grupo, só com os hábitos do grupo."""
+
+  cursor: str
+  id: UUID
+  author: FeedAuthor
+  title: str
+  description: str | None
+  habits: list[FeedHabit]
+  created_at: datetime
+
+
+class FeedPage(BaseModel):
+  """Página do feed, do check-in mais novo ao mais antigo."""
+
+  items: list[FeedItem]
+  next_cursor: str | None
+  has_more: bool
