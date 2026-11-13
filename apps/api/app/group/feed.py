@@ -1,17 +1,29 @@
 import base64
 from collections import defaultdict
 from datetime import datetime
+from typing import Annotated
 from uuid import UUID
 
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlmodel import Session
 
+from app.auth.dependencies import get_current_user
 from app.auth.models import User
+from app.database import SessionDep
 from app.group import repository
-from app.group.exceptions import InvalidCursorError
+from app.group.exceptions import (
+  MSG_GROUP_NOT_FOUND,
+  MSG_INVALID_CURSOR,
+  GroupNotFoundError,
+  InvalidCursorError,
+)
 from app.group.permissions import require_member
+from app.group.responses import RESPONSES_FEED
 from app.group.schemas import FeedAuthor, FeedHabit, FeedItem, FeedPage, FeedQuery
 
 _CURSOR_SEPARATOR = "|"
+
+feed_router = APIRouter(prefix="/groups", tags=["groups"])
 
 
 def encode_cursor(created_at: datetime, check_in_id: UUID) -> str:
@@ -96,3 +108,38 @@ def get_group_feed(
   ]
   next_cursor = items[-1].cursor if has_more and after is None else None
   return FeedPage(items=items, next_cursor=next_cursor, has_more=has_more)
+
+
+@feed_router.get(
+  "/{group_id}/check-ins",
+  response_model=FeedPage,
+  status_code=status.HTTP_200_OK,
+  summary="Feed de check-ins do grupo",
+  description=(
+    "Lista os check-ins do grupo para qualquer **membro**, do mais novo ao mais"
+    " antigo, também depois do fim do grupo. Cada item mostra só os hábitos do"
+    " grupo, nunca os pessoais, e um check-in em dois hábitos do grupo aparece uma"
+    " vez. O `cursor` é opaco: o app só o guarda e devolve. Para rolar, passe o"
+    " `next_cursor` em `before`; ele vem nulo quando acabou. Para buscar os novos"
+    " (polling), passe em `after` o `cursor` do item mais novo que o app tem:"
+    " vêm só os mais novos, também do mais novo ao mais antigo, e `next_cursor`"
+    " vem nulo. Se `has_more` vier verdadeiro nesse caso, chame de novo com o"
+    " `cursor` do primeiro item. `limit` de 1 a 50, padrão 20."
+  ),
+  responses=RESPONSES_FEED,
+)
+def get_feed(
+  db: SessionDep,
+  group_id: UUID,
+  query: Annotated[FeedQuery, Query()],
+  user: Annotated[User, Depends(get_current_user)],
+) -> FeedPage:
+  """Devolve uma página do feed do grupo para um membro."""
+  try:
+    return get_group_feed(db, group_id, user, query)
+  except GroupNotFoundError:
+    raise HTTPException(status.HTTP_404_NOT_FOUND, MSG_GROUP_NOT_FOUND) from None
+  except InvalidCursorError:
+    raise HTTPException(
+      status.HTTP_422_UNPROCESSABLE_CONTENT, MSG_INVALID_CURSOR
+    ) from None

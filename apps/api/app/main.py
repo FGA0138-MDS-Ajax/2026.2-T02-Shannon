@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.auth.router import auth_router
 from app.checkins.router import check_ins_router
 from app.goals.router import goals_router
+from app.group.feed import feed_router
 from app.group.habits import group_habits_router
 from app.group.router import group_router
 from app.habits.router import habit_router
@@ -41,6 +42,7 @@ app.include_router(goals_router)
 app.include_router(statistics_router)
 app.include_router(group_router)
 app.include_router(group_habits_router)
+app.include_router(feed_router)
 
 
 @app.get("/")
