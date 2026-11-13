@@ -1,4 +1,9 @@
-import { type Href, router, useFocusEffect } from "expo-router";
+import {
+  type Href,
+  router,
+  useFocusEffect,
+  useLocalSearchParams,
+} from "expo-router";
 import { useCallback, useState } from "react";
 import {
   ActivityIndicator,
@@ -11,12 +16,13 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import useSWR from "swr";
+import useSWR, { useSWRConfig } from "swr";
 import Button from "@/components/button";
 import Input from "@/components/input";
 import { describeProgressStatus, formatStreak } from "@/config/goal-labels";
 import { habitCategoryLabels } from "@/config/habit-categories";
 import { theme } from "@/config/theme";
+import { isHomeDataKey } from "@/hooks/useHabitsCheckIns";
 import { request, toQueryString } from "@/services/api";
 import {
   FORM_ERROR_KEY,
@@ -61,17 +67,31 @@ const currentPeriodLabels: Record<GoalPeriod, string> = {
 // TODO: refazer o flow de criação do checkin
 
 export default function CreateCheckInScreen() {
+  // Vindo do "+" de um hábito na Home: já abre a lista com ele marcado
+  const params = useLocalSearchParams<{
+    habitId?: string;
+    category?: HabitCategory;
+  }>();
+  const startsWithHabit = !!(params.habitId && params.category);
+  const { mutate: globalMutate } = useSWRConfig();
+
   // Em qual tela do fluxo a pessoa está
-  const [step, setStep] = useState<Step>("categories");
-  const [category, setCategory] = useState<HabitCategory | null>(null);
+  const [step, setStep] = useState<Step>(
+    startsWithHabit ? "habits" : "categories",
+  );
+  const [category, setCategory] = useState<HabitCategory | null>(
+    startsWithHabit ? (params.category ?? null) : null,
+  );
 
   // Ids marcados. Fica separado de options: o preselected é a sugestão da
   // API, o selected é o que a pessoa decidiu
-  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [selected, setSelected] = useState<Set<string>>(
+    new Set(startsWithHabit && params.habitId ? [params.habitId] : []),
+  );
 
   // "Ver mais": hábitos das outras categorias, de 3 em 3
   const [extraPage, setExtraPage] = useState(0);
-  const [hasMoreExtra, setHasMoreExtra] = useState(false);
+  const [hasMoreExtra, setHasMoreExtra] = useState(startsWithHabit);
   const [loadingMore, setLoadingMore] = useState(false);
 
   // Aviso em cima da lista de hábitos (limite, falha no "Ver mais", recusa)
@@ -275,6 +295,8 @@ export default function CreateCheckInScreen() {
       setSubmitting(true);
       setRejection(null);
       const checkIn = await createCheckIn(body);
+      // A Home continua montada por baixo: recarrega o painel já agora
+      globalMutate(isHomeDataKey);
 
       // Junta nome + progresso antes do backToCategories: ele zera a
       // categoria, a chave do SWR vira null e o `options` deixa de existir
