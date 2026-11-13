@@ -3,6 +3,7 @@ from uuid import UUID
 MSG_CHECK_IN_NOT_FOUND = "Check-in não encontrado."
 MSG_CHECK_IN_FORBIDDEN = "Apenas quem fez o check-in pode alterá-lo."
 MSG_CHECK_IN_HABIT_FORBIDDEN = "Apenas o autor pode fazer check-in neste hábito."
+MSG_GROUP_ENDED_CHECK_IN = "Grupo encerrado não aceita check-ins."
 
 
 class CheckInNotFoundError(Exception):
