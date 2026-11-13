@@ -4,6 +4,7 @@ from uuid import UUID
 from sqlmodel import Session
 
 from app.auth.models import User
+from app.checkins.schemas import GroupSummary
 from app.goals import repository as goals_repository
 from app.goals.exceptions import (
   GoalHabitFinishedError,
@@ -13,7 +14,9 @@ from app.goals.exceptions import (
 from app.goals.models import Goal
 from app.goals.schemas import GoalInput, HabitProgressPublic
 from app.goals.streak import calculate_progress
-from app.group.repository import get_member
+from app.group.models import Group
+from app.group.repository import get_member, list_groups_by_ids
+from app.group.status import group_reference_date
 from app.habits import service as habits_service
 from app.habits.exceptions import HabitNotFoundError
 from app.habits.models import Habit, HabitStatus
@@ -84,16 +87,82 @@ def build_habits_progress(
 
 
 def calculate_habits_progress(
-  db: Session, habits: list[Habit]
+  db: Session,
+  habits: list[Habit],
+  user: User | None = None,
+  groups_by_id: dict[UUID, Group] | None = None,
 ) -> dict[UUID, HabitProgressPublic]:
-  """Calcula o progresso de vários hábitos com uma consulta só aos check-ins.
+  """Calcula o progresso de vários hábitos, em lote.
 
   Usado no acompanhamento de um hábito (GOAL-5) e nas listas (GOAL-6 e GOAL-7).
   Hábitos sem meta ficam de fora do resultado. Nada é gravado.
+
+  Hábitos pessoais: uma consulta aos check-ins do autor. Hábitos de grupo: exigem
+  `user` (sem ele, `ValueError`); o progresso é o dele, contado desde a entrada
+  no grupo e até a data de referência do hábito (uma consulta aos grupos e outra
+  aos check-ins).
+
+  `groups_by_id` evita a consulta aos grupos quando quem chama já os tem. Se vier
+  e faltar o grupo de um hábito, levanta `KeyError`.
   """
   with_goal = [habit for habit in habits if habit.goal is not None]
-  days = goals_repository.list_check_in_days(db, [habit.id for habit in with_goal])
-  return build_habits_progress(with_goal, days, habits_service.today())
+  personal = [habit for habit in with_goal if habit.author_group_id is None]
+  group_habits = [habit for habit in with_goal if habit.author_group_id is not None]
+  if group_habits and user is None:
+    raise ValueError("Hábitos de grupo exigem `user` para calcular o progresso.")
+  today = habits_service.today()
+
+  days = goals_repository.list_check_in_days(db, [habit.id for habit in personal])
+  result = build_habits_progress(personal, days, today)
+
+  if group_habits and user is not None:
+    result.update(
+      _calculate_group_habits_progress(db, group_habits, user, today, groups_by_id)
+    )
+
+  return result
+
+
+def _calculate_group_habits_progress(
+  db: Session,
+  habits: list[Habit],
+  user: User,
+  today: date,
+  groups_by_id: dict[UUID, Group] | None,
+) -> dict[UUID, HabitProgressPublic]:
+  """Progresso do usuário em hábitos de grupo com meta. Não faz commit."""
+  fetched = groups_by_id is None
+  groups = groups_by_id
+  if groups is None:
+    groups = {
+      group.id: group
+      for group in list_groups_by_ids(
+        db, {habit.author_group_id for habit in habits if habit.author_group_id}
+      )
+    }
+  days = goals_repository.list_check_in_days_by_member(
+    db, [habit.id for habit in habits], [user.id]
+  )
+
+  result: dict[UUID, HabitProgressPublic] = {}
+  for habit in habits:
+    if habit.author_group_id is None or habit.goal is None:
+      continue
+    group = (
+      groups.get(habit.author_group_id) if fetched else groups[habit.author_group_id]
+    )
+    if group is None:
+      continue
+    progress = calculate_progress(
+      habit.goal,
+      days.get((habit.id, user.id), set()),
+      today,
+      group_reference_date(group, habit, today),
+    )
+    result[habit.id] = HabitProgressPublic(
+      habit_id=habit.id, goal=habit.goal, **progress.model_dump()
+    )
+  return result
 
 
 def get_habit_progress(db: Session, habit_id: UUID, user: User) -> HabitProgressPublic:
@@ -107,24 +176,40 @@ def get_habit_progress(db: Session, habit_id: UUID, user: User) -> HabitProgress
   if habit.goal is None:
     raise GoalNotFoundError
 
-  return calculate_habits_progress(db, [habit])[habit.id]
+  return calculate_habits_progress(db, [habit], user)[habit.id]
+
+
+def _group_summary(group: Group) -> GroupSummary:
+  return GroupSummary(id=group.id, name=group.name)
 
 
 def list_habits_with_progress(
   db: Session, user: User, status: HabitStatus | None = None
 ) -> list[HabitWithProgress]:
-  """Lista os hábitos do usuário logado com o progresso calculado da meta.
+  """Lista os hábitos do usuário logado, pessoais e dos grupos dele, com progresso.
 
-  Calcula o progresso de todos os hábitos em lote com uma consulta só aos
-  check-ins. Hábito sem meta recebe `progress: None`. Mantém o filtro de status
-  e a ordenação original.
+  Calcula o progresso de todos os hábitos em lote, com número de consultas fixo
+  (não depende de quantos grupos o usuário tem). Hábito sem meta recebe
+  `progress: None`; hábito de grupo recebe `group` preenchido e o progresso do
+  próprio usuário. Mantém o filtro de status e a ordenação original.
   """
-  habits = habits_service.list_my_habits(db, user, status)
-  progress = calculate_habits_progress(db, habits)
+  habits = habits_service.list_my_habits_with_groups(db, user, status)
+  groups = {
+    group.id: group
+    for group in list_groups_by_ids(
+      db, {habit.author_group_id for habit in habits if habit.author_group_id}
+    )
+  }
+  progress = calculate_habits_progress(db, habits, user, groups)
 
   return [
     HabitWithProgress.model_validate(habit, from_attributes=True).model_copy(
-      update={"progress": progress.get(habit.id)}
+      update={
+        "progress": progress.get(habit.id),
+        "group": _group_summary(groups[habit.author_group_id])
+        if habit.author_group_id
+        else None,
+      }
     )
     for habit in habits
   ]

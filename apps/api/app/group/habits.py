@@ -31,7 +31,7 @@ from app.group.responses import (
   RESPONSES_UPDATE_GROUP_HABIT,
 )
 from app.group.schemas import GroupHabitCreate, GroupHabitPublic, GroupHabitUpdate
-from app.group.status import group_status
+from app.group.status import group_reference_date, group_status
 from app.habits import repository as habits_repository
 from app.habits import service as habits_service
 from app.habits.exceptions import (
@@ -44,16 +44,6 @@ from app.habits.exceptions import (
 )
 from app.habits.models import Habit, HabitStatus
 from app.habits.schemas import HabitPublic
-
-
-def group_reference_date(group: Group, habit: Habit, today: date) -> date:
-  """Data de referência de cálculo de um hábito de grupo. Pura."""
-  limits = [today]
-  if habit.finished_at is not None:
-    limits.append(habit.finished_at)
-  if group.ends_on is not None:
-    limits.append(group.ends_on)
-  return min(limits)
 
 
 def build_members_progress(
@@ -201,7 +191,8 @@ def _group_summary(db: Session, group_id: UUID) -> GroupSummary:
 
 def _to_public(habit: Habit, group: GroupSummary) -> GroupHabitPublic:
   """Monta o `GroupHabitPublic`: os dados do hábito mais o resumo do grupo."""
-  return GroupHabitPublic(**HabitPublic.model_validate(habit).model_dump(), group=group)
+  data = HabitPublic.model_validate(habit).model_dump(exclude={"group"})
+  return GroupHabitPublic(**data, group=group)
 
 
 @group_habits_router.post(

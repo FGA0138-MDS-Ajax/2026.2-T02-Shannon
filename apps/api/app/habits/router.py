@@ -9,10 +9,12 @@ from app.database import SessionDep
 from app.goals import service as goals_service
 from app.habits import service
 from app.habits.exceptions import (
+  MSG_GROUP_HABIT_FORBIDDEN,
   MSG_HABIT_ALREADY_FINISHED,
   MSG_HABIT_FORBIDDEN,
   MSG_HABIT_NOT_FOUND,
   MSG_TARGET_END_DATE_BEFORE_CREATED,
+  GroupHabitForbiddenError,
   HabitAlreadyFinishedError,
   HabitForbiddenError,
   HabitNotFoundError,
@@ -21,10 +23,10 @@ from app.habits.exceptions import (
 from app.habits.models import HabitStatus
 from app.habits.responses import (
   RESPONSES_422_CREATE,
-  RESPONSES_422_LIST,
   RESPONSES_DELETE,
   RESPONSES_FINISH,
   RESPONSES_GET_BY_ID,
+  RESPONSES_LIST,
   RESPONSES_UPDATE,
 )
 from app.habits.schemas import (
@@ -67,11 +69,13 @@ def create_habit(
   status_code=status.HTTP_200_OK,
   summary="Listar hábitos",
   description=(
-    "Lista todos os hábitos do usuário logado ordenados por data de criação"
-    " decrescente e nome. Cada item traz goal e progress; progress é null"
-    " em hábito sem meta."
+    "Lista os hábitos do usuário logado e os dos grupos de que ele é membro,"
+    " ordenados por data de criação decrescente e nome. Cada item traz goal,"
+    " group e progress; progress é null em hábito sem meta. Em hábito de grupo,"
+    " group vem preenchido e progress é o do próprio usuário; em hábito"
+    " pessoal, group é null. O filtro status vale para os dois tipos."
   ),
-  responses=RESPONSES_422_LIST,
+  responses=RESPONSES_LIST,
 )
 def list_habits(
   db: SessionDep,
@@ -88,8 +92,9 @@ def list_habits(
   status_code=status.HTTP_200_OK,
   summary="Consultar hábito por id",
   description=(
-    "Consulta um hábito por id. Retorna 404 caso o hábito não exista ou seja"
-    " privado de outro usuário."
+    "Consulta um hábito por id. Em hábito de grupo, o membro vê o hábito com"
+    " group preenchido. Retorna 404 caso o hábito não exista, seja privado de"
+    " outro usuário ou seja de um grupo de que o usuário não participa."
   ),
   responses=RESPONSES_GET_BY_ID,
 )
@@ -100,7 +105,7 @@ def get_habit(
 ) -> HabitPublic:
   """Busca um hábito pelo identificador se ele for visível ao usuário."""
   try:
-    return service.get_visible_habit(db, habit_id, user)
+    return service.get_visible_habit_public(db, habit_id, user)
   except HabitNotFoundError:
     raise HTTPException(status.HTTP_404_NOT_FOUND, MSG_HABIT_NOT_FOUND) from None
 
@@ -113,7 +118,8 @@ def get_habit(
   description=(
     "Encerra um hábito do usuário logado: `status` passa a `finished` e"
     " `finished_at` recebe a data de hoje. Não tem corpo. Só o autor pode"
-    " encerrar."
+    " encerrar; hábito de grupo recebe 403 e só é encerrado pelas rotas do"
+    " grupo."
   ),
   responses=RESPONSES_FINISH,
 )
@@ -127,6 +133,8 @@ def finish_habit(
     return service.finish_habit(db, habit_id, user)
   except HabitNotFoundError:
     raise HTTPException(status.HTTP_404_NOT_FOUND, MSG_HABIT_NOT_FOUND) from None
+  except GroupHabitForbiddenError:
+    raise HTTPException(status.HTTP_403_FORBIDDEN, MSG_GROUP_HABIT_FORBIDDEN) from None
   except HabitForbiddenError:
     raise HTTPException(status.HTTP_403_FORBIDDEN, MSG_HABIT_FORBIDDEN) from None
   except HabitAlreadyFinishedError:
@@ -140,6 +148,7 @@ def finish_habit(
   description=(
     "Exclui definitivamente um hábito do usuário logado. Os check-ins"
     " continuam existindo; só os vínculos com este hábito são apagados."
+    " Hábito de grupo recebe 403 e só é alterado pelas rotas do grupo."
     " Responde 204, sem corpo."
   ),
   responses=RESPONSES_DELETE,
@@ -154,6 +163,8 @@ def delete_habit(
     service.delete_habit(db, habit_id, user)
   except HabitNotFoundError:
     raise HTTPException(status.HTTP_404_NOT_FOUND, MSG_HABIT_NOT_FOUND) from None
+  except GroupHabitForbiddenError:
+    raise HTTPException(status.HTTP_403_FORBIDDEN, MSG_GROUP_HABIT_FORBIDDEN) from None
   except HabitForbiddenError:
     raise HTTPException(status.HTTP_403_FORBIDDEN, MSG_HABIT_FORBIDDEN) from None
   return Response(status_code=status.HTTP_204_NO_CONTENT)
@@ -168,7 +179,8 @@ def delete_habit(
     "Edita um hábito do usuário logado. Só os campos enviados mudam; `{}` não"
     " altera nada. `name`, `category` e `is_public` não aceitam `null`;"
     " `description` e `target_end_date` enviados como `null` são apagados."
-    " `status` e `finished_at` só mudam pela rota de encerrar."
+    " `status` e `finished_at` só mudam pela rota de encerrar. Hábito de grupo"
+    " recebe 403 e só é editado pelas rotas do grupo."
   ),
   responses=RESPONSES_UPDATE,
 )
@@ -183,6 +195,8 @@ def update_habit(
     return service.update_habit(db, habit_id, user, data)
   except HabitNotFoundError:
     raise HTTPException(status.HTTP_404_NOT_FOUND, MSG_HABIT_NOT_FOUND) from None
+  except GroupHabitForbiddenError:
+    raise HTTPException(status.HTTP_403_FORBIDDEN, MSG_GROUP_HABIT_FORBIDDEN) from None
   except HabitForbiddenError:
     raise HTTPException(status.HTTP_403_FORBIDDEN, MSG_HABIT_FORBIDDEN) from None
   except TargetEndDateBeforeCreatedError:
