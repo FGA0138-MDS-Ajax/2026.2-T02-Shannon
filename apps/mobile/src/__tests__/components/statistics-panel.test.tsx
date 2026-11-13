@@ -1,10 +1,20 @@
 import { fireEvent, render } from "@testing-library/react-native";
+import { completeStatistics } from "@/components/statistics/__fixtures__/statistics";
 import StatisticsPanel from "@/components/statistics-panel";
 import { useUserStatistics } from "@/hooks/useUserStatistics";
-import type { UserStatistics } from "@/services/types/statistics";
 
 jest.mock("expo-router", () => ({
+  router: { push: jest.fn() },
   useFocusEffect: jest.fn(),
+}));
+
+// O histórico dos cards tem a própria busca; aqui só interessa o painel
+jest.mock("@/hooks/useHabitsCheckIns", () => ({
+  useHabitsCheckIns: () => ({
+    datesByHabit: undefined,
+    categories: undefined,
+    refetch: jest.fn(),
+  }),
 }));
 
 jest.mock("@/hooks/useUserStatistics", () => ({
@@ -16,10 +26,7 @@ const mockUseUserStatistics = useUserStatistics as jest.MockedFunction<
   typeof useUserStatistics
 >;
 
-const statistics = {
-  habits: { total: 2, active: 2, finished: 0 },
-  check_ins: { total: 5, today: 1, week: 3, month: 5 },
-} as UserStatistics;
+const statistics = completeStatistics;
 
 function mockHook(overrides: Partial<ReturnType<typeof useUserStatistics>>) {
   const refetch = jest.fn();

@@ -1,22 +1,42 @@
-import { useFocusEffect } from "expo-router";
+import { type Href, router, useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
-import { Text, View } from "react-native";
-import Button from "@/components/button";
-import Input from "@/components/input";
+import { View } from "react-native";
+import {
+  StatisticsContent,
+  StatisticsEmpty,
+  StatisticsError,
+  StatisticsFilters,
+  StatisticsSkeleton,
+} from "@/components/statistics";
+import { useHabitsCheckIns } from "@/hooks/useHabitsCheckIns";
+import { useSession } from "@/hooks/useSession";
 import {
   isValidDays,
   MAX_DAYS,
   MIN_DAYS,
   useUserStatistics,
 } from "@/hooks/useUserStatistics";
-import type {
-  StatisticsMode,
-  UserStatistics,
-} from "@/services/types/statistics";
+import type { StatisticsMode } from "@/services/types/statistics";
+import { buildHabitHistory, buildWeekProgress } from "@/utils/habit-history";
 
 type Filters = { mode: StatisticsMode; days: number };
 
+function withToday(
+  datesByHabit: Record<string, Set<string>>,
+  habits: { habit_id: string; checked_today: boolean }[],
+  today: string,
+): Record<string, Set<string>> {
+  const merged = { ...datesByHabit };
+  for (const habit of habits) {
+    if (habit.checked_today) {
+      merged[habit.habit_id] = new Set(merged[habit.habit_id]).add(today);
+    }
+  }
+  return merged;
+}
+
 export default function StatisticsPanel() {
+  const { user } = useSession();
   const [filters, setFilters] = useState<Filters>({
     mode: "calendar",
     days: 30,
@@ -25,11 +45,19 @@ export default function StatisticsPanel() {
   const { data, status, error, fieldErrors, refetch } =
     useUserStatistics(filters);
 
+  const habitIds = data?.habit_progress.map((habit) => habit.habit_id) ?? [];
+  const {
+    datesByHabit,
+    categories,
+    refetch: refetchHistory,
+  } = useHabitsCheckIns(habitIds);
+
   // Check-ins e metas mudam em outras telas e a API não avisa: recarrega ao voltar
   useFocusEffect(
     useCallback(() => {
       refetch();
-    }, [refetch]),
+      refetchHistory();
+    }, [refetch, refetchHistory]),
   );
 
   const handleFiltersChange = (next: Filters) => {
@@ -41,96 +69,69 @@ export default function StatisticsPanel() {
     setFilters(next);
   };
 
+  const openCheckIn = (habitId: string) => {
+    router.push({
+      pathname: "/check-ins/create",
+      params: { habitId, category: categories?.[habitId] ?? "" },
+    } as Href);
+  };
+
   const isEmpty = data?.habits.total === 0 && data.check_ins.total === 0;
+
+  // O "hoje" vem também do `checked_today` das estatísticas: assim a bolinha
+  // e a grade de hoje ficam certas mesmo se o histórico ainda estiver chegando
+  const dates =
+    data && datesByHabit
+      ? withToday(datesByHabit, data.habit_progress, data.reference_date)
+      : undefined;
+
+  // Grade de 28 dias e bolinhas da semana, montadas a partir dos check-ins
+  const histories =
+    data && dates
+      ? Object.fromEntries(
+          habitIds.map((id) => [
+            id,
+            buildHabitHistory(dates[id] ?? new Set(), data.reference_date),
+          ]),
+        )
+      : undefined;
+  const week =
+    data && dates
+      ? buildWeekProgress(
+          data.habit_progress.map((habit) => ({
+            habit_id: habit.habit_id,
+            starts_on: habit.goal.starts_on,
+          })),
+          dates,
+          data.reference_date,
+        )
+      : undefined;
 
   return (
     <View>
-      <StatisticsFilters
-        mode={filters.mode}
-        days={filters.days}
-        errors={{ mode: fieldErrors.mode, days: daysError ?? fieldErrors.days }}
-        onChange={handleFiltersChange}
-      />
-
       {status === "loading" && <StatisticsSkeleton />}
       {status === "error" && (
         <StatisticsError message={error ?? undefined} onRetry={refetch} />
       )}
       {status === "success" && data && isEmpty && <StatisticsEmpty />}
       {status === "success" && data && !isEmpty && (
-        <StatisticsContent data={data} />
+        <StatisticsContent
+          data={data}
+          userName={user?.name}
+          week={week}
+          histories={histories}
+          categories={categories}
+          onCheckIn={openCheckIn}
+          onSeeAllHabits={() => router.push("/habits" as Href)}
+        />
       )}
-    </View>
-  );
-}
 
-// Substitutos até os componentes da #133 chegarem: mesmos nomes e props do
-// contrato, então depois basta trocar por imports
-
-function StatisticsSkeleton() {
-  return <Text>Carregando estatísticas...</Text>;
-}
-
-function StatisticsEmpty() {
-  return <Text>Faça seu primeiro check-in para ver suas estatísticas.</Text>;
-}
-
-function StatisticsError({
-  message,
-  onRetry,
-}: {
-  message?: string;
-  onRetry: () => void;
-}) {
-  return (
-    <View>
-      <Text>{message}</Text>
-      <Button variant="secondary" onPress={onRetry}>
-        Tentar novamente
-      </Button>
-    </View>
-  );
-}
-
-function StatisticsContent({ data }: { data: UserStatistics }) {
-  return (
-    <Text testID="statistics-content">{JSON.stringify(data, null, 2)}</Text>
-  );
-}
-
-function StatisticsFilters({
-  mode,
-  days,
-  errors,
-  onChange,
-}: Filters & {
-  errors?: { mode?: string; days?: string };
-  onChange: (next: Filters) => void;
-}) {
-  const [daysText, setDaysText] = useState(String(days));
-
-  return (
-    <View>
-      <Button
-        variant="secondary"
-        onPress={() =>
-          onChange({
-            mode: mode === "calendar" ? "rolling" : "calendar",
-            days,
-          })
-        }
-      >
-        {mode === "calendar" ? "Semana e mês atuais" : "Últimos 7 e 30 dias"}
-      </Button>
-      {errors?.mode && <Text>{errors.mode}</Text>}
-      <Input
-        testID="statistics-days-input"
-        label="Dias"
-        keyboardType="number-pad"
-        value={daysText}
-        onChangeText={setDaysText}
-        onEndEditing={() => onChange({ mode, days: Number(daysText) })}
-        error={errors?.days}
+      {/* No fim do painel: o cabeçalho escuro do protótipo fica no topo da tela */}
+      <StatisticsFilters
+        mode={filters.mode}
+        days={filters.days}
+        errors={{ mode: fieldErrors.mode, days: daysError ?? fieldErrors.days }}
+        onChange={handleFiltersChange}
       />
     </View>
   );
