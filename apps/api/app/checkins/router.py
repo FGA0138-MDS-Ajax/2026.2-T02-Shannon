@@ -80,8 +80,9 @@ def create_check_in(
   status_code=status.HTTP_200_OK,
   summary="Listar categorias para check-in",
   description=(
-    "Retorna as categorias com hábitos ativos do usuário logado, em ordem"
-    " alfabética e com 'outros' por último. Lista vazia se não houver hábitos."
+    "Retorna as categorias com hábitos ativos do usuário logado e dos grupos"
+    " ativos de que ele é membro, em ordem alfabética e com 'outros' por último."
+    " Lista vazia se não houver hábitos."
   ),
   responses=RESPONSES_CATEGORIES,
 )
@@ -99,9 +100,11 @@ def get_check_in_categories(
   status_code=status.HTTP_200_OK,
   summary="Listar opções de hábitos para check-in",
   description=(
-    "Retorna hábitos ativos do usuário logado de uma categoria (`category`) ou"
-    " das demais (`exclude_category`), informando só um dos dois. Paginação com"
-    " `page` >= 1 e `page_size` de 1 a 20."
+    "Retorna hábitos ativos do usuário logado e dos grupos ativos de que ele é"
+    " membro, de uma categoria (`category`) ou das demais (`exclude_category`),"
+    " informando só um dos dois. Hábito de grupo vem com `group` (`id` e `name`);"
+    " hábito pessoal, com `group: null`. Paginação com `page` >= 1 e `page_size`"
+    " de 1 a 20."
   ),
   responses=RESPONSES_HABIT_OPTIONS,
 )

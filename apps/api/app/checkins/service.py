@@ -25,6 +25,7 @@ from app.checkins.schemas import (
   CheckInsPage,
   CheckInsQuery,
   CheckInUpdate,
+  GroupSummary,
   HabitOption,
   HabitOptionsPage,
   HabitOptionsQuery,
@@ -104,10 +105,29 @@ def list_check_in_categories(db: Session, user: User) -> CheckInCategoriesRespon
   )
 
 
+def _group_summaries(
+  db: Session, user: User, habits: list[Habit]
+) -> dict[UUID, GroupSummary]:
+  """Resumo `{id, name}` dos grupos do usuário, por id. Não faz commit.
+
+  Faz 1 consulta, e só se algum hábito da lista for de grupo. Basta olhar os
+  grupos do usuário: hábito de grupo elegível é sempre de um grupo dele.
+  """
+  if all(habit.author_group_id is None for habit in habits):
+    return {}
+  return {
+    group.id: GroupSummary(id=group.id, name=group.name)
+    for group, _ in list_groups_of_user(db, user.id)
+  }
+
+
 def list_check_in_habit_options(
   db: Session, user: User, query: HabitOptionsQuery
 ) -> HabitOptionsPage:
-  """Retorna uma página de hábitos filtrados e indica se há mais resultados."""
+  """Retorna uma página de hábitos filtrados e indica se há mais resultados.
+
+  Hábito de grupo vem com `group` preenchido; hábito pessoal, com `group` nulo.
+  """
   limit = query.page_size + 1
   offset = (query.page - 1) * query.page_size
 
@@ -129,6 +149,7 @@ def list_check_in_habit_options(
     and query.category != HabitCategory.OUTROS
     and query.page == 1
   )
+  groups = _group_summaries(db, user, habits)
 
   return HabitOptionsPage(
     items=[
@@ -136,7 +157,11 @@ def list_check_in_habit_options(
         id=habit.id,
         name=habit.name,
         category=habit.category,
-        group=None,
+        group=(
+          groups.get(habit.author_group_id)
+          if habit.author_group_id is not None
+          else None
+        ),
         preselected=preselected,
       )
       for habit in habits
