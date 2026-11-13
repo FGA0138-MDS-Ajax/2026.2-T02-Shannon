@@ -60,3 +60,11 @@ class InviteCodeInvalidError(Exception):
 
 class AlreadyInGroupError(Exception):
   """Usuário já participa do grupo ao tentar entrar por convite."""
+
+
+# Feed -------------------------------------------
+MSG_INVALID_CURSOR = "Cursor inválido."
+
+
+class InvalidCursorError(Exception):
+  """Cursor do feed malformado, que não saiu de `encode_cursor`."""

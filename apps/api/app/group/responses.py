@@ -9,11 +9,12 @@ from app.group.exceptions import (
   MSG_GROUP_FORBIDDEN,
   MSG_GROUP_FULL,
   MSG_GROUP_NOT_FOUND,
+  MSG_INVALID_CURSOR,
   MSG_INVITE_CODE_INVALID,
   MSG_MEMBER_NOT_FOUND,
   MSG_USER_TO_ADD_NOT_FOUND,
 )
-from app.group.schemas import MSG_ENDS_ON_BEFORE_STARTS_ON
+from app.group.schemas import MSG_ENDS_ON_BEFORE_STARTS_ON, MSG_FEED_ONE_DIRECTION
 from app.habits.exceptions import MSG_HABIT_ALREADY_FINISHED, MSG_HABIT_NOT_FOUND
 from app.habits.responses import (
   RESPONSES_422_CREATE,
@@ -408,5 +409,95 @@ RESPONSES_REGENERATE_INVITE = {
   status.HTTP_404_NOT_FOUND: GROUP_NOT_FOUND_RESPONSE[status.HTTP_404_NOT_FOUND],
   status.HTTP_500_INTERNAL_SERVER_ERROR: {
     "description": "Não foi possível gerar um código de convite único.",
+  },
+}
+
+# Gerados com `encode_cursor`; aqui são texto fixo para não importar `feed.py`.
+_EXAMPLE_CURSOR_NEWER = (
+  "MjAyNi0xMS0xMlQxMDoxNTozMC4xMjM0NTYrMDA6MDB8"
+  "NWQyZjhhNjEtM2I5ZS00YzdkLWExZjAtOGU2YjJjNGQ5YTE3"
+)
+_EXAMPLE_CURSOR_OLDER = (
+  "MjAyNi0xMS0xMlQwODowMjoxMS42NTQzMjErMDA6MDB8"
+  "OWI0ZTFjNzMtNmEyZC00ZjhlLWI1YzAtMWQ3YTNlOWYyYjQ4"
+)
+
+EXAMPLE_FEED_PAGE = {
+  "items": [
+    {
+      "cursor": _EXAMPLE_CURSOR_NEWER,
+      "id": "5d2f8a61-3b9e-4c7d-a1f0-8e6b2c4d9a17",
+      "author": {
+        "id": "e4a7c2f9-8d1b-4e6a-9c3f-7b2d5e8a1c04",
+        "username": "ana_souza",
+      },
+      "title": "Corrida de 5 km",
+      "description": "Ritmo leve no parque.",
+      "habits": [{"id": "1f6c9e2a-4b7d-4a8e-b3c1-9d5e7a2f6b30", "name": "Correr"}],
+      "created_at": "2026-11-12T10:15:30.123456Z",
+    },
+    {
+      "cursor": _EXAMPLE_CURSOR_OLDER,
+      "id": "9b4e1c73-6a2d-4f8e-b5c0-1d7a3e9f2b48",
+      "author": {"id": _EXAMPLE_USER_ID, "username": "pedro_melo"},
+      "title": "Treino da manhã",
+      "description": "Alongamento antes de correr.",
+      "habits": [
+        {"id": "7a3d5f1e-2c8b-4d9a-a6e4-3b1f9c7d5e82", "name": "Alongar"},
+        {"id": "1f6c9e2a-4b7d-4a8e-b3c1-9d5e7a2f6b30", "name": "Correr"},
+      ],
+      "created_at": "2026-11-12T08:02:11.654321Z",
+    },
+  ],
+  "next_cursor": _EXAMPLE_CURSOR_OLDER,
+  "has_more": True,
+}
+
+RESPONSES_FEED = {
+  status.HTTP_200_OK: {
+    "description": "Página do feed, do check-in mais novo ao mais antigo.",
+    "content": {"application/json": {"example": EXAMPLE_FEED_PAGE}},
+  },
+  status.HTTP_401_UNAUTHORIZED: _RESPONSE_401,
+  status.HTTP_404_NOT_FOUND: GROUP_NOT_FOUND_RESPONSE[status.HTTP_404_NOT_FOUND],
+  status.HTTP_422_UNPROCESSABLE_CONTENT: {
+    "description": (
+      "Parâmetros inválidos. `before` com `after` e `limit` fora de 1 a 50 vêm no"
+      " formato do Pydantic; cursor inválido vem com `detail` em texto."
+    ),
+    "content": {
+      "application/json": {
+        "examples": {
+          "before_e_after": {
+            "summary": "`before` e `after` juntos",
+            "value": {
+              "detail": [
+                {
+                  "loc": ["query"],
+                  "msg": f"Value error, {MSG_FEED_ONE_DIRECTION}",
+                  "type": "value_error",
+                }
+              ]
+            },
+          },
+          "cursor_invalido": {
+            "summary": "Cursor que não veio do feed",
+            "value": {"detail": MSG_INVALID_CURSOR},
+          },
+          "limit_fora": {
+            "summary": "`limit` fora de 1 a 50",
+            "value": {
+              "detail": [
+                {
+                  "loc": ["query", "limit"],
+                  "msg": "Input should be less than or equal to 50",
+                  "type": "less_than_equal",
+                }
+              ]
+            },
+          },
+        }
+      }
+    },
   },
 }

@@ -1,10 +1,14 @@
+from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import func
+from sqlalchemy import func, tuple_
+from sqlalchemy.orm import lazyload
 from sqlmodel import Session, col, select
 
 from app.auth.models import User
+from app.checkins.models import CheckIn, CheckInHabit
 from app.group.models import Group, GroupRole, Member
+from app.habits.models import Habit
 
 
 def get_group(db: Session, group_id: UUID) -> Group | None:
@@ -168,3 +172,82 @@ def get_oldest_member(
     .limit(1)
   )
   return db.exec(statement).first()
+
+
+def list_group_feed_check_ins(
+  db: Session,
+  group_id: UUID,
+  limit: int,
+  before: tuple[datetime, UUID] | None,
+  after: tuple[datetime, UUID] | None,
+) -> list[CheckIn]:
+  """Check-ins com ao menos um hábito do grupo, até `limit + 1` linhas.
+
+  Sem cursor ou com `before`: do mais novo ao mais antigo. Com `after`: só os
+  mais novos que o cursor, do mais antigo ao mais novo (o service inverte). A
+  linha a mais só indica que há mais itens. O `id` desempata check-ins com o
+  mesmo `created_at`, e o `EXISTS` não repete o check-in que vale para dois
+  hábitos do grupo. Não faz commit.
+  """
+  has_group_habit = (
+    select(CheckInHabit)
+    .join(Habit, col(Habit.id) == col(CheckInHabit.habit_id))
+    .where(
+      col(CheckInHabit.check_in_id) == col(CheckIn.id),
+      col(Habit.author_group_id) == group_id,
+    )
+    .exists()
+  )
+  key = tuple_(col(CheckIn.created_at), col(CheckIn.id))
+  statement = select(CheckIn).where(has_group_habit)
+
+  if after is not None:
+    statement = statement.where(key > after).order_by(
+      col(CheckIn.created_at), col(CheckIn.id)
+    )
+  else:
+    if before is not None:
+      statement = statement.where(key < before)
+    statement = statement.order_by(
+      col(CheckIn.created_at).desc(), col(CheckIn.id).desc()
+    )
+
+  return list(db.exec(statement.limit(limit + 1)).all())
+
+
+def list_feed_habit_links(
+  db: Session, check_in_ids: list[UUID], group_id: UUID
+) -> list[tuple[UUID, Habit]]:
+  """Pares `(check_in_id, hábito)` desses check-ins, só com hábitos do grupo.
+
+  Hábito pessoal ligado ao mesmo check-in fica de fora. Ordem por nome e id.
+  A meta não vem junto: só carrega se `habit.goal` for lido. Lista vazia devolve
+  `[]` sem consultar. Não faz commit.
+  """
+  if not check_in_ids:
+    return []
+
+  statement = (
+    select(col(CheckInHabit.check_in_id), Habit)
+    .join(Habit, col(Habit.id) == col(CheckInHabit.habit_id))
+    .where(
+      col(CheckInHabit.check_in_id).in_(check_in_ids),
+      col(Habit.author_group_id) == group_id,
+    )
+    .order_by(col(Habit.name), col(Habit.id))
+    # `Habit.goal` é `selectin`: sem isto, viria uma consulta a mais em `goals`.
+    .options(lazyload(Habit.goal))
+  )
+  return list(db.exec(statement).all())
+
+
+def list_authors(db: Session, user_ids: list[UUID]) -> dict[UUID, User]:
+  """Busca vários usuários numa consulta só, por id.
+
+  Lista vazia devolve `{}` sem consultar. Não faz commit.
+  """
+  if not user_ids:
+    return {}
+
+  statement = select(User).where(col(User.id).in_(user_ids))
+  return {user.id: user for user in db.exec(statement).all()}
