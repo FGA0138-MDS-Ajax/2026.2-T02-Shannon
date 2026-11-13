@@ -75,6 +75,28 @@ def list_habits_by_author(
   return list(db.exec(statement).all())
 
 
+def list_habits_for_user_with_groups(
+  db: Session, user_id: UUID, status: HabitStatus | None = None
+) -> list[Habit]:
+  """Lista os hábitos do usuário e os dos grupos de que ele é membro.
+
+  Mesma ordem de `list_habits_by_author`: `created_at` decrescente e `name`.
+  """
+  member_group_ids = select(col(Member.group_id)).where(col(Member.user_id) == user_id)
+  statement = select(Habit).where(
+    or_(
+      col(Habit.author_user_id) == user_id,
+      col(Habit.author_group_id).in_(member_group_ids),
+    )
+  )
+  if status is not None:
+    statement = statement.where(col(Habit.status) == status)
+
+  statement = statement.order_by(col(Habit.created_at).desc(), col(Habit.name))
+
+  return list(db.exec(statement).all())
+
+
 def list_habits_by_group(
   db: Session, group_id: UUID, status: HabitStatus | None = None
 ) -> list[Habit]:

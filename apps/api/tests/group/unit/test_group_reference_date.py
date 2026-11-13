@@ -1,7 +1,7 @@
 from datetime import date
 
-from app.group.habits import group_reference_date
 from app.group.models import Group, RankingCriterion
+from app.group.status import group_reference_date
 from app.habits.models import Habit, HabitCategory, HabitStatus
 
 TODAY = date(2026, 11, 11)

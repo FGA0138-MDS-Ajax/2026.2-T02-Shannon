@@ -1,3 +1,4 @@
+from collections.abc import Iterable
 from datetime import datetime
 from uuid import UUID
 
@@ -251,3 +252,17 @@ def list_authors(db: Session, user_ids: list[UUID]) -> dict[UUID, User]:
 
   statement = select(User).where(col(User.id).in_(user_ids))
   return {user.id: user for user in db.exec(statement).all()}
+
+
+def list_groups_by_ids(db: Session, group_ids: Iterable[UUID]) -> list[Group]:
+  """Busca vários grupos numa consulta só, por id.
+
+  Ids inexistentes são ignorados e ids repetidos não duplicam o resultado. Entrada
+  vazia devolve `[]` sem consultar. Somente leitura: não faz commit.
+  """
+  ids = set(group_ids)
+  if not ids:
+    return []
+
+  statement = select(Group).where(col(Group.id).in_(ids))
+  return list(db.exec(statement).all())

@@ -33,7 +33,7 @@ from app.checkins.schemas import (
 from app.goals import service as goals_service
 from app.goals.schemas import HabitProgressPublic
 from app.group.habits import build_members_progress
-from app.group.repository import list_groups_of_user
+from app.group.repository import list_group_ids_of_user, list_groups_of_user
 from app.group.status import group_status
 from app.habits import service as habits_service
 from app.habits.exceptions import MSG_HABIT_FINISHED, MSG_HABIT_NOT_FOUND
@@ -50,18 +50,37 @@ from app.habits.service import (
 )
 
 
+def _user_group_ids(db: Session, user: User, habits: list[Habit]) -> frozenset[UUID]:
+  """Grupos de que o usuário é membro, para `can_view_habit`. Não faz commit.
+
+  Faz 1 consulta, e só se algum hábito da lista for de grupo; senão devolve o
+  conjunto vazio sem consultar.
+  """
+  if all(habit.author_group_id is None for habit in habits):
+    return frozenset()
+  return frozenset(list_group_ids_of_user(db, user.id))
+
+
 def build_check_ins_public(
   db: Session, check_ins: list[CheckIn], user: User
 ) -> list[CheckInPublic]:
   """Monta a resposta dos check-ins com os `habit_ids` que o usuário pode ver.
 
-  Faz 2 consultas no total (vínculos e hábitos), seja qual for o número de
-  check-ins. Quem fez o check-in vê todos os hábitos; os outros, só os que
-  passam em `can_view_habit`. A ordem de `habit_ids` não é garantida.
+  Faz 3 consultas (vínculos, hábitos e as metas deles, carregadas junto com os
+  hábitos), ou 4 quando há check-ins de outros usuários em hábitos de grupo
+  (participação do usuário), seja qual for o número de check-ins. Quem fez o
+  check-in vê todos os hábitos; os outros, só os que passam em `can_view_habit`,
+  com os grupos do usuário calculados uma vez. A ordem de `habit_ids` não é
+  garantida.
   """
   links = list_habit_links(db, [check_in.id for check_in in check_ins])
   habits = list_habits_by_ids(db, list({link.habit_id for link in links}))
-  visible_habit_ids = {habit.id for habit in habits if can_view_habit(habit, user)}
+  # Os próprios check-ins mostram todos os hábitos e não precisam da participação.
+  has_others = any(check_in.user_id != user.id for check_in in check_ins)
+  group_ids = _user_group_ids(db, user, habits) if has_others else frozenset()
+  visible_habit_ids = {
+    habit.id for habit in habits if can_view_habit(habit, user, group_ids)
+  }
 
   habit_ids_by_check_in: dict[UUID, list[UUID]] = defaultdict(list)
   for link in links:
@@ -313,7 +332,8 @@ def get_visible_check_in(db: Session, check_in_id: UUID, user: User) -> CheckIn:
   links = list_habit_links(db, [check_in.id])
   habits = list_habits_by_ids(db, [link.habit_id for link in links])
 
-  if not any(can_view_habit(habit, user) for habit in habits):
+  group_ids = _user_group_ids(db, user, habits)
+  if not any(can_view_habit(habit, user, group_ids) for habit in habits):
     raise CheckInNotFoundError
 
   return check_in
