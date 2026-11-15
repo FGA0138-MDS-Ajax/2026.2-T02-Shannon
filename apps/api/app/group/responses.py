@@ -501,3 +501,46 @@ RESPONSES_FEED = {
     },
   },
 }
+
+EXAMPLE_RANKING = {
+  "criterion": "check_ins",
+  "as_of": "2026-11-11",
+  "items": [
+    {
+      "position": 1,
+      "user": {"id": "e4a7c2f9-8d1b-4e6a-9c3f-7b2d5e8a1c04", "username": "ana_souza"},
+      "score": 9,
+    },
+    {
+      "position": 2,
+      "user": {"id": "2c5d8e1f-7a3b-4c9d-8e6f-1a4b7c0d3e52", "username": "bia_lima"},
+      "score": 7,
+    },
+    {
+      "position": 2,
+      "user": {"id": _EXAMPLE_USER_ID, "username": "pedro_melo"},
+      "score": 7,
+    },
+    {
+      "position": 4,
+      "user": {"id": "6f9a2b4c-1d8e-4f7a-b3c5-9e0d2a6b8c71", "username": "caio_reis"},
+      "score": 3,
+    },
+  ],
+  "me": {"position": 2, "score": 7},
+}
+
+RESPONSES_RANKING = {
+  status.HTTP_200_OK: {
+    "description": (
+      "Ranking do grupo, do primeiro ao último. Membros empatados têm a mesma"
+      " posição e a seguinte é pulada."
+    ),
+    "content": {"application/json": {"example": EXAMPLE_RANKING}},
+  },
+  status.HTTP_401_UNAUTHORIZED: _RESPONSE_401,
+  **GROUP_NOT_FOUND_RESPONSE,
+  status.HTTP_422_UNPROCESSABLE_CONTENT: RESPONSES_GET_GROUP[
+    status.HTTP_422_UNPROCESSABLE_CONTENT
+  ],
+}
