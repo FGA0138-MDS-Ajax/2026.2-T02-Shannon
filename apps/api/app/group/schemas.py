@@ -261,3 +261,35 @@ class FeedPage(BaseModel):
   items: list[FeedItem]
   next_cursor: str | None
   has_more: bool
+
+
+# Ranking ----------------------------------------
+class RankingUser(BaseModel):
+  """Membro que aparece no ranking."""
+
+  id: UUID
+  username: str
+
+
+class RankingItem(BaseModel):
+  """Linha do ranking. Membros empatados têm a mesma `position`."""
+
+  position: int
+  user: RankingUser
+  score: int
+
+
+class RankingMe(BaseModel):
+  """Posição e pontuação de quem pediu o ranking."""
+
+  position: int
+  score: int
+
+
+class RankingResponse(BaseModel):
+  """Ranking do grupo, calculado até `as_of`, do primeiro ao último."""
+
+  criterion: RankingCriterion
+  as_of: date
+  items: list[RankingItem]
+  me: RankingMe
