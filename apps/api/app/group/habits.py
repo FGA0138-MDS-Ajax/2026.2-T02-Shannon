@@ -52,12 +52,14 @@ def build_members_progress(
   habits: list[Habit],
   user_ids: list[UUID],
   today: date,
+  days: dict[tuple[UUID, UUID], set[date]] | None = None,
 ) -> dict[tuple[UUID, UUID], GoalProgress]:
   """Progresso da meta de cada `(hábito, usuário)`. Não faz commit."""
   with_goal = [habit for habit in habits if habit.goal is not None]
-  days = goals_repository.list_check_in_days_by_member(
-    db, [habit.id for habit in with_goal], user_ids
-  )
+  if days is None:
+    days = goals_repository.list_check_in_days_by_member(
+      db, [habit.id for habit in with_goal], user_ids
+    )
   group_ended = group.ends_on is not None and group.ends_on < today
 
   result: dict[tuple[UUID, UUID], GoalProgress] = {}
@@ -111,7 +113,7 @@ def list_group_habits(
   return habits_repository.list_habits_by_group(db, group_id, status)
 
 
-def _get_habit_of_group(db: Session, group_id: UUID, habit_id: UUID) -> Habit:
+def get_habit_of_group(db: Session, group_id: UUID, habit_id: UUID) -> Habit:
   """Busca o hábito e confere que ele pertence ao grupo."""
   habit = habits_repository.get_habit_by_id(db, habit_id)
   if habit is None or habit.author_group_id != group_id:
@@ -123,7 +125,7 @@ def get_group_habit(db: Session, group_id: UUID, habit_id: UUID, user: User) -> 
   """Detalha um hábito do grupo para um membro."""
   require_member(db, group_id, user)
 
-  return _get_habit_of_group(db, group_id, habit_id)
+  return get_habit_of_group(db, group_id, habit_id)
 
 
 def update_group_habit(
@@ -135,7 +137,7 @@ def update_group_habit(
 ) -> Habit:
   """Edita só os campos enviados de um hábito do grupo. Só o admin."""
   group, _ = require_admin(db, group_id, user)
-  habit = _get_habit_of_group(db, group_id, habit_id)
+  habit = get_habit_of_group(db, group_id, habit_id)
 
   if group_status(group, habits_service.today()) == "ended":
     raise GroupEndedError
@@ -158,7 +160,7 @@ def finish_group_habit(
 ) -> Habit:
   """Encerra um hábito do grupo com `finished_at` = hoje. Só o admin."""
   group, _ = require_admin(db, group_id, user)
-  habit = _get_habit_of_group(db, group_id, habit_id)
+  habit = get_habit_of_group(db, group_id, habit_id)
 
   today = habits_service.today()
   if group_status(group, today) == "ended":

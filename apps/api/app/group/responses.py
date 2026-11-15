@@ -544,3 +544,132 @@ RESPONSES_RANKING = {
     status.HTTP_422_UNPROCESSABLE_CONTENT
   ],
 }
+
+_EXAMPLE_HABIT_ID = "1f6c9e2a-4b7d-4a8e-b3c1-9d5e7a2f6b30"
+_EXAMPLE_GOAL = {
+  "schedule_type": "frequency",
+  "period": "day",
+  "target_count": 1,
+  "period_end_weekday": None,
+  "starts_on": "2026-11-01",
+}
+
+EXAMPLE_GROUP_HABIT_STATS = {
+  "as_of": "2026-11-11",
+  "habit_id": _EXAMPLE_HABIT_ID,
+  "name": "Correr 5 km",
+  "habit_status": "active",
+  "members": [
+    {
+      "user": {
+        "id": "e4a7c2f9-8d1b-4e6a-9c3f-7b2d5e8a1c04",
+        "username": "ana_souza",
+      },
+      "progress": {
+        "habit_id": _EXAMPLE_HABIT_ID,
+        "goal": _EXAMPLE_GOAL,
+        "current_period": {
+          "start": "2026-11-11",
+          "end": "2026-11-11",
+          "done": 1,
+          "target_count": 1,
+        },
+        "status": "completed",
+        "current_streak": 5,
+        "best_streak": 5,
+        "streak_started_on": "2026-11-07",
+        "consistent_days": 5,
+      },
+      "check_in_days": 7,
+    },
+    {
+      "user": {
+        "id": _EXAMPLE_USER_ID,
+        "username": "pedro_melo",
+      },
+      "progress": {
+        "habit_id": _EXAMPLE_HABIT_ID,
+        "goal": _EXAMPLE_GOAL,
+        "current_period": {
+          "start": "2026-11-11",
+          "end": "2026-11-11",
+          "done": 0,
+          "target_count": 1,
+        },
+        "status": "at_risk",
+        "current_streak": 2,
+        "best_streak": 4,
+        "streak_started_on": "2026-11-09",
+        "consistent_days": 3,
+      },
+      "check_in_days": 5,
+    },
+    {
+      "user": {
+        "id": "6f9a2b4c-1d8e-4f7a-b3c5-9e0d2a6b8c71",
+        "username": "caio_reis",
+      },
+      "progress": {
+        "habit_id": _EXAMPLE_HABIT_ID,
+        "goal": _EXAMPLE_GOAL,
+        "current_period": {
+          "start": "2026-11-11",
+          "end": "2026-11-11",
+          "done": 0,
+          "target_count": 1,
+        },
+        "status": "at_risk",
+        "current_streak": 0,
+        "best_streak": 0,
+        "streak_started_on": None,
+        "consistent_days": 0,
+      },
+      "check_in_days": 0,
+    },
+  ],
+}
+
+RESPONSES_GROUP_HABIT_STATS = {
+  status.HTTP_200_OK: {
+    "description": (
+      "Estatísticas do hábito por integrante atual, ordenadas por maior"
+      " `current_streak` e desempate por `username`."
+    ),
+    "content": {"application/json": {"example": EXAMPLE_GROUP_HABIT_STATS}},
+  },
+  status.HTTP_401_UNAUTHORIZED: _RESPONSE_401,
+  **_GROUP_HABIT_NOT_FOUND_RESPONSE,
+  status.HTTP_422_UNPROCESSABLE_CONTENT: {
+    "description": "Identificador do grupo ou do hábito inválido (não é um UUID).",
+    "content": {
+      "application/json": {
+        "examples": {
+          "group_id_invalido": {
+            "summary": "Identificador do grupo não é um UUID",
+            "value": {
+              "detail": [
+                {
+                  "loc": ["path", "group_id"],
+                  "msg": "Input should be a valid UUID",
+                  "type": "uuid_parsing",
+                }
+              ]
+            },
+          },
+          "habit_id_invalido": {
+            "summary": "Identificador do hábito não é um UUID",
+            "value": {
+              "detail": [
+                {
+                  "loc": ["path", "habit_id"],
+                  "msg": "Input should be a valid UUID",
+                  "type": "uuid_parsing",
+                }
+              ]
+            },
+          },
+        }
+      }
+    },
+  },
+}

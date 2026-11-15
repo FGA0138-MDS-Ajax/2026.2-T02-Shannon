@@ -13,7 +13,9 @@ from pydantic import (
 
 from app.auth.schemas import normalize_identifier
 from app.checkins.schemas import GroupSummary
+from app.goals.schemas import HabitProgressPublic
 from app.group.models import GroupRole, RankingCriterion
+from app.habits.models import HabitStatus
 from app.habits.schemas import HabitCreate, HabitPublic, HabitUpdate
 from app.validators import NoNul
 
@@ -293,3 +295,22 @@ class RankingResponse(BaseModel):
   as_of: date
   items: list[RankingItem]
   me: RankingMe
+
+
+# Estatísticas de hábito por integrante ----------
+class MemberHabitStats(BaseModel):
+  """Progresso e dias com check-in de um membro em um hábito do grupo."""
+
+  user: RankingUser
+  progress: HabitProgressPublic
+  check_in_days: int
+
+
+class GroupHabitStatistics(BaseModel):
+  """Estatísticas de um hábito do grupo por integrante, até `as_of`."""
+
+  as_of: date
+  habit_id: UUID
+  name: str
+  habit_status: HabitStatus
+  members: list[MemberHabitStats]
