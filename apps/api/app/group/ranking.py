@@ -1,19 +1,27 @@
 from collections.abc import Iterable
 from datetime import date
+from typing import Annotated
 from uuid import UUID
 
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session
 
+from app.auth.dependencies import get_current_user
 from app.auth.models import User
+from app.database import SessionDep
 from app.goals import repository as goals_repository
 from app.goals.streak import GoalRule, period_bounds, period_results
 from app.group import repository
+from app.group.exceptions import MSG_GROUP_NOT_FOUND, GroupNotFoundError
 from app.group.models import RankingCriterion
 from app.group.permissions import require_member
+from app.group.responses import RESPONSES_RANKING
 from app.group.schemas import RankingItem, RankingMe, RankingResponse, RankingUser
 from app.group.status import group_reference_date
 from app.habits import repository as habits_repository
 from app.habits import service as habits_service
+
+ranking_router = APIRouter(prefix="/groups", tags=["groups"])
 
 
 def score_by_check_ins(days_by_habit: Iterable[set[date]], reference: date) -> int:
@@ -118,3 +126,34 @@ def get_group_ranking(db: Session, group_id: UUID, user: User) -> RankingRespons
     ],
     me=me,
   )
+
+
+@ranking_router.get(
+  "/{group_id}/ranking",
+  response_model=RankingResponse,
+  status_code=status.HTTP_200_OK,
+  summary="Ranking do grupo",
+  description=(
+    "Ranking único do grupo todo para qualquer **membro**, pelo critério do grupo:"
+    " `check_ins` conta os dias distintos com check-in em hábitos do grupo e"
+    " `goals` conta os períodos de meta cumpridos, incluindo o período em"
+    " andamento se já estiver cumprido. Membros empatados dividem a posição e a"
+    " seguinte é pulada (1, 1, 3). Só aparecem os membros atuais; quem não pontuou"
+    " vem com 0, e cada um pontua a partir da sua entrada no grupo. `as_of` é a"
+    " data até onde o ranking foi calculado: hoje ou, depois do fim do grupo, o"
+    " `ends_on`, quando a pontuação fica congelada. `me` traz a posição e a"
+    " pontuação de quem pediu. É calculado a cada pedido, então a troca de"
+    " critério pelo administrador vale na hora."
+  ),
+  responses=RESPONSES_RANKING,
+)
+def get_ranking(
+  db: SessionDep,
+  group_id: UUID,
+  user: Annotated[User, Depends(get_current_user)],
+) -> RankingResponse:
+  """Devolve o ranking do grupo para um membro."""
+  try:
+    return get_group_ranking(db, group_id, user)
+  except GroupNotFoundError:
+    raise HTTPException(status.HTTP_404_NOT_FOUND, MSG_GROUP_NOT_FOUND) from None
