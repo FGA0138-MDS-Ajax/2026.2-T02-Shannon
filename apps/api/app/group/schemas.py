@@ -13,6 +13,7 @@ from pydantic import (
 
 from app.auth.schemas import normalize_identifier
 from app.checkins.schemas import GroupSummary
+from app.goals.models import GoalPeriod
 from app.goals.schemas import HabitProgressPublic
 from app.group.models import GroupRole, RankingCriterion
 from app.habits.models import HabitStatus
@@ -314,3 +315,41 @@ class GroupHabitStatistics(BaseModel):
   name: str
   habit_status: HabitStatus
   members: list[MemberHabitStats]
+
+
+# Estatísticas do grupo --------------------------
+class StatHabit(BaseModel):
+  """Hábito do grupo citado em uma estatística."""
+
+  id: UUID
+  name: str
+
+
+class MostConsistent(BaseModel):
+  """Quem está há mais dias corridos em constância, e em qual hábito."""
+
+  user: RankingUser
+  habit: StatHabit
+  consistent_days: int
+
+
+class BestRecord(BaseModel):
+  """Maior recorde de sequência do grupo, na unidade da meta do hábito."""
+
+  user: RankingUser
+  habit: StatHabit
+  best_streak: int
+  unit: GoalPeriod
+
+
+class GroupStatistics(BaseModel):
+  """Estatísticas do grupo até `as_of`.
+
+  `most_consistent` e `best_record` são `null` quando ninguém pontuou. Os dois
+  campos são obrigatórios: a chave sempre aparece na resposta.
+  """
+
+  as_of: date
+  most_consistent: MostConsistent | None
+  best_record: BestRecord | None
+  check_ins_last_7_days: int
