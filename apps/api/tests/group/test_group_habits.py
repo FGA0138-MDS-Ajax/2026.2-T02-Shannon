@@ -1,17 +1,15 @@
-from collections.abc import Callable, Iterator
-from contextlib import contextmanager
-from datetime import date, datetime, time
+from datetime import date
 from types import SimpleNamespace
 from uuid import UUID, uuid4
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import Engine, event
+from sqlalchemy import Engine
 from sqlmodel import Session
 
 from app.auth.models import User
 from app.goals.exceptions import MSG_GROUP_HABIT_GOAL_LOCKED
-from app.goals.models import Goal, GoalPeriod
+from app.goals.models import GoalPeriod
 from app.goals.repository import list_check_in_days_by_member
 from app.goals.streak import ProgressStatus
 from app.group.exceptions import (
@@ -20,130 +18,15 @@ from app.group.exceptions import (
   MSG_GROUP_NOT_FOUND,
 )
 from app.group.habits import build_members_progress
-from app.group.models import Group, GroupRole, Member, RankingCriterion
+from app.group.models import Group
 from app.habits.exceptions import MSG_HABIT_ALREADY_FINISHED, MSG_HABIT_NOT_FOUND
-from app.habits.models import Habit, HabitCategory, HabitStatus
-from app.habits.service import APP_TIMEZONE
-from tests.conftest import _auth_headers, _create_user, at_noon
+from app.habits.models import Habit, HabitStatus
+from tests.conftest import _auth_headers, at_noon
+from tests.group.fixtures import TODAY, _sp
 
-TODAY = date(2026, 11, 11)  # quarta-feira
 MONDAY = date(2026, 11, 2)
 WEDNESDAY = date(2026, 11, 4)
 WEEKLY_GOAL = {"period": "week", "target_count": 4, "period_end_weekday": 7}
-
-
-def _sp(day: date, hour: int, minute: int = 0) -> datetime:
-  """Horário de São Paulo no dia dado."""
-  return datetime.combine(day, time(hour, minute), tzinfo=APP_TIMEZONE)
-
-
-def _save(engine: Engine, obj):
-  with Session(engine) as session:
-    session.add(obj)
-    session.commit()
-    session.refresh(obj)
-  return obj
-
-
-def _make_group(engine: Engine, *, ends_on: date | None = None) -> Group:
-  return _save(
-    engine,
-    Group(
-      name="Grupo Teste",
-      starts_on=date(2026, 10, 1),
-      ends_on=ends_on,
-      ranking_criterion=RankingCriterion.CHECK_INS,
-      invite_code=uuid4().hex[:8].upper(),
-    ),
-  )
-
-
-def _add_member(
-  engine: Engine,
-  group: Group,
-  user: User,
-  *,
-  role: GroupRole = GroupRole.MEMBER,
-  joined_at: datetime | None = None,
-) -> Member:
-  return _save(
-    engine,
-    Member(
-      group_id=group.id,
-      user_id=user.id,
-      role=role,
-      joined_at=joined_at or _sp(date(2026, 10, 1), 12),
-    ),
-  )
-
-
-def _make_group_habit(
-  engine: Engine,
-  group: Group,
-  *,
-  with_goal: bool = True,
-  starts_on: date = date(2026, 11, 1),
-  **fields,
-) -> Habit:
-  """Hábito de grupo com meta diária começando em `starts_on`."""
-  fields.setdefault("name", "Hábito do grupo")
-  fields.setdefault("category", HabitCategory.CORRIDA)
-  fields.setdefault("created_at", starts_on)
-  habit = _save(engine, Habit(author_group_id=group.id, **fields))
-  if with_goal:
-    _save(
-      engine,
-      Goal(
-        habit_id=habit.id, period=GoalPeriod.DAY, target_count=1, starts_on=starts_on
-      ),
-    )
-  return habit
-
-
-@contextmanager
-def _count_queries(engine: Engine) -> Iterator[list[str]]:
-  statements: list[str] = []
-
-  def before_execute(conn, cursor, statement, *args) -> None:
-    statements.append(statement)
-
-  event.listen(engine, "before_cursor_execute", before_execute)
-  try:
-    yield statements
-  finally:
-    event.remove(engine, "before_cursor_execute", before_execute)
-
-
-@pytest.fixture
-def group_setup(
-  test_engine: Engine,
-  user: User,
-  other_user: User,
-  freeze_today: Callable[[date], None],
-) -> SimpleNamespace:
-  """Grupo ativo com `user` admin, `other_user` membro e um usuário de fora."""
-  freeze_today(TODAY)
-  group = _make_group(test_engine)
-  _add_member(test_engine, group, user, role=GroupRole.ADMIN)
-  _add_member(test_engine, group, other_user)
-  outsider = _create_user(test_engine, "fora")
-  return SimpleNamespace(
-    group=group,
-    admin_headers=_auth_headers(user),
-    member_headers=_auth_headers(other_user),
-    outsider_headers=_auth_headers(outsider),
-  )
-
-
-@pytest.fixture
-def ended_group(
-  test_engine: Engine, user: User, freeze_today: Callable[[date], None]
-) -> Group:
-  """Grupo encerrado em 2026-11-01, com `user` admin."""
-  freeze_today(TODAY)
-  group = _make_group(test_engine, ends_on=date(2026, 11, 1))
-  _add_member(test_engine, group, user, role=GroupRole.ADMIN)
-  return group
 
 
 def _create_body(**fields) -> dict:
@@ -159,22 +42,33 @@ def test_days_by_member_empty_input_returns_empty_dict() -> None:
 
 
 def test_days_by_member_late_join_and_timezone_in_one_query(
-  test_engine: Engine, user: User, other_user: User, check_in_factory
+  test_engine: Engine,
+  user: User,
+  other_user: User,
+  check_in_factory,
+  group_factory,
+  member_factory,
+  group_habit_factory,
+  query_counter,
 ) -> None:
-  group = _make_group(test_engine)
-  _add_member(test_engine, group, user, joined_at=_sp(MONDAY, 8))
-  _add_member(test_engine, group, other_user, joined_at=_sp(WEDNESDAY, 9))
-  habit = _make_group_habit(test_engine, group)
+  group = group_factory()
+  member_factory(group, user, joined_at=_sp(MONDAY, 8))
+  member_factory(group, other_user, joined_at=_sp(WEDNESDAY, 9))
+  habit = group_habit_factory(group)
 
   for member in (user, other_user):
     check_in_factory(habit, user=member, created_at=at_noon(MONDAY))
     check_in_factory(habit, user=member, created_at=at_noon(WEDNESDAY))
-  # 23h50 de São Paulo na quinta é 02h50 UTC da sexta
-  check_in_factory(habit, user=other_user, created_at=_sp(date(2026, 11, 5), 23, 50))
-  # segundo check-in no mesmo dia conta uma vez
+
+  check_in_factory(
+    habit,
+    user=other_user,
+    created_at=_sp(date(2026, 11, 5), 23, 50),
+  )
+
   check_in_factory(habit, user=user, created_at=_sp(WEDNESDAY, 20))
 
-  with Session(test_engine) as db, _count_queries(test_engine) as queries:
+  with Session(test_engine) as db, query_counter() as queries:
     days = list_check_in_days_by_member(db, [habit.id], [user.id, other_user.id])
 
   assert len(queries) == 1
@@ -183,14 +77,28 @@ def test_days_by_member_late_join_and_timezone_in_one_query(
 
 
 def test_days_by_member_join_late_at_night_counts_that_day(
-  test_engine: Engine, user: User, check_in_factory
+  test_engine: Engine,
+  user: User,
+  check_in_factory,
+  group_factory,
+  member_factory,
+  group_habit_factory,
 ) -> None:
-  group = _make_group(test_engine)
-  # 23h30 de São Paulo do dia 3 é 02h30 UTC do dia 4
-  _add_member(test_engine, group, user, joined_at=_sp(date(2026, 11, 3), 23, 30))
-  habit = _make_group_habit(test_engine, group)
+  group = group_factory()
+
+  member_factory(
+    group,
+    user,
+    joined_at=_sp(date(2026, 11, 3), 23, 30),
+  )
+
+  habit = group_habit_factory(group)
   check_in_factory(habit, user=user, created_at=at_noon(MONDAY))
-  check_in_factory(habit, user=user, created_at=_sp(date(2026, 11, 3), 23, 45))
+  check_in_factory(
+    habit,
+    user=user,
+    created_at=_sp(date(2026, 11, 3), 23, 45),
+  )
 
   with Session(test_engine) as db:
     days = list_check_in_days_by_member(db, [habit.id], [user.id])
@@ -199,11 +107,21 @@ def test_days_by_member_join_late_at_night_counts_that_day(
 
 
 def test_days_by_member_counts_from_goal_start_when_later_than_join(
-  test_engine: Engine, user: User, check_in_factory
+  test_engine: Engine,
+  user: User,
+  check_in_factory,
+  group_factory,
+  member_factory,
+  group_habit_factory,
 ) -> None:
-  group = _make_group(test_engine)
-  _add_member(test_engine, group, user, joined_at=_sp(date(2026, 10, 20), 12))
-  habit = _make_group_habit(test_engine, group, starts_on=date(2026, 11, 1))
+  group = group_factory()
+  member_factory(
+    group,
+    user,
+    joined_at=_sp(date(2026, 10, 20), 12),
+  )
+
+  habit = group_habit_factory(group, starts_on=date(2026, 11, 1))
   check_in_factory(habit, user=user, created_at=at_noon(date(2026, 10, 30)))
   check_in_factory(habit, user=user, created_at=at_noon(MONDAY))
 
@@ -220,25 +138,35 @@ def test_days_by_member_ignores_non_members_and_other_habits(
   habit_factory,
   goal_factory,
   check_in_factory,
+  group_factory,
+  member_factory,
+  group_habit_factory,
 ) -> None:
-  group = _make_group(test_engine)
-  other_group = _make_group(test_engine)
-  _add_member(test_engine, group, user)
-  # other_user não é membro do grupo (ou saiu): só do outro grupo
-  _add_member(test_engine, other_group, other_user)
-  habit = _make_group_habit(test_engine, group)
-  without_goal = _make_group_habit(test_engine, group, with_goal=False, name="B")
+  group = group_factory()
+  other_group = group_factory()
+
+  member_factory(group, user)
+
+  member_factory(other_group, other_user)
+
+  habit = group_habit_factory(group)
+  without_goal = group_habit_factory(group, with_goal=False, name="B")
+
   personal = habit_factory()
   goal_factory(personal)
 
   check_in_factory(
-    [habit, without_goal, personal], user=user, created_at=at_noon(MONDAY)
+    [habit, without_goal, personal],
+    user=user,
+    created_at=at_noon(MONDAY),
   )
   check_in_factory(habit, user=other_user, created_at=at_noon(MONDAY))
 
   with Session(test_engine) as db:
     days = list_check_in_days_by_member(
-      db, [habit.id, without_goal.id, personal.id], [user.id, other_user.id]
+      db,
+      [habit.id, without_goal.id, personal.id],
+      [user.id, other_user.id],
     )
 
   assert dict(days) == {(habit.id, user.id): {MONDAY}}
@@ -249,22 +177,36 @@ def test_days_by_member_ignores_non_members_and_other_habits(
 
 
 def test_build_members_progress_uses_one_query(
-  test_engine: Engine, user: User, other_user: User, check_in_factory
+  test_engine: Engine,
+  user: User,
+  other_user: User,
+  check_in_factory,
+  group_factory,
+  member_factory,
+  group_habit_factory,
+  query_counter,
 ) -> None:
-  group = _make_group(test_engine)
-  _add_member(test_engine, group, user)
-  _add_member(test_engine, group, other_user)
-  habit_a = _make_group_habit(test_engine, group, name="A")
-  habit_b = _make_group_habit(test_engine, group, name="B")
-  without_goal = _make_group_habit(test_engine, group, with_goal=False, name="C")
+  group = group_factory()
+  member_factory(group, user)
+  member_factory(group, other_user)
+
+  habit_a = group_habit_factory(group, name="A")
+  habit_b = group_habit_factory(group, name="B")
+  without_goal = group_habit_factory(group, with_goal=False, name="C")
+
   check_in_factory(habit_a, user=user, created_at=at_noon(TODAY))
 
   with Session(test_engine) as db:
     loaded_group = db.get(Group, group.id)
     habits = [db.get(Habit, h.id) for h in (habit_a, habit_b, without_goal)]
-    with _count_queries(test_engine) as queries:
+
+    with query_counter() as queries:
       progress = build_members_progress(
-        db, loaded_group, habits, [user.id, other_user.id], TODAY
+        db,
+        loaded_group,
+        habits,
+        [user.id, other_user.id],
+        TODAY,
       )
 
   assert len(queries) == 1
@@ -279,17 +221,27 @@ def test_build_members_progress_uses_one_query(
 
 
 def test_build_members_progress_freezes_on_group_end(
-  test_engine: Engine, user: User, check_in_factory
+  test_engine: Engine,
+  user: User,
+  check_in_factory,
+  group_factory,
+  member_factory,
+  group_habit_factory,
 ) -> None:
-  group = _make_group(test_engine, ends_on=date(2026, 11, 5))
-  _add_member(test_engine, group, user)
-  habit = _make_group_habit(test_engine, group)
+  group = group_factory(ends_on=date(2026, 11, 5))
+  member_factory(group, user)
+
+  habit = group_habit_factory(group)
   check_in_factory(habit, user=user, created_at=at_noon(date(2026, 11, 5)))
   check_in_factory(habit, user=user, created_at=at_noon(date(2026, 11, 8)))
 
   with Session(test_engine) as db:
     progress = build_members_progress(
-      db, db.get(Group, group.id), [db.get(Habit, habit.id)], [user.id], TODAY
+      db,
+      db.get(Group, group.id),
+      [db.get(Habit, habit.id)],
+      [user.id],
+      TODAY,
     )
 
   result = progress[(habit.id, user.id)]
@@ -299,17 +251,28 @@ def test_build_members_progress_freezes_on_group_end(
 
 
 def test_build_members_progress_freezes_on_habit_finish(
-  test_engine: Engine, user: User
+  test_engine: Engine,
+  user: User,
+  group_factory,
+  member_factory,
+  group_habit_factory,
 ) -> None:
-  group = _make_group(test_engine)
-  _add_member(test_engine, group, user)
-  habit = _make_group_habit(
-    test_engine, group, status=HabitStatus.FINISHED, finished_at=date(2026, 11, 6)
+  group = group_factory()
+  member_factory(group, user)
+
+  habit = group_habit_factory(
+    group,
+    status=HabitStatus.FINISHED,
+    finished_at=date(2026, 11, 6),
   )
 
   with Session(test_engine) as db:
     progress = build_members_progress(
-      db, db.get(Group, group.id), [db.get(Habit, habit.id)], [user.id], TODAY
+      db,
+      db.get(Group, group.id),
+      [db.get(Habit, habit.id)],
+      [user.id],
+      TODAY,
     )
 
   result = progress[(habit.id, user.id)]
@@ -318,15 +281,24 @@ def test_build_members_progress_freezes_on_habit_finish(
 
 
 def test_build_members_progress_group_ending_today_is_not_ended(
-  test_engine: Engine, user: User
+  test_engine: Engine,
+  user: User,
+  group_factory,
+  member_factory,
+  group_habit_factory,
 ) -> None:
-  group = _make_group(test_engine, ends_on=TODAY)
-  _add_member(test_engine, group, user)
-  habit = _make_group_habit(test_engine, group)
+  group = group_factory(ends_on=TODAY)
+  member_factory(group, user)
+
+  habit = group_habit_factory(group)
 
   with Session(test_engine) as db:
     progress = build_members_progress(
-      db, db.get(Group, group.id), [db.get(Habit, habit.id)], [user.id], TODAY
+      db,
+      db.get(Group, group.id),
+      [db.get(Habit, habit.id)],
+      [user.id],
+      TODAY,
     )
 
   assert progress[(habit.id, user.id)].status != ProgressStatus.ENDED
@@ -336,7 +308,9 @@ def test_build_members_progress_group_ending_today_is_not_ended(
 
 
 def test_create_group_habit_as_admin(
-  client: TestClient, group_setup: SimpleNamespace, test_engine: Engine
+  client: TestClient,
+  group_setup: SimpleNamespace,
+  test_engine: Engine,
 ) -> None:
   response = client.post(
     f"/groups/{group_setup.group.id}/habits",
@@ -385,7 +359,8 @@ def test_create_group_habit_access(
 
 
 def test_create_group_habit_requires_auth_and_goal(
-  client: TestClient, group_setup: SimpleNamespace
+  client: TestClient,
+  group_setup: SimpleNamespace,
 ) -> None:
   url = f"/groups/{group_setup.group.id}/habits"
   body = _create_body()
@@ -398,7 +373,9 @@ def test_create_group_habit_requires_auth_and_goal(
 
 
 def test_create_group_habit_in_ended_group(
-  client: TestClient, ended_group: Group, user: User
+  client: TestClient,
+  ended_group: Group,
+  user: User,
 ) -> None:
   response = client.post(
     f"/groups/{ended_group.id}/habits",
@@ -414,17 +391,24 @@ def test_create_group_habit_in_ended_group(
 
 
 def test_list_group_habits_with_status_filter(
-  client: TestClient, group_setup: SimpleNamespace, test_engine: Engine, habit_factory
+  client: TestClient,
+  group_setup: SimpleNamespace,
+  test_engine: Engine,
+  habit_factory,
+  group_factory,
+  group_habit_factory,
 ) -> None:
-  active = _make_group_habit(test_engine, group_setup.group, name="Ativo")
-  finished = _make_group_habit(
-    test_engine,
+  active = group_habit_factory(group_setup.group, name="Ativo")
+  finished = group_habit_factory(
     group_setup.group,
     name="Encerrado",
     status=HabitStatus.FINISHED,
     finished_at=date(2026, 11, 5),
   )
-  _make_group_habit(test_engine, _make_group(test_engine), name="De outro grupo")
+
+  other_group = group_factory()
+  group_habit_factory(other_group, name="De outro grupo")
+
   habit_factory(name="Pessoal")
   url = f"/groups/{group_setup.group.id}/habits"
 
@@ -433,29 +417,39 @@ def test_list_group_habits_with_status_filter(
   assert {h["id"] for h in response.json()} == {str(active.id), str(finished.id)}
 
   response = client.get(
-    url, params={"status": "finished"}, headers=group_setup.member_headers
+    url,
+    params={"status": "finished"},
+    headers=group_setup.member_headers,
   )
   assert [h["id"] for h in response.json()] == [str(finished.id)]
 
-  response = client.get(url, params={"status": "x"}, headers=group_setup.member_headers)
+  response = client.get(
+    url,
+    params={"status": "x"},
+    headers=group_setup.member_headers,
+  )
   assert response.status_code == 422
 
 
 def test_list_group_habits_access(
-  client: TestClient, group_setup: SimpleNamespace
+  client: TestClient,
+  group_setup: SimpleNamespace,
 ) -> None:
   url = f"/groups/{group_setup.group.id}/habits"
 
   assert client.get(url).status_code == 401
+
   response = client.get(url, headers=group_setup.outsider_headers)
   assert response.status_code == 404
   assert response.json()["detail"] == MSG_GROUP_NOT_FOUND
 
 
 def test_get_group_habit(
-  client: TestClient, group_setup: SimpleNamespace, test_engine: Engine
+  client: TestClient,
+  group_setup: SimpleNamespace,
+  group_habit_factory,
 ) -> None:
-  habit = _make_group_habit(test_engine, group_setup.group)
+  habit = group_habit_factory(group_setup.group)
   url = f"/groups/{group_setup.group.id}/habits/{habit.id}"
 
   response = client.get(url, headers=group_setup.member_headers)
@@ -463,15 +457,20 @@ def test_get_group_habit(
   assert response.json()["group"]["id"] == str(group_setup.group.id)
 
   assert client.get(url).status_code == 401
+
   response = client.get(url, headers=group_setup.outsider_headers)
   assert response.status_code == 404
   assert response.json()["detail"] == MSG_GROUP_NOT_FOUND
 
 
 def test_get_habit_of_other_group_returns_404(
-  client: TestClient, group_setup: SimpleNamespace, test_engine: Engine
+  client: TestClient,
+  group_setup: SimpleNamespace,
+  group_factory,
+  group_habit_factory,
 ) -> None:
-  other_habit = _make_group_habit(test_engine, _make_group(test_engine))
+  other_group = group_factory()
+  other_habit = group_habit_factory(other_group)
 
   response = client.get(
     f"/groups/{group_setup.group.id}/habits/{other_habit.id}",
@@ -486,9 +485,11 @@ def test_get_habit_of_other_group_returns_404(
 
 
 def test_update_group_habit_ignores_goal(
-  client: TestClient, group_setup: SimpleNamespace, test_engine: Engine
+  client: TestClient,
+  group_setup: SimpleNamespace,
+  group_habit_factory,
 ) -> None:
-  habit = _make_group_habit(test_engine, group_setup.group)
+  habit = group_habit_factory(group_setup.group)
 
   response = client.patch(
     f"/groups/{group_setup.group.id}/habits/{habit.id}",
@@ -504,27 +505,37 @@ def test_update_group_habit_ignores_goal(
 
 
 def test_update_group_habit_errors(
-  client: TestClient, group_setup: SimpleNamespace, test_engine: Engine
+  client: TestClient,
+  group_setup: SimpleNamespace,
+  group_habit_factory,
 ) -> None:
-  habit = _make_group_habit(test_engine, group_setup.group)
+  habit = group_habit_factory(group_setup.group)
   url = f"/groups/{group_setup.group.id}/habits/{habit.id}"
   body = {"name": "Novo"}
 
   assert client.patch(url, json=body).status_code == 401
+
   response = client.patch(url, json=body, headers=group_setup.member_headers)
   assert response.status_code == 403
+
   response = client.patch(url, json=body, headers=group_setup.outsider_headers)
   assert response.status_code == 404
+
   response = client.patch(
-    url, json={"target_end_date": "2026-10-01"}, headers=group_setup.admin_headers
+    url,
+    json={"target_end_date": "2026-10-01"},
+    headers=group_setup.admin_headers,
   )
   assert response.status_code == 422
 
 
 def test_update_group_habit_in_ended_group(
-  client: TestClient, ended_group: Group, user: User, test_engine: Engine
+  client: TestClient,
+  ended_group: Group,
+  user: User,
+  group_habit_factory,
 ) -> None:
-  habit = _make_group_habit(test_engine, ended_group, starts_on=date(2026, 10, 2))
+  habit = group_habit_factory(ended_group, starts_on=date(2026, 10, 2))
 
   response = client.patch(
     f"/groups/{ended_group.id}/habits/{habit.id}",
@@ -540,9 +551,11 @@ def test_update_group_habit_in_ended_group(
 
 
 def test_finish_group_habit_twice_returns_409(
-  client: TestClient, group_setup: SimpleNamespace, test_engine: Engine
+  client: TestClient,
+  group_setup: SimpleNamespace,
+  group_habit_factory,
 ) -> None:
-  habit = _make_group_habit(test_engine, group_setup.group)
+  habit = group_habit_factory(group_setup.group)
   url = f"/groups/{group_setup.group.id}/habits/{habit.id}/finish"
 
   response = client.post(url, headers=group_setup.admin_headers)
@@ -556,9 +569,11 @@ def test_finish_group_habit_twice_returns_409(
 
 
 def test_finish_group_habit_access(
-  client: TestClient, group_setup: SimpleNamespace, test_engine: Engine
+  client: TestClient,
+  group_setup: SimpleNamespace,
+  group_habit_factory,
 ) -> None:
-  habit = _make_group_habit(test_engine, group_setup.group)
+  habit = group_habit_factory(group_setup.group)
   url = f"/groups/{group_setup.group.id}/habits/{habit.id}/finish"
 
   assert client.post(url).status_code == 401
@@ -567,9 +582,12 @@ def test_finish_group_habit_access(
 
 
 def test_finish_group_habit_in_ended_group(
-  client: TestClient, ended_group: Group, user: User, test_engine: Engine
+  client: TestClient,
+  ended_group: Group,
+  user: User,
+  group_habit_factory,
 ) -> None:
-  habit = _make_group_habit(test_engine, ended_group, starts_on=date(2026, 10, 2))
+  habit = group_habit_factory(ended_group, starts_on=date(2026, 10, 2))
 
   response = client.post(
     f"/groups/{ended_group.id}/habits/{habit.id}/finish",
@@ -584,9 +602,12 @@ def test_finish_group_habit_in_ended_group(
 
 
 def test_set_goal_on_group_habit_is_locked(
-  client: TestClient, group_setup: SimpleNamespace, test_engine: Engine
+  client: TestClient,
+  group_setup: SimpleNamespace,
+  test_engine: Engine,
+  group_habit_factory,
 ) -> None:
-  habit = _make_group_habit(test_engine, group_setup.group)
+  habit = group_habit_factory(group_setup.group)
   url = f"/goals/habits/{habit.id}/goal"
 
   for headers in (group_setup.admin_headers, group_setup.member_headers):
@@ -594,7 +615,11 @@ def test_set_goal_on_group_habit_is_locked(
     assert response.status_code == 409
     assert response.json()["detail"] == MSG_GROUP_HABIT_GOAL_LOCKED
 
-  response = client.put(url, json=WEEKLY_GOAL, headers=group_setup.outsider_headers)
+  response = client.put(
+    url,
+    json=WEEKLY_GOAL,
+    headers=group_setup.outsider_headers,
+  )
   assert response.status_code == 404
 
   with Session(test_engine) as db:
@@ -608,6 +633,7 @@ def test_openapi_documents_group_habit_errors(client: TestClient) -> None:
   paths = client.get("/openapi.json").json()["paths"]
   collection = "/groups/{group_id}/habits"
   item = f"{collection}/{{habit_id}}"
+
   expected = {
     (collection, "post"): {"201", "401", "403", "404", "409", "422"},
     (collection, "get"): {"200", "401", "404", "422"},
@@ -615,6 +641,7 @@ def test_openapi_documents_group_habit_errors(client: TestClient) -> None:
     (item, "patch"): {"200", "401", "403", "404", "409", "422"},
     (f"{item}/finish", "post"): {"200", "401", "403", "404", "409"},
   }
+
   for (path, method), codes in expected.items():
     assert codes <= set(paths[path][method]["responses"]), (path, method)
 

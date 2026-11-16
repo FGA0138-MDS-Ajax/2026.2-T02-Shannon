@@ -8,7 +8,7 @@ from sqlmodel import Session
 from app.goals.service import calculate_habits_progress, get_habit_progress
 from app.habits.models import HabitStatus
 from tests.conftest import at_noon
-from tests.group.test_group_habits import (
+from tests.group.fixtures import (
   TODAY,
   _add_member,
   _make_group,

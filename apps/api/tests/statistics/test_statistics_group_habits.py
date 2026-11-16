@@ -7,7 +7,7 @@ import pytest
 from app.group.models import GroupRole
 from app.habits.exceptions import MSG_GROUP_HABIT_FORBIDDEN, MSG_HABIT_NOT_FOUND
 from tests.conftest import at_noon
-from tests.group.test_group_habits import (
+from tests.group.fixtures import (
   TODAY,
   _add_member,
   _make_group,

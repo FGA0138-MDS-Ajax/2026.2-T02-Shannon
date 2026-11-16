@@ -12,7 +12,7 @@ from app.checkins.schemas import CheckInPublic
 from app.checkins.service import build_check_ins_public
 from app.group.models import GroupRole, Member
 from tests.conftest import _auth_headers, _create_user, at_noon
-from tests.group.test_group_habits import (
+from tests.group.fixtures import (
   TODAY,
   _add_member,
   _make_group,
