@@ -673,3 +673,54 @@ RESPONSES_GROUP_HABIT_STATS = {
     },
   },
 }
+
+EXAMPLE_GROUP_STATS = {
+  "as_of": "2026-11-11",
+  "most_consistent": {
+    "user": {"id": _EXAMPLE_USER_ID, "username": "pedro_melo"},
+    "habit": {"id": _EXAMPLE_HABIT_ID, "name": "Ler 20 páginas"},
+    "consistent_days": 37,
+  },
+  "best_record": {
+    "user": {"id": "e4a7c2f9-8d1b-4e6a-9c3f-7b2d5e8a1c04", "username": "ana_souza"},
+    "habit": {"id": "7b2e5d1a-3c4f-4e9b-8a6d-1f0c9e2b4a53", "name": "Poupar"},
+    "best_streak": 4,
+    "unit": "month",
+  },
+  "check_ins_last_7_days": 12,
+}
+
+EXAMPLE_GROUP_STATS_EMPTY = {
+  "as_of": "2026-11-11",
+  "most_consistent": None,
+  "best_record": None,
+  "check_ins_last_7_days": 0,
+}
+
+RESPONSES_GROUP_STATS = {
+  status.HTTP_200_OK: {
+    "description": (
+      "Estatísticas do grupo. `most_consistent` e `best_record` são `null` quando"
+      " ninguém pontuou."
+    ),
+    "content": {
+      "application/json": {
+        "examples": {
+          "completo": {
+            "summary": "Grupo com estatísticas",
+            "value": EXAMPLE_GROUP_STATS,
+          },
+          "sem_pontuacao": {
+            "summary": "Grupo recém-criado ou sem check-ins (campos nulos)",
+            "value": EXAMPLE_GROUP_STATS_EMPTY,
+          },
+        }
+      }
+    },
+  },
+  status.HTTP_401_UNAUTHORIZED: _RESPONSE_401,
+  **GROUP_NOT_FOUND_RESPONSE,
+  status.HTTP_422_UNPROCESSABLE_CONTENT: RESPONSES_GET_GROUP[
+    status.HTTP_422_UNPROCESSABLE_CONTENT
+  ],
+}

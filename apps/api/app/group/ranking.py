@@ -9,16 +9,14 @@ from sqlmodel import Session
 from app.auth.dependencies import get_current_user
 from app.auth.models import User
 from app.database import SessionDep
-from app.goals import repository as goals_repository
 from app.goals.streak import GoalRule, period_bounds, period_results
-from app.group import repository
 from app.group.exceptions import MSG_GROUP_NOT_FOUND, GroupNotFoundError
+from app.group.loading import load_group_data
 from app.group.models import RankingCriterion
 from app.group.permissions import require_member
 from app.group.responses import RESPONSES_RANKING
 from app.group.schemas import RankingItem, RankingMe, RankingResponse, RankingUser
 from app.group.status import group_reference_date
-from app.habits import repository as habits_repository
 from app.habits import service as habits_service
 
 ranking_router = APIRouter(prefix="/groups", tags=["groups"])
@@ -78,15 +76,7 @@ def get_group_ranking(db: Session, group_id: UUID, user: User) -> RankingRespons
   today = habits_service.today()
   reference = today if group.ends_on is None else min(today, group.ends_on)
 
-  habits = [
-    habit
-    for habit in habits_repository.list_habits_by_group(db, group_id)
-    if habit.goal is not None
-  ]
-  members = repository.list_members_with_users(db, group_id)
-  days = goals_repository.list_check_in_days_by_member(
-    db, [habit.id for habit in habits], [member.user_id for member, _ in members]
-  )
+  habits, members, days = load_group_data(db, group_id)
 
   by_check_ins = group.ranking_criterion == RankingCriterion.CHECK_INS
   scores: list[tuple[UUID, str, int]] = []

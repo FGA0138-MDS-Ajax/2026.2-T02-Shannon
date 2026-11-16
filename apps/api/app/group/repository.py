@@ -1,13 +1,14 @@
 from collections.abc import Iterable
-from datetime import datetime
+from datetime import date, datetime
 from uuid import UUID
 
-from sqlalchemy import func, tuple_
+from sqlalchemy import Date, func, tuple_
 from sqlalchemy.orm import lazyload
 from sqlmodel import Session, col, select
 
 from app.auth.models import User
 from app.checkins.models import CheckIn, CheckInHabit
+from app.goals.repository import APP_TIMEZONE_NAME
 from app.group.models import Group, GroupRole, Member
 from app.habits.models import Habit
 
@@ -175,6 +176,41 @@ def get_oldest_member(
   return db.exec(statement).first()
 
 
+def _check_in_has_group_habit(group_id: UUID):
+  """`EXISTS`: o check-in vale para ao menos um hábito do grupo.
+
+  Compartilhado pelo feed e pela contagem, para os dois concordarem sobre o que é
+  um check-in do grupo. Um check-in de dois hábitos do grupo não se repete.
+  """
+  return (
+    select(CheckInHabit)
+    .join(Habit, col(Habit.id) == col(CheckInHabit.habit_id))
+    .where(
+      col(CheckInHabit.check_in_id) == col(CheckIn.id),
+      col(Habit.author_group_id) == group_id,
+    )
+    .exists()
+  )
+
+
+def count_group_check_ins(db: Session, group_id: UUID, start: date, end: date) -> int:
+  """Check-ins (linhas) com ao menos um hábito do grupo entre `start` e `end`.
+
+  As duas datas entram na contagem. O `created_at` é convertido para São Paulo
+  antes de cortar o dia. Um check-in de dois hábitos do grupo conta uma vez, e
+  quem saiu do grupo continua contando, como no feed. Não faz commit.
+  """
+  local_day = func.date(
+    func.timezone(APP_TIMEZONE_NAME, col(CheckIn.created_at)), type_=Date
+  )
+  statement = (
+    select(func.count())
+    .select_from(CheckIn)
+    .where(_check_in_has_group_habit(group_id), local_day >= start, local_day <= end)
+  )
+  return db.exec(statement).one()
+
+
 def list_group_feed_check_ins(
   db: Session,
   group_id: UUID,
@@ -190,17 +226,8 @@ def list_group_feed_check_ins(
   mesmo `created_at`, e o `EXISTS` não repete o check-in que vale para dois
   hábitos do grupo. Não faz commit.
   """
-  has_group_habit = (
-    select(CheckInHabit)
-    .join(Habit, col(Habit.id) == col(CheckInHabit.habit_id))
-    .where(
-      col(CheckInHabit.check_in_id) == col(CheckIn.id),
-      col(Habit.author_group_id) == group_id,
-    )
-    .exists()
-  )
   key = tuple_(col(CheckIn.created_at), col(CheckIn.id))
-  statement = select(CheckIn).where(has_group_habit)
+  statement = select(CheckIn).where(_check_in_has_group_habit(group_id))
 
   if after is not None:
     statement = statement.where(key > after).order_by(
