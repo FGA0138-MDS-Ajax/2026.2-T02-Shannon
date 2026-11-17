@@ -45,6 +45,10 @@ export default function StatisticsContent({
     .sort(
       (a, b) => Number(a.habit.checked_today) - Number(b.habit.checked_today),
     );
+  const atRiskHabitIds = new Set(data.at_risk.habit_ids);
+  const atRiskHabitNames = data.habit_progress
+    .filter((habit) => atRiskHabitIds.has(habit.habit_id))
+    .map((habit) => habit.name);
 
   return (
     <View testID="statistics-content">
@@ -56,6 +60,23 @@ export default function StatisticsContent({
 
       <View style={styles.sheet}>
         <View style={styles.inner}>
+          {data.at_risk.count > 0 && (
+            <View testID="statistics-at-risk" style={styles.atRiskNotice}>
+              <Text style={styles.atRiskTitle}>
+                {plural(
+                  data.at_risk.count,
+                  "hábito em risco",
+                  "hábitos em risco",
+                )}
+              </Text>
+              {atRiskHabitNames.length > 0 && (
+                <Text style={styles.atRiskNames}>
+                  {atRiskHabitNames.join(", ")}
+                </Text>
+              )}
+            </View>
+          )}
+
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <View style={styles.sectionTitles}>
@@ -87,6 +108,7 @@ export default function StatisticsContent({
                 history={histories?.[habit.habit_id]}
                 category={categories?.[habit.habit_id]}
                 tone={tone}
+                isAtRisk={atRiskHabitIds.has(habit.habit_id)}
                 onCheckIn={
                   onCheckIn ? () => onCheckIn(habit.habit_id) : undefined
                 }
@@ -137,6 +159,24 @@ const styles = StyleSheet.create({
     maxWidth: 640,
     alignSelf: "center",
     gap: 24,
+  },
+  atRiskNotice: {
+    gap: 4,
+    borderWidth: 1,
+    borderColor: palette.riskText,
+    borderRadius: 16,
+    backgroundColor: palette.riskBackground,
+    padding: 14,
+  },
+  atRiskTitle: {
+    fontFamily: theme.font.semiBold,
+    fontSize: 14,
+    color: palette.riskText,
+  },
+  atRiskNames: {
+    fontFamily: theme.font.regular,
+    fontSize: 12,
+    color: palette.ink,
   },
   section: {
     gap: 12,

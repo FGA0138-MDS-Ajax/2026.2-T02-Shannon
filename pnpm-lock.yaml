@@ -284,12 +284,18 @@ importers:
       '@types/jest':
         specifier: ^30.0.0
         version: 30.0.0
+      '@types/node-fetch':
+        specifier: ^2.6.13
+        version: 2.6.13
       '@types/react':
         specifier: ~19.3.0
         version: 19.3.0
       jest-expo:
         specifier: ^58.0.14
         version: 58.0.14(@babel/core@7.29.7(supports-color@8.1.1))(@react-native/jest-preset@0.88.1(@babel/core@7.29.7(supports-color@8.1.1))(react@19.3.0)(supports-color@8.1.1))(@types/react@19.3.0)(expo@58.0.23)(jest@30.5.2(@types/node@26.6.4)(esbuild-register@3.6.0(esbuild@0.28.2)(supports-color@8.1.1))(supports-color@8.1.1))(react-native@0.88.1(@babel/core@7.29.7(supports-color@8.1.1))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(react@19.3.0)(supports-color@8.1.1)
+      node-fetch:
+        specifier: ^2.7.0
+        version: 2.7.0
       typescript:
         specifier: ~6.0.3
         version: 6.0.3
@@ -2352,6 +2358,9 @@ packages:
 
   '@types/jsdom@21.1.7':
     resolution: {integrity: sha512-yOriVnggzrnQ3a9OKOCxaVuSug3w3/SbOj5i7VwXWZEyUNl3bLF9V3MfxGbZKuwqJOQyRfqXyROBB1CoZLFWzA==}
+
+  '@types/node-fetch@2.6.13':
+    resolution: {integrity: sha512-QGpRVpzSaUs30JBSGPjOg4Uveu384erbHBoT1zeONvyCfwQxIkUshLAOqN/k9EjGviPRmWTTe6aH2qySWKTVSw==}
 
   '@types/node@26.6.4':
     resolution: {integrity: sha512-ldVPDCzj7fsaGZrLB0NuHuTvJcsNasysBAqMolr/cgxrLd1xbqxIr3XJiPnHHJUCxj5sNF1vnRj9aWnrVh5Jcg==}
@@ -7637,6 +7646,11 @@ snapshots:
       '@types/node': 26.6.4
       '@types/tough-cookie': 4.0.5
       parse5: 7.3.0
+
+  '@types/node-fetch@2.6.13':
+    dependencies:
+      '@types/node': 26.6.4
+      form-data: 4.0.6
 
   '@types/node@26.6.4':
     dependencies:

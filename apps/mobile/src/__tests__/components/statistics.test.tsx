@@ -83,6 +83,20 @@ describe("StatisticsContent", () => {
     expect(screen.queryByText("0%")).toBeNull();
   });
 
+  it("highlights only at-risk habit IDs and hides the notice when none are at risk", async () => {
+    const screen = await render(<StatisticsContent data={atRiskStatistics} />);
+
+    expect(screen.getByTestId("statistics-at-risk")).toBeTruthy();
+    expect(screen.getByTestId("habit-at-risk-habit-water")).toBeTruthy();
+    expect(screen.getByTestId("habit-at-risk-habit-running")).toBeTruthy();
+    expect(screen.queryByTestId("habit-at-risk-habit-reading")).toBeNull();
+
+    await screen.rerender(<StatisticsContent data={completeStatistics} />);
+
+    expect(screen.queryByTestId("statistics-at-risk")).toBeNull();
+    expect(screen.queryByTestId("habit-at-risk-habit-water")).toBeNull();
+  });
+
   it("keeps zero days in the series, in ascending order", async () => {
     const shuffled = {
       ...completeStatistics,

@@ -15,6 +15,7 @@ export interface HabitProgressItemProps {
   /** Últimos 28 dias, do mais antigo ao de hoje. Enquanto não chega, a grade fica vazia. */
   history?: HabitHistoryDay[];
   category?: HabitCategory;
+  isAtRisk?: boolean;
   /** Cor do quadradinho do ícone (o protótipo alterna laranja e verde) */
   tone?: "peach" | "sage";
   /** Abre a tela de check-in com este hábito já marcado */
@@ -27,6 +28,7 @@ export default function HabitProgressItem({
   habit,
   history,
   category,
+  isAtRisk = false,
   tone = "peach",
   onCheckIn,
 }: HabitProgressItemProps) {
@@ -40,7 +42,11 @@ export default function HabitProgressItem({
   return (
     <View
       testID={`habit-progress-${habit.habit_id}`}
-      style={[styles.card, isPending && styles.cardPending]}
+      style={[
+        styles.card,
+        isPending && styles.cardPending,
+        isAtRisk && styles.cardAtRisk,
+      ]}
     >
       <View style={styles.main}>
         <View style={styles.titleRow}>
@@ -55,6 +61,15 @@ export default function HabitProgressItem({
             {habit.name}
           </Text>
         </View>
+
+        {isAtRisk && (
+          <Text
+            testID={`habit-at-risk-${habit.habit_id}`}
+            style={styles.atRiskLabel}
+          >
+            Em risco
+          </Text>
+        )}
 
         <Text style={styles.progress}>
           {done} de {target_count} {periodPhrases[habit.goal.period]}
@@ -153,6 +168,10 @@ const styles = StyleSheet.create({
     borderColor: palette.primary,
     borderWidth: 2,
   },
+  cardAtRisk: {
+    borderColor: palette.riskText,
+    backgroundColor: palette.riskBackground,
+  },
   main: {
     flex: 1,
     justifyContent: "space-between",
@@ -179,6 +198,13 @@ const styles = StyleSheet.create({
     fontFamily: theme.font.medium,
     fontSize: 16,
     color: palette.ink,
+  },
+  atRiskLabel: {
+    alignSelf: "flex-start",
+    color: palette.riskText,
+    fontFamily: theme.font.medium,
+    fontSize: 11,
+    marginTop: 6,
   },
   progress: {
     fontFamily: theme.font.regular,

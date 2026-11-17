@@ -4,17 +4,36 @@ on:
   push:
     paths:
       - "apps/mobile/**"
+      - "apps/api/**"
       - ".github/workflows/mobile-tests.yaml"
   pull_request:
     paths:
       - "apps/mobile/**"
+      - "apps/api/**"
       - ".github/workflows/mobile-tests.yaml"
   workflow_dispatch:
 
 jobs:
   test:
     runs-on: ubuntu-latest
-    name: Unit tests and type check
+    name: Mobile tests against the API
+    services:
+      postgresql:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ci -d ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+      JWT_SECRET_KEY: ci-only-secret-key-with-at-least-32-bytes
     defaults:
       run:
         working-directory: apps/mobile
@@ -34,8 +53,54 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Install API dependencies
+        working-directory: apps/api
+        run: uv sync --frozen
+
+      - name: Apply database migrations
+        working-directory: apps/api
+        run: uv run alembic upgrade head
+
+      - name: Start API and prepare test account
+        env:
+          TEST_API_LOGIN: qa_${{ github.run_id }}_${{ github.run_attempt }}
+          TEST_API_PASSWORD: integration-test-password
+        run: |
+          cd ../api
+          uv run fastapi run app/main.py --host 0.0.0.0 --port 8000 > /tmp/habbit-api.log 2>&1 &
+          for attempt in {1..30}; do
+            if curl --silent --fail http://127.0.0.1:8000/ > /dev/null; then
+              break
+            fi
+            sleep 2
+          done
+          if ! curl --silent --fail http://127.0.0.1:8000/ > /dev/null; then
+            cat /tmp/habbit-api.log
+            exit 1
+          fi
+          curl --silent --show-error --fail \
+            --request POST http://127.0.0.1:8000/auth/signup \
+            --header "Content-Type: application/json" \
+            --data "{\"username\":\"${TEST_API_LOGIN}\",\"email\":\"${TEST_API_LOGIN}@example.com\",\"password\":\"${TEST_API_PASSWORD}\",\"name\":\"QA integration\"}" \
+            --output /dev/null
+
+      - name: Generate Expo Router types
+        run: pnpm exec expo customize tsconfig.json
+
       - name: Type check
         run: npx tsc --noEmit
 
       - name: Run tests
+        env:
+          EXPO_PUBLIC_API_URL: http://127.0.0.1:8000
+          TEST_API_LOGIN: qa_${{ github.run_id }}_${{ github.run_attempt }}
+          TEST_API_PASSWORD: integration-test-password
         run: pnpm test
