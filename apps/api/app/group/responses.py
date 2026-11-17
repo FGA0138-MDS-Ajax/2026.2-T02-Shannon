@@ -1,0 +1,726 @@
+from fastapi import status
+
+from app.group.exceptions import (
+  MSG_ALREADY_ADMIN,
+  MSG_ALREADY_IN_GROUP,
+  MSG_ALREADY_MEMBER,
+  MSG_CANNOT_REMOVE_SELF,
+  MSG_GROUP_ENDED,
+  MSG_GROUP_FORBIDDEN,
+  MSG_GROUP_FULL,
+  MSG_GROUP_NOT_FOUND,
+  MSG_INVALID_CURSOR,
+  MSG_INVITE_CODE_INVALID,
+  MSG_MEMBER_NOT_FOUND,
+  MSG_USER_TO_ADD_NOT_FOUND,
+)
+from app.group.schemas import MSG_ENDS_ON_BEFORE_STARTS_ON, MSG_FEED_ONE_DIRECTION
+from app.habits.exceptions import MSG_HABIT_ALREADY_FINISHED, MSG_HABIT_NOT_FOUND
+from app.habits.responses import (
+  RESPONSES_422_CREATE,
+  RESPONSES_422_LIST,
+  RESPONSES_UPDATE,
+)
+
+GROUP_NOT_FOUND_RESPONSE = {
+  status.HTTP_404_NOT_FOUND: {
+    "description": "Grupo inexistente ou usuário não é membro.",
+    "content": {"application/json": {"example": {"detail": MSG_GROUP_NOT_FOUND}}},
+  },
+}
+
+GROUP_FORBIDDEN_RESPONSE = {
+  status.HTTP_403_FORBIDDEN: {
+    "description": "Apenas administradores do grupo podem realizar esta ação.",
+    "content": {"application/json": {"example": {"detail": MSG_GROUP_FORBIDDEN}}},
+  },
+}
+
+_EXAMPLE_GROUP_ID = "c8e1d9b4-2a7f-4d6e-9c12-3f8a5b7e0d21"
+_EXAMPLE_USER_ID = "a3c9b6e2-4f1d-4c8a-9b7e-2d5f8a1c3e60"
+
+EXAMPLE_GROUP_DETAIL = {
+  "id": _EXAMPLE_GROUP_ID,
+  "name": "Corrida Matinal",
+  "description": "Grupo para manter a constância de corrida na semana.",
+  "starts_on": "2026-11-11",
+  "ends_on": "2026-12-11",
+  "ranking_criterion": "check_ins",
+  "status": "active",
+  "members_count": 1,
+  "my_role": "admin",
+  "invite_code": "K7P4M9X2",
+  "members": [
+    {
+      "user_id": _EXAMPLE_USER_ID,
+      "username": "pedro_melo",
+      "role": "admin",
+      "joined_at": "2026-11-11T12:00:00Z",
+    }
+  ],
+}
+
+EXAMPLE_GROUP_LIST_ITEM = {
+  "id": _EXAMPLE_GROUP_ID,
+  "name": "Corrida Matinal",
+  "members_count": 4,
+  "my_role": "admin",
+  "status": "active",
+  "ends_on": "2026-12-11",
+  "ranking_criterion": "check_ins",
+}
+
+_RESPONSE_401 = {
+  "description": "Usuário não autenticado ou token inválido.",
+}
+
+RESPONSES_CREATE_GROUP = {
+  status.HTTP_201_CREATED: {
+    "description": "Grupo criado com sucesso.",
+    "content": {"application/json": {"example": EXAMPLE_GROUP_DETAIL}},
+  },
+  status.HTTP_401_UNAUTHORIZED: _RESPONSE_401,
+  status.HTTP_422_UNPROCESSABLE_CONTENT: {
+    "description": (
+      "Dados do grupo inválidos. Erros de validação do corpo vêm no formato do"
+      " Pydantic; `ends_on` anterior a hoje ou ao início padrão vem com `detail`"
+      " em texto."
+    ),
+    "content": {
+      "application/json": {
+        "examples": {
+          "periodo_invalido": {
+            "summary": "Data final anterior à data inicial",
+            "value": {
+              "detail": [
+                {
+                  "loc": ["body"],
+                  "msg": f"Value error, {MSG_ENDS_ON_BEFORE_STARTS_ON}",
+                  "type": "value_error",
+                }
+              ]
+            },
+          },
+          "criterio_invalido": {
+            "summary": "Critério de ranking inexistente",
+            "value": {
+              "detail": [
+                {
+                  "loc": ["body", "ranking_criterion"],
+                  "msg": "Input should be 'check_ins' or 'goals'",
+                  "type": "enum",
+                }
+              ]
+            },
+          },
+        }
+      }
+    },
+  },
+}
+
+RESPONSES_LIST_GROUPS = {
+  status.HTTP_200_OK: {
+    "description": "Lista de grupos do usuário autenticado (ativos primeiro).",
+    "content": {"application/json": {"example": [EXAMPLE_GROUP_LIST_ITEM]}},
+  },
+  status.HTTP_401_UNAUTHORIZED: _RESPONSE_401,
+}
+
+RESPONSES_GET_GROUP = {
+  status.HTTP_200_OK: {
+    "description": "Detalhes do grupo e lista de membros.",
+    "content": {"application/json": {"example": EXAMPLE_GROUP_DETAIL}},
+  },
+  status.HTTP_401_UNAUTHORIZED: _RESPONSE_401,
+  **GROUP_NOT_FOUND_RESPONSE,
+  status.HTTP_422_UNPROCESSABLE_CONTENT: {
+    "description": "Identificador do grupo inválido (não é um UUID).",
+    "content": {
+      "application/json": {
+        "example": {
+          "detail": [
+            {
+              "loc": ["path", "group_id"],
+              "msg": "Input should be a valid UUID",
+              "type": "uuid_parsing",
+            }
+          ]
+        }
+      }
+    },
+  },
+}
+
+RESPONSES_CREATE_GROUP_HABIT = {
+  status.HTTP_401_UNAUTHORIZED: {
+    "description": "Usuário não autenticado ou token inválido.",
+  },
+  **GROUP_FORBIDDEN_RESPONSE,
+  **GROUP_NOT_FOUND_RESPONSE,
+  status.HTTP_409_CONFLICT: {
+    "description": "Grupo encerrado: não aceita novos hábitos.",
+    "content": {"application/json": {"example": {"detail": MSG_GROUP_ENDED}}},
+  },
+  **RESPONSES_422_CREATE,
+}
+
+
+_GROUP_HABIT_NOT_FOUND_RESPONSE = {
+  status.HTTP_404_NOT_FOUND: {
+    "description": (
+      "Grupo inexistente ou usuário não é membro; ou hábito inexistente ou de"
+      " outro grupo."
+    ),
+    "content": {
+      "application/json": {
+        "examples": {
+          "grupo_nao_encontrado": {
+            "summary": "Grupo inexistente ou usuário não é membro",
+            "value": {"detail": MSG_GROUP_NOT_FOUND},
+          },
+          "habito_nao_encontrado": {
+            "summary": "Hábito inexistente ou de outro grupo",
+            "value": {"detail": MSG_HABIT_NOT_FOUND},
+          },
+        }
+      }
+    },
+  },
+}
+
+RESPONSES_LIST_GROUP_HABITS = {
+  status.HTTP_401_UNAUTHORIZED: _RESPONSE_401,
+  **GROUP_NOT_FOUND_RESPONSE,
+  **RESPONSES_422_LIST,
+}
+
+RESPONSES_GET_GROUP_HABIT = {
+  status.HTTP_401_UNAUTHORIZED: _RESPONSE_401,
+  **_GROUP_HABIT_NOT_FOUND_RESPONSE,
+}
+
+RESPONSES_UPDATE_GROUP_HABIT = {
+  status.HTTP_401_UNAUTHORIZED: _RESPONSE_401,
+  **GROUP_FORBIDDEN_RESPONSE,
+  **_GROUP_HABIT_NOT_FOUND_RESPONSE,
+  status.HTTP_409_CONFLICT: {
+    "description": "Grupo encerrado: os hábitos não podem mais ser editados.",
+    "content": {"application/json": {"example": {"detail": MSG_GROUP_ENDED}}},
+  },
+  status.HTTP_422_UNPROCESSABLE_ENTITY: RESPONSES_UPDATE[
+    status.HTTP_422_UNPROCESSABLE_ENTITY
+  ],
+}
+
+RESPONSES_FINISH_GROUP_HABIT = {
+  status.HTTP_401_UNAUTHORIZED: _RESPONSE_401,
+  **GROUP_FORBIDDEN_RESPONSE,
+  **_GROUP_HABIT_NOT_FOUND_RESPONSE,
+  status.HTTP_409_CONFLICT: {
+    "description": "Grupo encerrado ou hábito já encerrado.",
+    "content": {
+      "application/json": {
+        "examples": {
+          "grupo_encerrado": {
+            "summary": "Grupo encerrado",
+            "value": {"detail": MSG_GROUP_ENDED},
+          },
+          "habito_ja_encerrado": {
+            "summary": "Hábito já encerrado",
+            "value": {"detail": MSG_HABIT_ALREADY_FINISHED},
+          },
+        }
+      }
+    },
+  },
+}
+
+RESPONSES_PATCH_GROUP = {
+  status.HTTP_200_OK: {
+    "description": "Dados do grupo atualizados com sucesso.",
+    "content": {"application/json": {"example": EXAMPLE_GROUP_DETAIL}},
+  },
+  status.HTTP_401_UNAUTHORIZED: _RESPONSE_401,
+  **GROUP_FORBIDDEN_RESPONSE,
+  **GROUP_NOT_FOUND_RESPONSE,
+  status.HTTP_422_UNPROCESSABLE_CONTENT: {
+    "description": (
+      "Dados inválidos, incluindo nome ou critério nulo, critério inexistente,"
+      " descrição acima de 500 caracteres ou data de término inválida."
+    ),
+  },
+}
+
+RESPONSES_ADD_MEMBER = {
+  status.HTTP_401_UNAUTHORIZED: _RESPONSE_401,
+  status.HTTP_403_FORBIDDEN: GROUP_FORBIDDEN_RESPONSE[status.HTTP_403_FORBIDDEN],
+  status.HTTP_404_NOT_FOUND: {
+    "description": "Grupo inexistente ou usuário não encontrado.",
+    "content": {
+      "application/json": {
+        "examples": {
+          "grupo_nao_encontrado": {
+            "summary": "Grupo não encontrado",
+            "value": {"detail": MSG_GROUP_NOT_FOUND},
+          },
+          "usuario_nao_encontrado": {
+            "summary": "Usuário a ser adicionado não existe",
+            "value": {"detail": MSG_USER_TO_ADD_NOT_FOUND},
+          },
+        }
+      }
+    },
+  },
+  status.HTTP_409_CONFLICT: {
+    "description": "Conflito ao adicionar integrante.",
+    "content": {
+      "application/json": {
+        "examples": {
+          "ja_membro": {
+            "summary": "Usuário já participa do grupo",
+            "value": {"detail": MSG_ALREADY_MEMBER},
+          },
+          "grupo_encerrado": {
+            "summary": "Grupo já encerrado",
+            "value": {"detail": MSG_GROUP_ENDED},
+          },
+          "grupo_cheio": {
+            "summary": "Grupo já atingiu o limite de membros",
+            "value": {"detail": MSG_GROUP_FULL},
+          },
+        }
+      }
+    },
+  },
+}
+
+RESPONSES_LIST_MEMBERS = {
+  status.HTTP_401_UNAUTHORIZED: _RESPONSE_401,
+  status.HTTP_404_NOT_FOUND: GROUP_NOT_FOUND_RESPONSE[status.HTTP_404_NOT_FOUND],
+}
+
+RESPONSES_DELETE_MEMBER = {
+  status.HTTP_401_UNAUTHORIZED: _RESPONSE_401,
+  status.HTTP_403_FORBIDDEN: GROUP_FORBIDDEN_RESPONSE[status.HTTP_403_FORBIDDEN],
+  status.HTTP_404_NOT_FOUND: {
+    "description": "Grupo ou integrante não encontrado.",
+    "content": {
+      "application/json": {
+        "examples": {
+          "grupo_nao_encontrado": {
+            "summary": "Grupo não encontrado",
+            "value": {"detail": MSG_GROUP_NOT_FOUND},
+          },
+          "membro_nao_encontrado": {
+            "summary": "Usuário alvo não é membro",
+            "value": {"detail": MSG_MEMBER_NOT_FOUND},
+          },
+        }
+      }
+    },
+  },
+  status.HTTP_409_CONFLICT: {
+    "description": "Tentativa de remover a si mesmo.",
+    "content": {"application/json": {"example": {"detail": MSG_CANNOT_REMOVE_SELF}}},
+  },
+}
+
+RESPONSES_PROMOTE_MEMBER = {
+  status.HTTP_401_UNAUTHORIZED: _RESPONSE_401,
+  status.HTTP_403_FORBIDDEN: GROUP_FORBIDDEN_RESPONSE[status.HTTP_403_FORBIDDEN],
+  status.HTTP_404_NOT_FOUND: {
+    "description": "Grupo ou integrante não encontrado.",
+    "content": {
+      "application/json": {
+        "examples": {
+          "grupo_nao_encontrado": {
+            "summary": "Grupo não encontrado",
+            "value": {"detail": MSG_GROUP_NOT_FOUND},
+          },
+          "membro_nao_encontrado": {
+            "summary": "Usuário alvo não é membro",
+            "value": {"detail": MSG_MEMBER_NOT_FOUND},
+          },
+        }
+      }
+    },
+  },
+  status.HTTP_409_CONFLICT: {
+    "description": "Integrante já é administrador.",
+    "content": {"application/json": {"example": {"detail": MSG_ALREADY_ADMIN}}},
+  },
+}
+
+RESPONSES_LEAVE_GROUP = {
+  status.HTTP_401_UNAUTHORIZED: _RESPONSE_401,
+  status.HTTP_404_NOT_FOUND: GROUP_NOT_FOUND_RESPONSE[status.HTTP_404_NOT_FOUND],
+}
+
+
+RESPONSES_JOIN = {
+  status.HTTP_401_UNAUTHORIZED: _RESPONSE_401,
+  status.HTTP_404_NOT_FOUND: {
+    "description": "Código de convite inválido.",
+    "content": {
+      "application/json": {
+        "example": {"detail": MSG_INVITE_CODE_INVALID},
+      }
+    },
+  },
+  status.HTTP_409_CONFLICT: {
+    "description": "Conflito ao entrar no grupo.",
+    "content": {
+      "application/json": {
+        "examples": {
+          "ja_participa": {
+            "summary": "Usuário já participa do grupo",
+            "value": {"detail": MSG_ALREADY_IN_GROUP},
+          },
+          "grupo_encerrado": {
+            "summary": "Grupo encerrado",
+            "value": {"detail": MSG_GROUP_ENDED},
+          },
+          "grupo_cheio": {
+            "summary": "Grupo cheio",
+            "value": {"detail": MSG_GROUP_FULL},
+          },
+        }
+      }
+    },
+  },
+}
+
+RESPONSES_PREVIEW = {
+  status.HTTP_401_UNAUTHORIZED: _RESPONSE_401,
+  status.HTTP_404_NOT_FOUND: {
+    "description": "Código de convite inválido.",
+    "content": {
+      "application/json": {
+        "example": {"detail": MSG_INVITE_CODE_INVALID},
+      }
+    },
+  },
+}
+
+RESPONSES_REGENERATE_INVITE = {
+  status.HTTP_401_UNAUTHORIZED: _RESPONSE_401,
+  status.HTTP_403_FORBIDDEN: GROUP_FORBIDDEN_RESPONSE[status.HTTP_403_FORBIDDEN],
+  status.HTTP_404_NOT_FOUND: GROUP_NOT_FOUND_RESPONSE[status.HTTP_404_NOT_FOUND],
+  status.HTTP_500_INTERNAL_SERVER_ERROR: {
+    "description": "Não foi possível gerar um código de convite único.",
+  },
+}
+
+# Gerados com `encode_cursor`; aqui são texto fixo para não importar `feed.py`.
+_EXAMPLE_CURSOR_NEWER = (
+  "MjAyNi0xMS0xMlQxMDoxNTozMC4xMjM0NTYrMDA6MDB8"
+  "NWQyZjhhNjEtM2I5ZS00YzdkLWExZjAtOGU2YjJjNGQ5YTE3"
+)
+_EXAMPLE_CURSOR_OLDER = (
+  "MjAyNi0xMS0xMlQwODowMjoxMS42NTQzMjErMDA6MDB8"
+  "OWI0ZTFjNzMtNmEyZC00ZjhlLWI1YzAtMWQ3YTNlOWYyYjQ4"
+)
+
+EXAMPLE_FEED_PAGE = {
+  "items": [
+    {
+      "cursor": _EXAMPLE_CURSOR_NEWER,
+      "id": "5d2f8a61-3b9e-4c7d-a1f0-8e6b2c4d9a17",
+      "author": {
+        "id": "e4a7c2f9-8d1b-4e6a-9c3f-7b2d5e8a1c04",
+        "username": "ana_souza",
+      },
+      "title": "Corrida de 5 km",
+      "description": "Ritmo leve no parque.",
+      "habits": [{"id": "1f6c9e2a-4b7d-4a8e-b3c1-9d5e7a2f6b30", "name": "Correr"}],
+      "created_at": "2026-11-12T10:15:30.123456Z",
+    },
+    {
+      "cursor": _EXAMPLE_CURSOR_OLDER,
+      "id": "9b4e1c73-6a2d-4f8e-b5c0-1d7a3e9f2b48",
+      "author": {"id": _EXAMPLE_USER_ID, "username": "pedro_melo"},
+      "title": "Treino da manhã",
+      "description": "Alongamento antes de correr.",
+      "habits": [
+        {"id": "7a3d5f1e-2c8b-4d9a-a6e4-3b1f9c7d5e82", "name": "Alongar"},
+        {"id": "1f6c9e2a-4b7d-4a8e-b3c1-9d5e7a2f6b30", "name": "Correr"},
+      ],
+      "created_at": "2026-11-12T08:02:11.654321Z",
+    },
+  ],
+  "next_cursor": _EXAMPLE_CURSOR_OLDER,
+  "has_more": True,
+}
+
+RESPONSES_FEED = {
+  status.HTTP_200_OK: {
+    "description": "Página do feed, do check-in mais novo ao mais antigo.",
+    "content": {"application/json": {"example": EXAMPLE_FEED_PAGE}},
+  },
+  status.HTTP_401_UNAUTHORIZED: _RESPONSE_401,
+  status.HTTP_404_NOT_FOUND: GROUP_NOT_FOUND_RESPONSE[status.HTTP_404_NOT_FOUND],
+  status.HTTP_422_UNPROCESSABLE_CONTENT: {
+    "description": (
+      "Parâmetros inválidos. `before` com `after` e `limit` fora de 1 a 50 vêm no"
+      " formato do Pydantic; cursor inválido vem com `detail` em texto."
+    ),
+    "content": {
+      "application/json": {
+        "examples": {
+          "before_e_after": {
+            "summary": "`before` e `after` juntos",
+            "value": {
+              "detail": [
+                {
+                  "loc": ["query"],
+                  "msg": f"Value error, {MSG_FEED_ONE_DIRECTION}",
+                  "type": "value_error",
+                }
+              ]
+            },
+          },
+          "cursor_invalido": {
+            "summary": "Cursor que não veio do feed",
+            "value": {"detail": MSG_INVALID_CURSOR},
+          },
+          "limit_fora": {
+            "summary": "`limit` fora de 1 a 50",
+            "value": {
+              "detail": [
+                {
+                  "loc": ["query", "limit"],
+                  "msg": "Input should be less than or equal to 50",
+                  "type": "less_than_equal",
+                }
+              ]
+            },
+          },
+        }
+      }
+    },
+  },
+}
+
+EXAMPLE_RANKING = {
+  "criterion": "check_ins",
+  "as_of": "2026-11-11",
+  "items": [
+    {
+      "position": 1,
+      "user": {"id": "e4a7c2f9-8d1b-4e6a-9c3f-7b2d5e8a1c04", "username": "ana_souza"},
+      "score": 9,
+    },
+    {
+      "position": 2,
+      "user": {"id": "2c5d8e1f-7a3b-4c9d-8e6f-1a4b7c0d3e52", "username": "bia_lima"},
+      "score": 7,
+    },
+    {
+      "position": 2,
+      "user": {"id": _EXAMPLE_USER_ID, "username": "pedro_melo"},
+      "score": 7,
+    },
+    {
+      "position": 4,
+      "user": {"id": "6f9a2b4c-1d8e-4f7a-b3c5-9e0d2a6b8c71", "username": "caio_reis"},
+      "score": 3,
+    },
+  ],
+  "me": {"position": 2, "score": 7},
+}
+
+RESPONSES_RANKING = {
+  status.HTTP_200_OK: {
+    "description": (
+      "Ranking do grupo, do primeiro ao último. Membros empatados têm a mesma"
+      " posição e a seguinte é pulada."
+    ),
+    "content": {"application/json": {"example": EXAMPLE_RANKING}},
+  },
+  status.HTTP_401_UNAUTHORIZED: _RESPONSE_401,
+  **GROUP_NOT_FOUND_RESPONSE,
+  status.HTTP_422_UNPROCESSABLE_CONTENT: RESPONSES_GET_GROUP[
+    status.HTTP_422_UNPROCESSABLE_CONTENT
+  ],
+}
+
+_EXAMPLE_HABIT_ID = "1f6c9e2a-4b7d-4a8e-b3c1-9d5e7a2f6b30"
+_EXAMPLE_GOAL = {
+  "schedule_type": "frequency",
+  "period": "day",
+  "target_count": 1,
+  "period_end_weekday": None,
+  "starts_on": "2026-11-01",
+}
+
+EXAMPLE_GROUP_HABIT_STATS = {
+  "as_of": "2026-11-11",
+  "habit_id": _EXAMPLE_HABIT_ID,
+  "name": "Correr 5 km",
+  "habit_status": "active",
+  "members": [
+    {
+      "user": {
+        "id": "e4a7c2f9-8d1b-4e6a-9c3f-7b2d5e8a1c04",
+        "username": "ana_souza",
+      },
+      "progress": {
+        "habit_id": _EXAMPLE_HABIT_ID,
+        "goal": _EXAMPLE_GOAL,
+        "current_period": {
+          "start": "2026-11-11",
+          "end": "2026-11-11",
+          "done": 1,
+          "target_count": 1,
+        },
+        "status": "completed",
+        "current_streak": 5,
+        "best_streak": 5,
+        "streak_started_on": "2026-11-07",
+        "consistent_days": 5,
+      },
+      "check_in_days": 7,
+    },
+    {
+      "user": {
+        "id": _EXAMPLE_USER_ID,
+        "username": "pedro_melo",
+      },
+      "progress": {
+        "habit_id": _EXAMPLE_HABIT_ID,
+        "goal": _EXAMPLE_GOAL,
+        "current_period": {
+          "start": "2026-11-11",
+          "end": "2026-11-11",
+          "done": 0,
+          "target_count": 1,
+        },
+        "status": "at_risk",
+        "current_streak": 2,
+        "best_streak": 4,
+        "streak_started_on": "2026-11-09",
+        "consistent_days": 3,
+      },
+      "check_in_days": 5,
+    },
+    {
+      "user": {
+        "id": "6f9a2b4c-1d8e-4f7a-b3c5-9e0d2a6b8c71",
+        "username": "caio_reis",
+      },
+      "progress": {
+        "habit_id": _EXAMPLE_HABIT_ID,
+        "goal": _EXAMPLE_GOAL,
+        "current_period": {
+          "start": "2026-11-11",
+          "end": "2026-11-11",
+          "done": 0,
+          "target_count": 1,
+        },
+        "status": "at_risk",
+        "current_streak": 0,
+        "best_streak": 0,
+        "streak_started_on": None,
+        "consistent_days": 0,
+      },
+      "check_in_days": 0,
+    },
+  ],
+}
+
+RESPONSES_GROUP_HABIT_STATS = {
+  status.HTTP_200_OK: {
+    "description": (
+      "Estatísticas do hábito por integrante atual, ordenadas por maior"
+      " `current_streak` e desempate por `username`."
+    ),
+    "content": {"application/json": {"example": EXAMPLE_GROUP_HABIT_STATS}},
+  },
+  status.HTTP_401_UNAUTHORIZED: _RESPONSE_401,
+  **_GROUP_HABIT_NOT_FOUND_RESPONSE,
+  status.HTTP_422_UNPROCESSABLE_CONTENT: {
+    "description": "Identificador do grupo ou do hábito inválido (não é um UUID).",
+    "content": {
+      "application/json": {
+        "examples": {
+          "group_id_invalido": {
+            "summary": "Identificador do grupo não é um UUID",
+            "value": {
+              "detail": [
+                {
+                  "loc": ["path", "group_id"],
+                  "msg": "Input should be a valid UUID",
+                  "type": "uuid_parsing",
+                }
+              ]
+            },
+          },
+          "habit_id_invalido": {
+            "summary": "Identificador do hábito não é um UUID",
+            "value": {
+              "detail": [
+                {
+                  "loc": ["path", "habit_id"],
+                  "msg": "Input should be a valid UUID",
+                  "type": "uuid_parsing",
+                }
+              ]
+            },
+          },
+        }
+      }
+    },
+  },
+}
+
+EXAMPLE_GROUP_STATS = {
+  "as_of": "2026-11-11",
+  "most_consistent": {
+    "user": {"id": _EXAMPLE_USER_ID, "username": "pedro_melo"},
+    "habit": {"id": _EXAMPLE_HABIT_ID, "name": "Ler 20 páginas"},
+    "consistent_days": 37,
+  },
+  "best_record": {
+    "user": {"id": "e4a7c2f9-8d1b-4e6a-9c3f-7b2d5e8a1c04", "username": "ana_souza"},
+    "habit": {"id": "7b2e5d1a-3c4f-4e9b-8a6d-1f0c9e2b4a53", "name": "Poupar"},
+    "best_streak": 4,
+    "unit": "month",
+  },
+  "check_ins_last_7_days": 12,
+}
+
+EXAMPLE_GROUP_STATS_EMPTY = {
+  "as_of": "2026-11-11",
+  "most_consistent": None,
+  "best_record": None,
+  "check_ins_last_7_days": 0,
+}
+
+RESPONSES_GROUP_STATS = {
+  status.HTTP_200_OK: {
+    "description": (
+      "Estatísticas do grupo. `most_consistent` e `best_record` são `null` quando"
+      " ninguém pontuou."
+    ),
+    "content": {
+      "application/json": {
+        "examples": {
+          "completo": {
+            "summary": "Grupo com estatísticas",
+            "value": EXAMPLE_GROUP_STATS,
+          },
+          "sem_pontuacao": {
+            "summary": "Grupo recém-criado ou sem check-ins (campos nulos)",
+            "value": EXAMPLE_GROUP_STATS_EMPTY,
+          },
+        }
+      }
+    },
+  },
+  status.HTTP_401_UNAUTHORIZED: _RESPONSE_401,
+  **GROUP_NOT_FOUND_RESPONSE,
+  status.HTTP_422_UNPROCESSABLE_CONTENT: RESPONSES_GET_GROUP[
+    status.HTTP_422_UNPROCESSABLE_CONTENT
+  ],
+}

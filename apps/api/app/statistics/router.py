@@ -7,7 +7,12 @@ from app.auth.dependencies import get_current_user
 from app.auth.models import User
 from app.database import SessionDep
 from app.goals.exceptions import MSG_GOAL_NOT_FOUND, GoalNotFoundError
-from app.habits.exceptions import MSG_HABIT_NOT_FOUND, HabitNotFoundError
+from app.habits.exceptions import (
+  MSG_GROUP_HABIT_FORBIDDEN,
+  MSG_HABIT_NOT_FOUND,
+  GroupHabitForbiddenError,
+  HabitNotFoundError,
+)
 from app.statistics import service
 from app.statistics.responses import (
   RESPONSES_CALENDAR,
@@ -73,6 +78,11 @@ def get_habit_statistics(
   """Devolve as estatísticas de um hábito do usuário logado."""
   try:
     return service.get_habit_statistics(db, habit_id, user, query)
+  except GroupHabitForbiddenError:
+    raise HTTPException(
+      status_code=status.HTTP_403_FORBIDDEN,
+      detail=MSG_GROUP_HABIT_FORBIDDEN,
+    ) from None
   except HabitNotFoundError:
     raise HTTPException(
       status_code=status.HTTP_404_NOT_FOUND,
@@ -109,6 +119,11 @@ def get_habit_calendar(
   """Devolve o calendário mensal de um hábito do usuário."""
   try:
     return service.get_habit_calendar(db, habit_id, user, query)
+  except GroupHabitForbiddenError:
+    raise HTTPException(
+      status_code=status.HTTP_403_FORBIDDEN,
+      detail=MSG_GROUP_HABIT_FORBIDDEN,
+    ) from None
   except HabitNotFoundError:
     raise HTTPException(
       status_code=status.HTTP_404_NOT_FOUND,

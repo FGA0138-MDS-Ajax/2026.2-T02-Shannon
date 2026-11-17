@@ -1,0 +1,295 @@
+from collections.abc import Iterable
+from datetime import date, datetime
+from uuid import UUID
+
+from sqlalchemy import Date, func, tuple_
+from sqlalchemy.orm import lazyload
+from sqlmodel import Session, col, select
+
+from app.auth.models import User
+from app.checkins.models import CheckIn, CheckInHabit
+from app.goals.repository import APP_TIMEZONE_NAME
+from app.group.models import Group, GroupRole, Member
+from app.habits.models import Habit
+
+
+def get_group(db: Session, group_id: UUID) -> Group | None:
+  """Busca o grupo pelo id. Não faz commit."""
+  return db.get(Group, group_id)
+
+
+def get_group_by_invite_code(db: Session, code: str) -> Group | None:
+  """Busca um grupo pelo código de convite. Não faz commit."""
+  statement = select(Group).where(col(Group.invite_code) == code)
+  return db.exec(statement).first()
+
+
+def get_group_for_update(db: Session, group_id: UUID) -> Group | None:
+  """Busca o grupo pelo id com lock de linha (FOR UPDATE). Não faz commit."""
+  statement = select(Group).where(col(Group.id) == group_id).with_for_update()
+  return db.exec(statement).first()
+
+
+def create_group(db: Session, group: Group) -> Group:
+  """Adiciona o grupo e faz flush. Não faz commit."""
+  db.add(group)
+  db.flush()
+  return group
+
+
+def update_group(db: Session, group: Group, updates: dict[str, object]) -> Group:
+  """Aplica alterações ao grupo e faz flush. Não faz commit."""
+  for field, value in updates.items():
+    setattr(group, field, value)
+
+  db.add(group)
+  db.flush()
+  return group
+
+
+def set_invite_code(db: Session, group: Group, code: str) -> Group:
+  """Atualiza o código de convite e faz flush. Não faz commit."""
+  group.invite_code = code
+  db.add(group)
+  db.flush()
+  return group
+
+
+def get_member(db: Session, group_id: UUID, user_id: UUID) -> Member | None:
+  """Busca o vínculo de membro pela chave primária composta. Não faz commit."""
+  return db.get(Member, (group_id, user_id))
+
+
+def list_members(db: Session, group_id: UUID) -> list[Member]:
+  """Lista membros do grupo ordenados por entrada e user_id. Não faz commit."""
+  statement = (
+    select(Member)
+    .where(col(Member.group_id) == group_id)
+    .order_by(col(Member.joined_at), col(Member.user_id))
+  )
+  return list(db.exec(statement).all())
+
+
+def list_members_with_users(db: Session, group_id: UUID) -> list[tuple[Member, User]]:
+  """Lista membros e usuários do grupo em um join só. Não faz commit."""
+  statement = (
+    select(Member, User)
+    .join(User, col(Member.user_id) == col(User.id))
+    .where(col(Member.group_id) == group_id)
+    .order_by(col(Member.joined_at), col(Member.user_id))
+  )
+  return list(db.exec(statement).all())
+
+
+def count_members(db: Session, group_id: UUID) -> int:
+  """Conta quantos membros pertencem ao grupo. Não faz commit."""
+  statement = (
+    select(func.count()).select_from(Member).where(col(Member.group_id) == group_id)
+  )
+  return db.exec(statement).one()
+
+
+def count_members_by_group(db: Session, group_ids: list[UUID]) -> dict[UUID, int]:
+  """Conta membros de vários grupos numa consulta só com GROUP BY. Não faz commit."""
+  if not group_ids:
+    return {}
+
+  statement = (
+    select(col(Member.group_id), func.count())
+    .where(col(Member.group_id).in_(group_ids))
+    .group_by(col(Member.group_id))
+  )
+  counts = dict(db.exec(statement).all())
+  return {group_id: counts.get(group_id, 0) for group_id in group_ids}
+
+
+def add_member(db: Session, member: Member) -> Member:
+  """Adiciona um membro ao grupo e faz flush. Não faz commit."""
+  db.add(member)
+  db.flush()
+  return member
+
+
+def remove_member(db: Session, member: Member) -> None:
+  """Remove um membro do grupo e faz flush. Não faz commit."""
+  db.delete(member)
+  db.flush()
+
+
+def delete_group(db: Session, group: Group) -> None:
+  """Exclui o grupo (membros e hábitos de grupo saem em cascata). Não faz commit."""
+  db.delete(group)
+  db.flush()
+
+
+def list_groups_of_user(db: Session, user_id: UUID) -> list[tuple[Group, Member]]:
+  """Lista pares (Group, Member) dos grupos do usuário. Não faz commit."""
+  statement = (
+    select(Group, Member)
+    .join(Member, col(Member.group_id) == col(Group.id))
+    .where(col(Member.user_id) == user_id)
+  )
+  return list(db.exec(statement).all())
+
+
+def list_group_ids_of_user(db: Session, user_id: UUID) -> set[UUID]:
+  """Retorna o conjunto de IDs dos grupos em que o usuário participa. Não faz commit."""
+  statement = select(col(Member.group_id)).where(col(Member.user_id) == user_id)
+  return set(db.exec(statement).all())
+
+
+def set_member_role(db: Session, member: Member, role: GroupRole) -> Member:
+  """Atualiza o papel do membro e faz flush. Não faz commit."""
+  member.role = role.value
+  db.add(member)
+  db.flush()
+  return member
+
+
+def count_admins(db: Session, group_id: UUID) -> int:
+  """Conta quantos administradores o grupo possui. Não faz commit."""
+  statement = (
+    select(func.count())
+    .select_from(Member)
+    .where(
+      col(Member.group_id) == group_id,
+      col(Member.role) == GroupRole.ADMIN.value,
+    ),
+  )
+  return db.exec(statement).one()
+
+
+def get_oldest_member(
+  db: Session, group_id: UUID, excluding_user_id: UUID
+) -> Member | None:
+  """Busca o integrante mais antigo do grupo,
+  exceto o usuário informado. Não faz commit."""
+  statement = (
+    select(Member)
+    .where(
+      col(Member.group_id) == group_id,
+      col(Member.user_id) != excluding_user_id,
+    )
+    .order_by(col(Member.joined_at), col(Member.user_id))
+    .limit(1)
+  )
+  return db.exec(statement).first()
+
+
+def _check_in_has_group_habit(group_id: UUID):
+  """`EXISTS`: o check-in vale para ao menos um hábito do grupo.
+
+  Compartilhado pelo feed e pela contagem, para os dois concordarem sobre o que é
+  um check-in do grupo. Um check-in de dois hábitos do grupo não se repete.
+  """
+  return (
+    select(CheckInHabit)
+    .join(Habit, col(Habit.id) == col(CheckInHabit.habit_id))
+    .where(
+      col(CheckInHabit.check_in_id) == col(CheckIn.id),
+      col(Habit.author_group_id) == group_id,
+    )
+    .exists()
+  )
+
+
+def count_group_check_ins(db: Session, group_id: UUID, start: date, end: date) -> int:
+  """Check-ins (linhas) com ao menos um hábito do grupo entre `start` e `end`.
+
+  As duas datas entram na contagem. O `created_at` é convertido para São Paulo
+  antes de cortar o dia. Um check-in de dois hábitos do grupo conta uma vez, e
+  quem saiu do grupo continua contando, como no feed. Não faz commit.
+  """
+  local_day = func.date(
+    func.timezone(APP_TIMEZONE_NAME, col(CheckIn.created_at)), type_=Date
+  )
+  statement = (
+    select(func.count())
+    .select_from(CheckIn)
+    .where(_check_in_has_group_habit(group_id), local_day >= start, local_day <= end)
+  )
+  return db.exec(statement).one()
+
+
+def list_group_feed_check_ins(
+  db: Session,
+  group_id: UUID,
+  limit: int,
+  before: tuple[datetime, UUID] | None,
+  after: tuple[datetime, UUID] | None,
+) -> list[CheckIn]:
+  """Check-ins com ao menos um hábito do grupo, até `limit + 1` linhas.
+
+  Sem cursor ou com `before`: do mais novo ao mais antigo. Com `after`: só os
+  mais novos que o cursor, do mais antigo ao mais novo (o service inverte). A
+  linha a mais só indica que há mais itens. O `id` desempata check-ins com o
+  mesmo `created_at`, e o `EXISTS` não repete o check-in que vale para dois
+  hábitos do grupo. Não faz commit.
+  """
+  key = tuple_(col(CheckIn.created_at), col(CheckIn.id))
+  statement = select(CheckIn).where(_check_in_has_group_habit(group_id))
+
+  if after is not None:
+    statement = statement.where(key > after).order_by(
+      col(CheckIn.created_at), col(CheckIn.id)
+    )
+  else:
+    if before is not None:
+      statement = statement.where(key < before)
+    statement = statement.order_by(
+      col(CheckIn.created_at).desc(), col(CheckIn.id).desc()
+    )
+
+  return list(db.exec(statement.limit(limit + 1)).all())
+
+
+def list_feed_habit_links(
+  db: Session, check_in_ids: list[UUID], group_id: UUID
+) -> list[tuple[UUID, Habit]]:
+  """Pares `(check_in_id, hábito)` desses check-ins, só com hábitos do grupo.
+
+  Hábito pessoal ligado ao mesmo check-in fica de fora. Ordem por nome e id.
+  A meta não vem junto: só carrega se `habit.goal` for lido. Lista vazia devolve
+  `[]` sem consultar. Não faz commit.
+  """
+  if not check_in_ids:
+    return []
+
+  statement = (
+    select(col(CheckInHabit.check_in_id), Habit)
+    .join(Habit, col(Habit.id) == col(CheckInHabit.habit_id))
+    .where(
+      col(CheckInHabit.check_in_id).in_(check_in_ids),
+      col(Habit.author_group_id) == group_id,
+    )
+    .order_by(col(Habit.name), col(Habit.id))
+    # `Habit.goal` é `selectin`: sem isto, viria uma consulta a mais em `goals`.
+    .options(lazyload(Habit.goal))
+  )
+  return list(db.exec(statement).all())
+
+
+def list_authors(db: Session, user_ids: list[UUID]) -> dict[UUID, User]:
+  """Busca vários usuários numa consulta só, por id.
+
+  Lista vazia devolve `{}` sem consultar. Não faz commit.
+  """
+  if not user_ids:
+    return {}
+
+  statement = select(User).where(col(User.id).in_(user_ids))
+  return {user.id: user for user in db.exec(statement).all()}
+
+
+def list_groups_by_ids(db: Session, group_ids: Iterable[UUID]) -> list[Group]:
+  """Busca vários grupos numa consulta só, por id.
+
+  Ids inexistentes são ignorados e ids repetidos não duplicam o resultado. Entrada
+  vazia devolve `[]` sem consultar. Somente leitura: não faz commit.
+  """
+  ids = set(group_ids)
+  if not ids:
+    return []
+
+  statement = select(Group).where(col(Group.id).in_(ids))
+  return list(db.exec(statement).all())
