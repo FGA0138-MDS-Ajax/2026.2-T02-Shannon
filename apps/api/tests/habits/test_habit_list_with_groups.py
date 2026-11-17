@@ -19,7 +19,7 @@ from app.habits.exceptions import (
 from app.habits.models import Habit, HabitStatus
 from app.habits.repository import list_habits_for_user_with_groups
 from tests.conftest import _auth_headers, _create_user, at_noon
-from tests.group.test_group_habits import (
+from tests.group.fixtures import (
   TODAY,
   _add_member,
   _make_group,

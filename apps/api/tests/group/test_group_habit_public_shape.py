@@ -1,10 +1,8 @@
-"""GRP-10: `GroupHabitPublic` continua com um único `group` preenchido."""
-
 from types import SimpleNamespace
 
 from fastapi.testclient import TestClient
 
-from tests.group.test_group_habits import WEEKLY_GOAL, group_setup  # noqa: F401
+from tests.group.test_group_habits import WEEKLY_GOAL  # noqa: F401
 
 
 def _assert_shape(item: dict, group_id: str) -> None:
