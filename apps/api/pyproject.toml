@@ -13,6 +13,7 @@ dependencies = [
     "pyjwt>=2.15.1",
     "email-validator>=2.3.0",
     "alembic>=1.20.1",
+    "boto3>=1.36",
 ]
 
 [dependency-groups]

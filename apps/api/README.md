@@ -49,6 +49,37 @@ Para mais detalhes de versões compatíveis, consulte o arquivo [REQUIREMENTS.md
 
 ---
 
+## 🖼️ Armazenamento de fotos
+
+O armazenamento de fotos utiliza o **Cloudflare R2** (API compatível com S3) em produção/homologação e um backend em memória para desenvolvimento local e testes automatizados.
+
+### Variáveis de ambiente
+
+| Variável | Descrição |
+|---|---|
+| `STORAGE_BACKEND` | Backend de armazenamento: `memory` (padrão local) ou `r2` (Cloudflare R2). |
+| `R2_ENDPOINT_URL` | Endpoint S3 da conta Cloudflare R2 (`https://<ACCOUNT_ID>.r2.cloudflarestorage.com`). |
+| `R2_ACCESS_KEY_ID` | Access Key ID do token de API do R2 (obrigatório quando `STORAGE_BACKEND=r2`). |
+| `R2_SECRET_ACCESS_KEY` | Secret Access Key do token de API do R2 (obrigatório quando `STORAGE_BACKEND=r2`). |
+| `R2_BUCKET_NAME` | Nome do bucket (ex.: `habbit-photos-dev` em desenvolvimento, `habbit-photos-prod` em produção). |
+| `PHOTO_URL_EXPIRE_MINUTES` | Tempo de validade (em minutos) das URLs pré-assinadas de leitura (padrão: `30`). |
+
+### Uso local sem credenciais (`STORAGE_BACKEND=memory`)
+
+Para rodar a API localmente sem configurar o Cloudflare R2, mantenha `STORAGE_BACKEND=memory` no seu `.env` (valor padrão). Nesse modo, as fotos ficam armazenadas apenas em memória e são descartadas ao reiniciar o servidor.
+
+> ⚠️ **Segurança:** Segredos como `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` e o arquivo `.env` **nunca** devem ser commitados no Git.
+
+### Teste de fumaça do R2
+
+Para validar credenciais, envio, URL pré-assinada, expiração e bloqueio de acesso público no bucket `dev`:
+
+```bash
+uv run python scripts/storage_smoke.py
+```
+
+---
+
 ## 📦 Instalação das Dependências
 
 Utilize o `uv` para criar o ambiente virtual e sincronizar todas as dependências do projeto:
