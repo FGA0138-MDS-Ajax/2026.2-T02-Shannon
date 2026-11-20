@@ -166,7 +166,9 @@ def test_group_migration_roundtrip_with_existing_habit(
     ).one()
     assert row == (user_id, None)
 
-    command.downgrade(cfg, "-1")
+    # Volta para a revisão de antes dos grupos, e não "-1": com migrações novas
+    # depois da dos grupos, "-1" desfaria só a última.
+    command.downgrade(cfg, "0ceac8027fbf")
     connection.commit()
 
     inspector = inspect(connection)
