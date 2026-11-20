@@ -17,6 +17,9 @@ from app.group import (
   models as group_models,  # noqa: F401  registra Group e Member no metadata
 )
 from app.habits import models as habits_models  # noqa: F401  registra Habit no metadata
+from app.photos import (
+  models as photos_models,  # noqa: F401  registra CheckInPhoto no metadata
+)
 
 engine = create_engine(
   settings.database_url_sync,
