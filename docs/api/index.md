@@ -31,7 +31,32 @@ Esta página documenta o contrato formal da API REST do **HABBIT** exposta pelo 
 | **Check-ins** | `DELETE` | `/check-ins/{check_in_id}` | Exclusão definitiva do check-in e de seus vínculos | Autor (JWT) | `204` | `401`, `403`, `404` |
 | **Check-ins** | `GET` | `/habits/{habit_id}/check-ins` | Histórico de check-ins vinculados a um hábito | Bearer JWT | `200` | `401`, `404` |
 | **Statistics** | `GET` | `/user/statistics` | Estatísticas consolidadas, streaks, risco e série diária | Bearer JWT | `200` | `401`, `422` |
+| **Statistics** | `GET` | `/user/statistics/habits/{habit_id}` | Estatísticas individuais de um hábito do usuário (ativo, encerrado ou sem meta) | Autor (JWT) | `200` | `401`, `404`, `422` |
 | **Statistics** | `GET` | `/user/statistics/habits/{habit_id}/calendar` | Calendário mensal do hábito (`completed`, `partial`, `none`, `outside`) | Autor (JWT) | `200` | `401`, `404`, `422` |
+| **Groups** | `POST` | `/groups` | Criação de grupo (criador torna-se `admin` e recebe `invite_code`) | Bearer JWT | `201` | `401`, `422` |
+| **Groups** | `GET` | `/groups` | Listagem dos grupos do usuário (ativos primeiro, depois encerrados) | Bearer JWT | `200` | `401` |
+| **Groups** | `GET` | `/groups/{group_id}` | Detalhe do grupo e lista de integrantes (`invite_code` só para admin) | Membro (JWT) | `200` | `401`, `404`, `422` |
+| **Groups** | `PATCH` | `/groups/{group_id}` | Edição de nome, descrição, `ends_on` (inclui reabertura) e critério do ranking | Admin (JWT) | `200` | `401`, `403`, `404`, `422` |
+| **Groups** | `POST` | `/groups/{group_id}/members` | Adição de integrante por *username* (máx. 30 membros; trava `FOR UPDATE`) | Admin (JWT) | `201` | `401`, `403`, `404`, `409`, `422` |
+| **Groups** | `GET` | `/groups/{group_id}/members` | Listagem de integrantes ordenados por `(joined_at, user_id)` | Membro (JWT) | `200` | `401`, `404`, `422` |
+| **Groups** | `DELETE` | `/groups/{group_id}/members/{user_id}` | Remoção de integrante (inclusive outro admin; proibido remover a si mesmo) | Admin (JWT) | `204` | `401`, `403`, `404`, `409`, `422` |
+| **Groups** | `POST` | `/groups/{group_id}/members/{user_id}/promote` | Promoção de membro a administrador (`role = 'admin'`) | Admin (JWT) | `200` | `401`, `403`, `404`, `409`, `422` |
+| **Groups** | `POST` | `/groups/{group_id}/leave` | Saída do grupo com sucessão automática do último admin ou exclusão do grupo | Membro (JWT) | `200` | `401`, `404`, `422` |
+| **Groups** | `GET` | `/groups/invite/{code}` | Pré-visualização de nome, nº de membros e status pelo código normalizado | Bearer JWT | `200` | `401`, `404` |
+| **Groups** | `POST` | `/groups/join` | Ingresso no grupo pelo código de 8 caracteres (trava `FOR UPDATE`) | Bearer JWT | `201` | `401`, `404`, `409`, `422` |
+| **Groups** | `POST` | `/groups/{group_id}/invite/regenerate` | Renovação imediata do `invite_code` (invalida o anterior) | Admin (JWT) | `200` | `401`, `403`, `404` |
+| **Groups** | `POST` | `/groups/{group_id}/habits` | Criação de hábito de grupo com meta obrigatória (imutável) | Admin (JWT) | `201` | `401`, `403`, `404`, `409`, `422` |
+| **Groups** | `GET` | `/groups/{group_id}/habits` | Listagem dos hábitos do grupo (filtro opcional `?status=active\|finished`) | Membro (JWT) | `200` | `401`, `404`, `422` |
+| **Groups** | `GET` | `/groups/{group_id}/habits/{habit_id}` | Consulta de um hábito específico do grupo | Membro (JWT) | `200` | `401`, `404`, `422` |
+| **Groups** | `PATCH` | `/groups/{group_id}/habits/{habit_id}` | Edição de dados cadastrais do hábito do grupo (ignora `goal`) | Admin (JWT) | `200` | `401`, `403`, `404`, `409`, `422` |
+| **Groups** | `POST` | `/groups/{group_id}/habits/{habit_id}/finish` | Encerramento de hábito do grupo (congela progresso em `finished_at`) | Admin (JWT) | `200` | `401`, `403`, `404`, `409`, `422` |
+| **Groups** | `GET` | `/groups/{group_id}/check-ins` | Feed do grupo paginado por cursor opaco (`before` / `after`, `limit` 1..50) | Membro (JWT) | `200` | `401`, `404`, `422` |
+| **Groups** | `GET` | `/groups/{group_id}/ranking` | Ranking do grupo (`check_ins` ou `goals`, empates `1, 1, 3`, destaque `me`) | Membro (JWT) | `200` | `401`, `404`, `422` |
+| **Groups** | `GET` | `/groups/{group_id}/stats` | Destaques coletivos (`most_consistent`, `best_record`, `check_ins_last_7_days`) | Membro (JWT) | `200` | `401`, `404`, `422` |
+| **Groups** | `GET` | `/groups/{group_id}/habits/{habit_id}/stats` | Progresso e `check_in_days` de cada integrante no hábito (`GRP-12`) | Membro (JWT) | `200` | `401`, `404`, `422` |
+
+!!! note "Rotas em desenvolvimento na Sprint 6"
+    Estão em implementação na Sprint 6 as rotas de **Fotos no Check-in** (`PUT /check-ins/{id}/photo` e `DELETE /check-ins/{id}/photo` integradas ao Cloudflare R2) e **Perfil do Usuário** (`PATCH /session/me`, `PUT /session/me/password` e `GET /user/profile`).
 
 ---
 
@@ -50,10 +75,10 @@ Cria a conta do usuário, registra a sessão em `auth_sessions` e devolve os dad
     "username": "pedromelo",
     "email": "pedro@unb.br"
   },
-  "tokens": {
+  "token": {
     "access_token": "eyJhbGciOiJIUzI1NiIs...",
     "refresh_token": "eyJhbGciOiJIUzI1NiIs...",
-    "token_type": "bearer"
+    "exp": 1792207578
   }
 }
 ```
@@ -140,10 +165,10 @@ Registra um check-in vinculado a de 1 a 20 hábitos ativos e retorna o progresso
   }
   ```
 - **Regra de Recusa Transacional (`CheckInRefusedError`):**
-  Caso um ou mais `habit_ids` não possam receber o check-in, **nada é gravado** e a API retorna o código HTTP do motivo mais grave (`404 > 403 > 409`) acompanhado dos IDs causadores:
+  Caso um ou mais `habit_ids` não possam receber o check-in, **nada é gravado** e a API retorna o código HTTP do motivo mais grave (`404 > 403 > 409 grupo encerrado > 409 hábito encerrado`) acompanhado dos IDs causadores:
   ```json
   {
-    "detail": "Hábito encerrado não aceita novos check-ins.",
+    "detail": "Hábito encerrado não aceita check-ins.",
     "habit_ids": ["9a1b2c3d-4e5f-6a7b-8c9d-0e1f2a3b4c5d"]
   }
   ```
@@ -166,7 +191,7 @@ Consolida todos os indicadores analíticos do usuário autenticado:
   "goal_completion": {
     "completed_periods": 18,
     "total_periods": 20,
-    "rate": 0.9,
+    "rate": 90.0,
     "days": 30
   },
   "activity_streak": { "current": 12, "best": 15 },
@@ -203,3 +228,29 @@ Retorna o estado diário de cumprimento do hábito para o mês solicitado:
   ]
 }
 ```
+
+---
+
+### 2.5. Grupos, Feed, Ranking e Estatísticas Coletivas (`/groups` — Sprint 5)
+
+#### `GET /groups/{group_id}/ranking` (`200 OK`)
+Classifica os membros atuais do grupo pela existência inteira dos hábitos do grupo até `as_of` (`min(hoje, ends_on)`), com empates no padrão `1, 1, 3` e destaque do usuário logado em `me`:
+
+```json
+{
+  "criterion": "goals",
+  "as_of": "2026-11-14",
+  "items": [
+    { "position": 1, "user": { "id": "aa4590af-...", "username": "caio" }, "score": 5 },
+    { "position": 1, "user": { "id": "75a158dd-...", "username": "joao" }, "score": 5 },
+    { "position": 3, "user": { "id": "dfd45a6f-...", "username": "pedro" }, "score": 3 }
+  ],
+  "me": { "position": 3, "score": 3 }
+}
+```
+
+#### `GET /groups/{group_id}/check-ins?limit=20&before=<cursor>` (`200 OK`)
+Retorna itens do feed contendo apenas os hábitos pertencentes ao grupo, ordenados por `(created_at DESC, id DESC)`. Nas chamadas de *polling* (`?after=<cursor>`), `next_cursor` é sempre `null` e `has_more: true` indica repetição com o `cursor` do primeiro item recebido.
+
+#### `POST /groups/{group_id}/leave` (`200 OK`)
+Responde sempre `200` com `{ "group_deleted": false, "promoted_user_id": "75a158dd-..." }` (promovendo o membro de menor `(joined_at, user_id)` caso o último admin saia, ou apagando o grupo com `group_deleted: true` quando sai o último integrante).

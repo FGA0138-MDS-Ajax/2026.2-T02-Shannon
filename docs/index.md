@@ -18,7 +18,7 @@ O **HABBIT** resolve esse cenário reunindo, em uma única experiência móvel m
 - **Motor Determinístico de Metas e Streaks (`C2-RF-05`, `C3-RF-07`, `C3-RF-08`):** Suporte a metas **diárias** (`day`), **semanais** (`week`, com dia de fechamento configurável de segunda a domingo) e **mensais** (`month`, de 1 a 28 dias), avaliadas sob demanda no fuso `America/Sao_Paulo` com classificação automática de estado (`completed`, `in_progress`, `at_risk`, `failed`, `ended`).
 - **Acompanhamento Visual e Estatísticas (`C4-RF-09`, `C4-RF-10`):** Consolidação em tempo real de taxas de cumprimento de metas, sequência de atividade geral (*activity streak*), alerta de hábitos em risco (*at risk*), série temporal diária (janelas `calendar` ou `rolling` de 1 a 365 dias) e calendário mensal por hábito.
 - **Segurança Híbrida de Sessão (`C1-RF-02`, `C1-RNF-01`):** Senhas protegidas exclusivamente com *hash* **bcrypt** e sessões persistidas no banco (`auth_sessions`) com rotação atômica de identificador (`current_jti`) do *refresh token* e detecção imediata de reuso.
-- **Engajamento Social e Competição Saudável (`C5-RF-11` a `C5-RF-13`):** Prática coletiva de hábitos em grupos com papéis cumulativos de Membro e Administrador e ranking nos últimos 30 dias.
+- **Engajamento Social e Competição Saudável (`C5-RF-11` a `C5-RF-13`):** Prática coletiva em **grupos multi-hábito** (até 30 membros) com papéis de `admin` e `member`, convite por código de 8 caracteres, feed paginado por cursor opaco, estatísticas coletivas e ranking configurável (`check_ins` ou `goals`).
 
 ---
 
@@ -27,10 +27,10 @@ O **HABBIT** resolve esse cenário reunindo, em uma única experiência móvel m
 1. **C1 — Acesso e Conta:** Cadastro de usuário (`signup`), autenticação por *username* ou e-mail (`login`), renovação atômica de sessão (`refresh`), consulta do usuário logado (`/auth/session/me`) e encerramento idempotente (`logout`).
 2. **C2 — Gestão de Hábitos e Metas:** Criação, listagem com progresso embutido, edição parcial (`PATCH`), encerramento preservando histórico (`finish`), exclusão definitiva (`DELETE`) e configuração de metas (`PUT /goals/habits/{id}/goal`).
 3. **C3 — Registro e Constância:** Fluxo de check-in em etapas filtrando por categorias ativas (`/check-ins/categories`) e opções paginadas (`/check-ins/habit-options`), listagem agrupada por dias, edição/exclusão e cálculo de *current streak*, *best streak* e *consistent days*.
-4. **C4 — Acompanhamento do Progresso:** Painel diário de hábitos, estatísticas consolidadas (`/user/statistics`) e calendário mensal de cumprimento (`/user/statistics/habits/{id}/calendar`).
-5. **C5 — Hábitos em Grupo:** Criação de grupos em torno de hábitos compartilhados, gestão de membros e ranking de constância de 30 dias.
-6. **C6 — Engajamento e Lembretes:** Notificações locais e lembretes inteligentes condicionados à pendência da meta no período corrente.
-7. **C7 — Comunidade e Personalização:** Gestão do perfil do usuário, privacidade das estatísticas (`statistics_is_public`), duração do check-in, evidências fotográficas e feed de atividades.
+4. **C4 — Acompanhamento do Progresso:** Painel diário de hábitos, estatísticas consolidadas (`/user/statistics`), estatísticas individuais por hábito (`/user/statistics/habits/{id}`) e calendário mensal de cumprimento (`/user/statistics/habits/{id}/calendar`).
+5. **C5 — Hábitos em Grupo:** Grupos multi-hábito com até 30 membros, convite por código de 8 caracteres, sucessão automática de administrador, feed por cursor, estatísticas coletivas e ranking configurável (`check_ins` ou `goals`).
+6. **C6 — Engajamento e Lembretes:** Notificações locais e lembretes inteligentes condicionados à pendência da meta no período corrente *(realocados para depois da Sprint 6)*.
+7. **C7 — Comunidade e Personalização:** Edição de perfil e troca de senha, privacidade das estatísticas (`statistics_is_public`), duração do check-in, evidências fotográficas em Cloudflare R2 *(Sprint 6 em andamento)* e feed de atividades.
 
 ---
 
@@ -38,15 +38,16 @@ O **HABBIT** resolve esse cenário reunindo, em uma única experiência móvel m
 
 | Seção | Conteúdo Principal |
 | :--- | :--- |
-| **[1. Visão Geral do Produto](visao-produto/visao-produto.md)** | Contextualização do problema (IBGE / CETIC.br), Diagrama de Ishikawa, Declaração de Posição do Produto, análise competitiva (*Gymrats*, *YPT*, *Habitica*), objetivos e *stack* tecnológica v3.0. |
+| **[Acompanhamento de Sprints](acompanhamento/index.md)** | Histórico detalhado das **Sprints 1 a 6** (Back-end e Front-end), decisões técnicas tomadas por iteração, evolução dos testes e **[Painel Consolidado de Métricas GQM](acompanhamento/metricas-coletas.md)** com evidências auditáveis. |
+| **[1. Visão Geral do Produto](visao-produto/visao-produto.md)** | Contextualização do problema (IBGE / CETIC.br), Diagrama de Ishikawa, Declaração de Posição do Produto, análise competitiva (*Gymrats*, *YPT*, *Habitica*), objetivos e *stack* tecnológica v4.0. |
 | **[2. Visão do Projeto & Processo](visao-produto/visao-projeto.md)** | Ciclo de vida ágil (Scrum + XP), papéis da equipe, fluxo de processo semanal, critérios de *Ready* e *Done* e matriz de comunicação. |
 | **[3. Cronograma de Sprints & Riscos](visao-produto/cronograma-riscos.md)** | Planejamento e acompanhamento das Sprints 1 a 7 (modelo defasado Back-end $\rightarrow$ Front-end), matriz de riscos (`R-01`–`R-12`) e gatilhos de replanejamento. |
 | **[4. Métricas e Medições (GQM)](visao-produto/metricas-gqm.md)** | Estrutura *Goal-Question-Metric* e especificação 5W2H para Taxa de Conclusão (`M1`), Taxa de Reprovação em Testes (`M2`) e Débito Técnico (`M3`). |
 | **[Requisitos & Backlog](requisitos/requisitos.md)** | **[Perfis e Cenários](requisitos/perfis-cenarios.md)** (`P1`–`P4`), **26 Requisitos (`RF`/`RNF`)**, **12 Decisões de Produto (`D-01`–`D-12`)** e **[36 Histórias de Usuários (`US-01`–`US-36`)](requisitos/historias-usuario.md)** priorizadas via **MoSCoW**. |
 | **[Arquitetura do Sistema](arquitetura/visao-geral.md)** | Estilo em 3 camadas, **[Visão de Uso e Lógica](arquitetura/visoes-uso-logica.md)**, **[Modelo Relacional PostgreSQL 17](arquitetura/modelo-dados.md)**, **[Motor Algorítmico de Metas e Estatísticas](arquitetura/motor-metas-estatisticas.md)**, **[Implantação](arquitetura/implantacao.md)** e **[ADRs](arquitetura/adrs.md)**. |
-| **[Especificação da API (OpenAPI)](api/index.md)** | Contratos detalhados das rotas REST do FastAPI (`/auth`, `/habits`, `/goals`, `/check-ins`, `/user/statistics`), payloads JSON e códigos de erro padronizados. |
+| **[Especificação da API (OpenAPI)](api/index.md)** | Contratos detalhados das rotas REST do FastAPI (`/auth`, `/habits`, `/goals`, `/check-ins`, `/user/statistics`, `/groups` e rotas da Sprint 6), payloads JSON e códigos de erro padronizados. |
 | **[Estratégia e Roteiro de Testes](testes/estrategia-testes.md)** | Pirâmide de testes (Pytest + Testcontainers no Back-end; Jest + RNTL + Storybook no Front-end) e casos de teste mapeados às suítes do repositório. |
-| **[Governança & Rastreabilidade](governanca/rastreabilidade.md)** | Critérios de **[DoR & DoD](governanca/dod-dor.md)**, **[Matriz de Rastreabilidade Bidirecional](governanca/rastreabilidade.md)** ponta a ponta e **[Atas de Reunião](atas-reuniao/ata-reuniao-1.md)**. |
+| **[Governança & Rastreabilidade](governanca/rastreabilidade.md)** | Critérios de **[DoR & DoD](governanca/dod-dor.md)** e **[Matriz de Rastreabilidade Bidirecional](governanca/rastreabilidade.md)** ponta a ponta. |
 
 ---
 
@@ -73,3 +74,4 @@ O **HABBIT** resolve esse cenário reunindo, em uma única experiência móvel m
 | `30/09/2026` | **v1.1** | Revisão do Documento de Visão: metas diárias, reclassificação do feed como *Could*, correção de alocação de sprints, inclusão das decisões de produto, papel de Dono do Produto e ajustes no roteiro de testes. | Caio Felipe, Breno Gomes, Isaque Palhares, José Luiz |
 | `25/10/2026` | **v2.0** | Atualização até a Sprint 3: sessões registradas em banco (`auth_sessions`) com rotação de *refresh token*; arquitetura modular em `Router`, `Service` e `Repository`; check-in N:N com título, descrição e duração ISO 8601; exclusão definitiva de hábitos; catálogo fixo de 16 categorias; adoção de Ruff, `uv`, Biome e PostgreSQL 17; branch de integração `developer`. | Pedro Oliveira Melo |
 | `09/11/2026` | **v3.0** | Atualização até a Sprint 5 e publicação no MkDocs: consolidação do módulo `goals` (tabela `goals` 1:1 com `habits`, períodos `day`, `week` e `month`, `period_end_weekday`, `starts_on` e máquina de estados `GoalProgress`); inclusão do módulo `statistics` (`GET /user/statistics` e `GET /user/statistics/habits/{id}/calendar`) e coluna `statistics_is_public` em `users`; adoção de migrações **Alembic**; atualização da arquitetura Front-end com **Expo Router**, **SWR**, **Axios** (interceptors de refresh) e sistema próprio de temas com `StyleSheet`; atualização do andamento das Sprints 3 a 5. | Pedro Oliveira Melo e Equipe Shannon |
+| `21/11/2026` | **v4.0** | Criação da seção **Acompanhamento de Sprints (Sprints 1 a 6)** e do **Painel Consolidado de Métricas GQM** (`M1`, `M2`, `M3` com evidências auditáveis do GitHub e ciclo de vida dos débitos técnicos `DT-01`–`DT-05`); atualização completa do GitHub Pages com as entregas da **Sprint 5** (21 rotas de grupos multi-hábito, `group_members`, `SELECT ... FOR UPDATE`, convite por código, feed com cursor, ranking `check_ins`/`goals` e `GRP-12`), início da **Sprint 6** (Cloudflare R2 para fotos de check-in e perfil), novas ADRs (`ADR-007` a `ADR-009`), correções de contrato na especificação OpenAPI e remoção de template de ata vazia. | Pedro Oliveira Melo e Equipe Shannon |

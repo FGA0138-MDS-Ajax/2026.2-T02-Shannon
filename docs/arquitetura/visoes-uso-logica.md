@@ -19,8 +19,8 @@ O **Visitante** (ainda não autenticado) pode criar uma conta (*Register Account
 
 Nos grupos de hábito, atuam dois perfis cumulativos:
 
-- **Membro do Grupo (*Group Member*):** Registra check-ins no hábito compartilhado (*Check-In*), acompanha o progresso dos demais participantes e o ranking dos últimos 30 dias (*Group Dashboard*) e pode deixar o grupo (*Leave Group*).
-- **Administrador do Grupo (*Group Admin*):** Especialização do Membro que herda todas as suas permissões e acrescenta a edição dos dados do grupo (*Manage Group Details*), o convite/adição de novos membros por *username* (*Invite Members*) e a remoção ou promoção de participantes (*Manage Members*).
+- **Membro do Grupo (*Group Member*, `role = 'member'`):** Registra check-ins nos hábitos compartilhados (*Check-In*), acompanha o feed do grupo, o progresso individual dos integrantes (`GRP-12`), as estatísticas coletivas e o ranking configurável (`check_ins` ou `goals`) e pode sair do grupo (*Leave Group*).
+- **Administrador do Grupo (*Group Admin*, `role = 'admin'`):** Especialização do Membro que herda todas as suas permissões e acrescenta a edição de dados, término e critério do grupo (*Manage Group Details*), gestão de hábitos do grupo, compartilhamento/renovação do código de convite de 8 caracteres, adição de membros por *username* e remoção/promoção de participantes (*Manage Members*).
 
 ![Figura 03 – Diagrama de casos de uso do grupo](../assets/images/casos-de-uso-grupo.png)
 *Figura 03 – Diagrama de casos de uso do grupo. Fonte: elaborado pelos autores (2026).*

@@ -14,6 +14,9 @@ Este catálogo registra as principais **Decisões de Arquitetura (*Architecture 
 | **[ADR-004](#adr-004-relacao-nn-entre-check-ins-e-habitos-com-preservacao-de-historico)** | Relação N:N entre Check-ins e Hábitos com Preservação de Histórico | **Aceito** | `C3-RF-06`, `C2-RF-04`, `D-10`, `D-11` | v2.0 |
 | **[ADR-005](#adr-005-adocao-de-alembic-e-colunas-varchar-com-check-constraints)** | Adoção de Alembic e Colunas `VARCHAR` com `CHECK Constraints` no PostgreSQL | **Aceito** | `R-03`, `C2-RF-03`, `C2-RF-05` | v3.0 |
 | **[ADR-006](#adr-006-stack-mobile-com-expo-router-axios-refresh-queue-e-swr)** | Stack Mobile com Expo Router, Fila de Refresh no Axios e Cache Reativo SWR | **Aceito** | `C4-RNF-06`, `C3-RNF-04`, `R-02` | v3.0 |
+| **[ADR-007](#adr-007-grupos-multi-habito-trava-pessimista-sucessao-e-estado-sob-demanda)** | Grupos Multi-hábito, Trava Pessimista (`FOR UPDATE`), Sucessão e Estado Sob Demanda | **Aceito** | `C5-RF-11` a `C5-RF-13`, `D-05`, `D-06` | v4.0 |
+| **[ADR-008](#adr-008-feed-de-grupo-com-paginacao-por-cursor-opaco-e-polling-sem-websocket)** | Feed de Grupo com Paginação por Cursor Opaco e *Polling* (sem WebSocket) | **Aceito** | `C7-RF-17`, `US-30`, `D-07` | v4.0 |
+| **[ADR-009](#adr-009-armazenamento-de-fotos-de-check-in-em-object-storage-s3-compativel-cloudflare-r2)** | Armazenamento de Fotos de Check-in em Object Storage S3-Compatível (Cloudflare R2) | **Aceito (S6)** | `C7-RF-16`, `C7-RNF-07`, `US-28`, `US-29` | v4.0 |
 
 ---
 
@@ -76,3 +79,33 @@ Este catálogo registra as principais **Decisões de Arquitetura (*Architecture 
   3. Adotar **SWR** (`src/config/swr.tsx`) para *data fetching*, cache em memória e revalidação automática ao focar a tela;
   4. Estilizar componentes com `StyleSheet` nativo e sistema de design centralizado (`src/config/theme.ts`).
 - **Consequências:** Interface fluida e responsiva, zero condições de corrida na rotação de *refresh token* (evitando falsos positivos de reuso de JTI) e facilidade de testes com Jest.
+
+---
+
+## ADR-007: Grupos Multi-hábito, Trava Pessimista (`FOR UPDATE`), Sucessão e Estado Sob Demanda
+
+- **Status:** Aceito (Sprint 5 / v4.0)
+- **Contexto:** Na implementação da Sprint 5, identificou-se que restringir cada grupo a um único hábito limitava desafios coletivos reais e que operações concorrentes sobre membros (dois admins saindo simultaneamente ou dois usuários disputando a 30ª vaga) poderiam corromper invariantes do grupo.
+- **Decisão:**
+  1. Permitir múltiplos hábitos por grupo por meio de `habits.author_group_id` e da constraint `CHECK ck_habits_single_author` (exatamente um autor: usuário **ou** grupo), bloqueando edição da meta (`HTTP 409`);
+  2. Calcular o estado do grupo (`active`/`ended`) dinamicamente comparando `ends_on` com hoje (fuso `America/Sao_Paulo`), permitindo reabertura imediata via `PATCH` e congelamento automático do ranking em `as_of = min(hoje, ends_on)`;
+  3. Serializar mutações de membros e renovação de código de convite com trava pessimista na linha do grupo (`SELECT ... FOR UPDATE`), garantindo sucessão determinística pelo menor `(joined_at, user_id)` e exclusão automática quando sai o último integrante.
+- **Consequências:** Zero risco de grupo órfão sem administrador ou acima de 30 membros (provado por testes de concorrência em `test_groups_concurrency.py`) e ausência de tarefas agendadas para encerrar grupos.
+
+---
+
+## ADR-008: Feed de Grupo com Paginação por Cursor Opaco e *Polling* (sem WebSocket)
+
+- **Status:** Aceito (Sprint 5 / v4.0)
+- **Contexto:** A paginação tradicional por `OFFSET` duplica ou omite itens no feed sempre que novos check-ins chegam no topo. Por outro lado, manter WebSockets exigiria gestão de conexões persistentes, reconexão móvel e autenticação dedicada para um volume baixo de leitura.
+- **Decisão:** Expor `GET /groups/{group_id}/check-ins` com **cursor opaco** codificando o par estável `(created_at, id)` e parâmetros mutuamente exclusivos `before` (rolagem para itens antigos) e `after` (novidades), consumidos pelo app via *polling* leve de 10 a 15 segundos apenas com a tela em foco.
+- **Consequências:** Navegação estável sem itens duplicados ou pulados mesmo em check-ins com o mesmo timestamp, mantendo a arquitetura HTTP/REST simples e stateless.
+
+---
+
+## ADR-009: Armazenamento de Fotos de Check-in em Object Storage S3-Compatível (Cloudflare R2)
+
+- **Status:** Aceito (Sprint 6 / v4.0 — em implementação)
+- **Contexto:** Salvar binários de imagem diretamente no PostgreSQL degrada backups e consultas, enquanto serviços de *object storage* convencionais cobram tráfego de saída (*egress*) na exibição de fotos em feeds.
+- **Decisão:** Adotar o **Cloudflare R2** acessado via SDK `boto3` (API S3-compatível), isolado por uma interface `Storage` com implementações `S3Storage` (produção) e `FakeStorage` (testes automatizados), armazenando versão cheia e miniatura acessadas por URLs temporárias assinadas e removidas automaticamente nas exclusões (`FOTO-1`–`FOTO-7`).
+- **Consequências:** Zero custo de *egress*, conformidade com `C7-RNF-07`, banco relacional enxuto e suíte `pytest` rápida sem dependência de rede externa.

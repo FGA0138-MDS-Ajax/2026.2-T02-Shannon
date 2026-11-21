@@ -1,6 +1,6 @@
 # 1. Visão Geral do Produto
 
-Esta seção apresenta a fundamentação do problema investigado pela **Equipe Shannon**, o posicionamento estratégico do aplicativo **HABBIT**, seus objetivos de negócio e a *stack* tecnológica consolidada na **Versão 3.0**.
+Esta seção apresenta a fundamentação do problema investigado pela **Equipe Shannon**, o posicionamento estratégico do aplicativo **HABBIT**, seus objetivos de negócio e a *stack* tecnológica consolidada na **Versão 4.0**.
 
 ---
 
@@ -114,7 +114,7 @@ Ele se desdobra em cinco objetivos específicos:
 
 ---
 
-## 1.4. Tecnologias Utilizadas (Versão 3.0)
+## 1.4. Tecnologias Utilizadas (Versão 4.0)
 
 O Quadro 2 consolida o conjunto de tecnologias, frameworks e ferramentas efetivamente adotados no repositório (`apps/api` e `apps/mobile`).
 
@@ -122,17 +122,18 @@ O Quadro 2 consolida o conjunto de tecnologias, frameworks e ferramentas efetiva
 
 | Categoria | Tecnologia / Ferramenta | Aplicação no Repositório |
 | :--- | :--- | :--- |
-| **Linguagem (Back-end)** | **Python 3.13+** | Desenvolvimento da API e motores de cálculo de streaks e estatísticas (`apps/api`). |
+| **Linguagem (Back-end)** | **Python 3.13+** | Desenvolvimento da API e motores de cálculo de streaks, estatísticas e grupos (`apps/api`). |
 | **Framework (Back-end)** | **FastAPI (`>=0.141.1`)** | Exposição da API RESTful, injeção de dependências (`SessionDep`, `get_current_user`) e documentação OpenAPI automática. |
-| **ORM, Validação e Migrações** | **SQLModel (`>=0.0.48`)**, **Pydantic v2**, **psycopg 3** e **Alembic (`>=1.20.1`)** | Mapeamento objeto-relacional sobre SQLAlchemy, validação estrita de contratos de entrada/saída e versionamento de schema do banco. |
+| **ORM, Validação e Migrações** | **SQLModel (`>=0.0.48`)**, **Pydantic v2**, **psycopg 3** e **Alembic (`>=1.20.1`)** | Mapeamento objeto-relacional sobre SQLAlchemy, validação estrita de contratos de entrada/saída e versionamento de schema do banco (`apps/api/migrations/`). |
 | **Segurança e Autenticação** | **bcrypt (`>=5.0.0`)** e **PyJWT (`>=2.15.1`)** | Hash seguro de senhas com salt (limite de 72 bytes) e emissão/validação de *access tokens* e *refresh tokens* com controle de sessão em banco. |
+| **Armazenamento de Mídia (Sprint 6)** | **Cloudflare R2** + **`boto3` (`>=1.36`)** | Armazenamento de fotos de check-in em *object storage* S3-compatível com URLs assinadas e interface `Storage` testável (`FakeStorage` / `S3Storage`). |
 | **Gerenciador de Pacotes (Back-end)** | **uv** | Resolução determinística de dependências Python e execução isolada da suíte de testes e linter. |
-| **Banco de Dados** | **PostgreSQL 17** | Persistência relacional ACID de usuários, sessões, hábitos, metas, check-ins e grupos. |
-| **Front-end Mobile & Web** | **React Native (`0.86.3`)** com **Expo (`~57.0`)** e **TypeScript (`~6.0`)** | Base de código única multiplataforma para Android, iOS e Web (`apps/mobile`). |
-| **Roteamento (Front-end)** | **Expo Router (`~57.0.23`)** | Roteamento baseado em arquivos (*file-based routing*) separando rotas públicas `(auth)` e rotas autenticadas `(app)`. |
+| **Banco de Dados** | **PostgreSQL 17** | Persistência relacional ACID de usuários, sessões, hábitos, metas, check-ins, grupos e metadados de fotos. |
+| **Front-end Mobile & Web** | **React Native (`0.88.1`)**, **React (`19.3`)**, **Expo (`~58.0`)** e **TypeScript (`~6.0`)** | Base de código única multiplataforma para Android, iOS e Web (`apps/mobile`). |
+| **Roteamento (Front-end)** | **Expo Router (`~58.0.30`)** | Roteamento baseado em arquivos (*file-based routing*) separando rotas públicas `(auth)` e rotas autenticadas `(app)`. |
 | **Comunicação e Cache (Front-end)** | **Axios (`^1.20.0`)** e **SWR (`^2.5.1`)** | Cliente HTTP com *interceptors* de renovação automática de JWT e *hooks* reativos de busca, cache e revalidação de dados. |
 | **Armazenamento Seguro (Front-end)** | **Expo Secure Store** / **localStorage** | Persistência segura do par de tokens no dispositivo móvel e *fallback* transparente no navegador web. |
-| **Estilização e UI (Front-end)** | **StyleSheet Nativo**, **Sistema de Tema (`theme.ts`)**, **`@expo/ui`** e **Lucide Icons** | Estilização padronizada com tokens de cores, tipografia (*Libre Baskerville* e *System*) e variantes de componentes reutilizáveis. |
+| **Estilização e UI (Front-end)** | **StyleSheet Nativo**, **Sistema de Tema (`theme.ts`)**, **`@expo/ui`**, **`react-native-svg`** e **Lucide Icons** | Estilização padronizada com tokens de cores, tipografia (*Libre Baskerville* e *System*), gráficos estatísticos em SVG e componentes reutilizáveis. |
 | **Lint e Formatação** | **Ruff (`>=0.12.4`)** e **Biome** | Garantia automatizada da PEP 8 no Python e padronização de código TypeScript/React Native no monorepo. |
 | **Testes Automatizados** | **Pytest (`>=9.1.1`)** + **Testcontainers (`>=4.15.0`)** (Back-end); **Jest (`^30.0`)** + **React Native Testing Library** + **Storybook (`^10.6`)** (Front-end) | Testes unitários, testes de integração com PostgreSQL 17 real em contêiner, testes de componentes/fluxos de tela e catálogo visual isolado. |
 | **Infraestrutura e CI/CD** | **Docker Compose**, **GitHub Actions** e **MkDocs Material** | Orquestração local do banco de dados, execução contínua de lint e testes na branch `developer` e deploy da documentação no GitHub Pages a partir da branch `docs`. |

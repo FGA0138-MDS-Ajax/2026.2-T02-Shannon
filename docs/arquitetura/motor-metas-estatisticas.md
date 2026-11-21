@@ -91,10 +91,22 @@ Na rota `GET /user/statistics`, os cartões de resumo semanal e mensal suportam 
 
 ### 4.2. Taxa de Cumprimento de Metas (`period_results`)
 
-Para avaliar a taxa de cumprimento (`CompletionRate`: `completed_periods`, `total_periods`, `rate`) em uma janela de `days` dias (`1` a `365`):
+Para avaliar a taxa de cumprimento (`CompletionRate`: `completed_periods`, `total_periods`, `rate` em escala percentual `0..100` com uma casa decimal) em uma janela de `days` dias (`1` a `365`):
 
 - **Períodos já fechados** dentro da janela entram sempre no denominador (`total_periods`);
-- **O período atual em aberto** e o **primeiro período parcial** (quando a meta começou no meio de uma semana ou mês) **só entram na conta se já tiverem sido cumpridos (`met = True`)**, evitando penalizar injustamente o usuário por um período que ainda não acabou.
+- **O primeiro período parcial** (quando a meta começou no meio de uma semana ou mês) só entra na conta se tiver sido cumprido;
+- **Períodos abertos:** o período aberto cujo `end` coincide com hoje (meta diária) entra se cumprido; em metas semanais ou mensais cujo `end` é posterior a hoje, o período em andamento passa a entrar na taxa no último dia do período (enquanto `status` e `current_streak` já refletem o cumprimento imediatamente).
+- Quando `total_periods == 0`, o sistema devolve `rate: 0.0`, interpretado na interface como *"Sem dados ainda"*.
+
+---
+
+## 5. Extensão do Motor para Hábitos de Grupo (`app/group/` — Sprint 5)
+
+O mesmo motor puro (`app/goals/streak.py`) é reutilizado pelo módulo de grupos sem duplicação de regras:
+
+- **Corte por integrante ("desde a entrada"):** para cada membro, os check-ins contam apenas a partir de $\max(\text{goal.starts\_on},\ \text{dia de joined\_at em São Paulo})$. Quem sai e volta ao grupo recebe um novo `joined_at`.
+- **Referência de congelamento:** $\text{reference} = \min(\text{hoje},\ \text{habit.finished\_at},\ \text{group.ends\_on})$. Assim, tanto o encerramento de um hábito quanto o término do grupo congelam automaticamente progresso, ranking e estatísticas em `as_of`.
+- **Ranking e estatísticas coletivas:** `check_ins` pontua por dias distintos com check-in em hábitos do grupo; `goals` soma os períodos cumpridos em todos os hábitos do grupo; `most_consistent` compara `consistent_days` (sempre em dias corridos, comparável entre períodos distintos); `best_record` registra o maior `best_streak` acompanhado da unidade (`day`, `week` ou `month`).
 
 ### 4.3. Estados do Calendário Mensal (`GET /user/statistics/habits/{id}/calendar`)
 

@@ -85,6 +85,16 @@ plugins:
 
 nav:
   - Início: index.md
+  - "Acompanhamento":
+      - "Visão Geral das Sprints": acompanhamento/index.md
+      - "Métricas GQM — Coletas e Evidências": acompanhamento/metricas-coletas.md
+      - "Sprints":
+          - "Sprint 1 — Base e Autenticação": acompanhamento/sprints/sprint-01.md
+          - "Sprint 2 — Hábitos e Check-ins": acompanhamento/sprints/sprint-02.md
+          - "Sprint 3 — Metas e Streaks": acompanhamento/sprints/sprint-03.md
+          - "Sprint 4 — Estatísticas e Alembic": acompanhamento/sprints/sprint-04.md
+          - "Sprint 5 — Grupos e Competição": acompanhamento/sprints/sprint-05.md
+          - "Sprint 6 — Fotos (R2) e Perfil": acompanhamento/sprints/sprint-06.md
   - "Visão do Produto & Projeto":
       - "1. Visão Geral do Produto": visao-produto/visao-produto.md
       - "2. Visão do Projeto & Processo": visao-produto/visao-projeto.md
@@ -105,8 +115,6 @@ nav:
       - "Especificação da API REST": api/index.md
   - "Testes e QA":
       - "Estratégia e Roteiro de Testes": testes/estrategia-testes.md
-  - "Governança & Atas":
+  - "Governança":
       - "Definition of Ready & Done (DoR/DoD)": governanca/dod-dor.md
       - "Matriz de Rastreabilidade": governanca/rastreabilidade.md
-      - "Atas de Reunião":
-          - "Ata de Reunião 1": atas-reuniao/ata-reuniao-1.md
