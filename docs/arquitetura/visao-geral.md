@@ -52,8 +52,10 @@ flowchart TB
         TGoals[("goals")]
         TCheckIns[("check_ins")]
         TCheckInHabits[("check_in_habits")]
-        TGroups[("groups / members")]
+        TGroups[("groups / group_members")]
     end
+
+    R2[("Cloudflare R2\n[Object Storage S3 — S6]")]
 
     Usuario -->|"Toques / Interação"| UI
     Axios -->|"HTTPS / JSON"| NGINX
@@ -65,6 +67,7 @@ flowchart TB
     GoalMod -->|"TCP/IP"| TGoals
     CheckInMod -->|"TCP/IP"| TCheckIns
     CheckInMod -->|"TCP/IP"| TCheckInHabits
+    CheckInMod -.->|"S3 API (boto3 — S6)"| R2
     StatMod -->|"Consultas Analíticas"| THabits
     StatMod -->|"Consultas Analíticas"| TCheckIns
     GroupMod -->|"TCP/IP"| TGroups
@@ -123,4 +126,7 @@ O Quadro 1 sintetiza as metas de qualidade e as restrições técnicas e legais 
 
 - **Fuso Horário (`America/Sao_Paulo`):** Todos os cálculos de início e fim de período (`starts_on`, `created_at`, `finished_at`, `reference_date`), agrupamento de check-ins por dia e virada de streaks utilizam `ZoneInfo("America/Sao_Paulo")`, enquanto os instantes exatos de criação (`check_ins.created_at`, `auth_sessions.expires_at`, `goals.created_at`) são persistidos com fuso horário (`TIMESTAMPTZ`).
 - **Validação e Integridade (`app/validators.py`):** Validadores compartilhados do Pydantic rejeitam o caractere nulo (`\x00`) em qualquer campo textual antes de chegar ao driver `psycopg 3` (evitando erros `500`), removem espaços excedentes e convertem `username` e `email` para minúsculas.
-- **Versionamento de Banco de Dados (`Alembic`):** Todas as evoluções de schema relacional são gerenciadas por migrações versionadas em `apps/api/alembic/versions/` e verificadas automaticamente pelo teste `tests/test_migrations.py`.
+- **Versionamento de Banco de Dados (`Alembic`):** Todas as evoluções de schema relacional são gerenciadas por migrações versionadas em `apps/api/migrations/versions/` (executadas automaticamente no `CMD` do container Docker) e verificadas pelo teste `tests/test_migrations.py`.
+
+!!! note "Organização por Subdomínio no Módulo `app/group/` (Sprint 5)"
+    Para viabilizar desenvolvimento paralelo sem conflitos de merge durante a Sprint 5, o módulo `app/group/` foi dividido em arquivos por subdomínio (`groups.py`, `members.py`, `invite.py`, `habits.py`, `feed.py`, `ranking.py`, `stats.py`), com `router.py` agregando as rotas e docstrings em cada função indicando o destino de unificação pós-sprint (`service.py` / `router.py`, acompanhado no débito técnico `DT-04`).
