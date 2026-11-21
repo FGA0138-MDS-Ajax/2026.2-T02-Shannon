@@ -8,10 +8,11 @@ Esta seção descreve a topologia de infraestrutura em nuvem e local do **HABBIT
 
 O sistema **HABBIT** foi projetado para operar de forma padronizada por meio de contêineres **Docker**:
 
-- **Front-end (`apps/mobile`):** Desenvolvido em TypeScript com **React Native (`0.86`)**, **Expo (`~57.0`)** e **Expo Router**, permitindo compilação multiplataforma para dispositivos Android, iOS e execução em navegador Web.
+- **Front-end (`apps/mobile`):** Desenvolvido em TypeScript com **React Native (`0.88`)**, **Expo (`~58.0`)** e **Expo Router**, permitindo compilação multiplataforma para dispositivos Android, iOS e execução em navegador Web.
 - **Gateway e Proxy Reverso (`NGINX`):** Em ambiente de nuvem (produção/homologação), atua na borda da infraestrutura gerenciando certificados TLS/HTTPS e distribuindo a carga entre múltiplas réplicas da API.
-- **Back-end (`apps/api`):** Desenvolvido em **Python 3.13+** com **FastAPI**, **SQLModel**, **Pydantic v2**, **Alembic** e driver **psycopg 3**, gerenciado pelo **uv**.
+- **Back-end (`apps/api`):** Desenvolvido em **Python 3.13+** com **FastAPI**, **SQLModel**, **Pydantic v2**, **Alembic** (`alembic upgrade head` executado no `CMD` da imagem antes de iniciar a API) e driver **psycopg 3**, gerenciado pelo **uv**.
 - **Banco de Dados (`PostgreSQL 17`):** SGBD relacional responsável pela persistência transacional ACID.
+- **Armazenamento de Mídia (`Cloudflare R2` — Sprint 6):** *Object storage* S3-compatível acessado via `boto3` para hospedar fotos e miniaturas de check-ins com URLs temporárias assinadas.
 
 ```mermaid
 flowchart LR

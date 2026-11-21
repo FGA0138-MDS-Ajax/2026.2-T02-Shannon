@@ -1,17 +1,15 @@
 # Visão Estrutural e Modelo de Dados
 
-Esta seção documenta o esquema relacional do banco de dados **PostgreSQL 17** do sistema **HABBIT** na **Versão 3.0**, detalhando suas tabelas, colunas, tipos, relacionamentos, restrições de integridade (`CHECK` e `FOREIGN KEY`) e o fluxo de migrações com **Alembic**.
+Esta seção documenta o esquema relacional do banco de dados **PostgreSQL 17** do sistema **HABBIT** na **Versão 4.0**, detalhando suas tabelas, colunas, tipos, relacionamentos, restrições de integridade (`CHECK` e `FOREIGN KEY`) e o histórico de migrações com **Alembic** (`apps/api/migrations/versions/`).
 
 ---
 
-## 1. Diagrama Entidade-Relacionamento / Classes de Domínio (Versão 3.0)
+## 1. Diagrama Entidade-Relacionamento / Classes de Domínio (Versão 4.0)
 
-!!! info "Evolução do Esquema na Versão 3.0"
-    Em relação à versão 2.0 do documento, o modelo de dados implementado em código consolidou três aprimoramentos importantes:
-    
-    1. **Relação 1:1 `habits` $\leftrightarrow$ `goals`:** A chave estrangeira fica na tabela `goals` (`habit_id UUID UNIQUE NOT NULL REFERENCES habits(id) ON DELETE CASCADE`), e não como `goal_id` em `habits`.
-    2. **Regras de Período em `goals`:** Adicionadas as colunas `period` (`'day'`, `'week'`, `'month'`), `period_end_weekday` (`SMALLINT`, de 1 a 7 para metas semanais) e `starts_on` (`DATE`), protegidas pela constraint `ck_goals_period_rules`.
-    3. **Privacidade de Estatísticas em `users`:** Adicionada a coluna `statistics_is_public` (`BOOLEAN NOT NULL DEFAULT false`) via migração Alembic.
+!!! info "Evolução do Esquema até a Versão 4.0"
+    - **Sprint 4 (`f6976b737c1c` e `0ceac8027fbf`):** baseline das 6 tabelas iniciais + adição de `users.statistics_is_public`.
+    - **Sprint 5 (`5c948effbeee`):** criação das tabelas `groups` e `group_members` (com `role`, `joined_at` e `invite_code` único), tornando `habits.author_user_id` anulável e adicionando `habits.author_group_id` protegidos pelo `CHECK ck_habits_single_author` (grupos multi-hábito).
+    - **Sprint 6 *(em andamento)*:** introdução da tabela `check_in_photos` (`FOTO-4`, PR `#160`) vinculada ao armazenamento de imagens no **Cloudflare R2**.
 
 ```mermaid
 classDiagram
@@ -45,12 +43,14 @@ classDiagram
         +VARCHAR(50) category
         +BOOLEAN is_public = false
         +VARCHAR status ('ACTIVE' | 'FINISHED')
-        +UUID author_user_id FK
+        +UUID author_user_id? FK
+        +UUID author_group_id? FK
         +DATE created_at
         +DATE target_end_date?
         +DATE finished_at?
         --
         CHECK ck_habits_status_finished_at
+        CHECK ck_habits_single_author
     }
 
     class Goal {
@@ -89,27 +89,34 @@ classDiagram
     class Group {
         <<table: groups>>
         +UUID id PK
-        +TEXT name
-        +TEXT description?
-        +DATE created_at
+        +VARCHAR(100) name
+        +VARCHAR(500) description?
+        +DATE starts_on
+        +DATE ends_on?
+        +VARCHAR(20) ranking_criterion ('check_ins' | 'goals')
+        +VARCHAR(8) invite_code UNIQUE
+        +TIMESTAMPTZ created_at
+        --
+        CHECK ck_groups_period
     }
 
-    class Member {
-        <<table: members>>
+    class GroupMember {
+        <<table: group_members>>
         +UUID group_id PK, FK
         +UUID user_id PK, FK
-        +BOOLEAN is_admin
+        +VARCHAR(10) role ('admin' | 'member')
+        +TIMESTAMPTZ joined_at
     }
 
     User "1" --> "0..*" AuthSession : possui (CASCADE)
-    User "1" --> "0..*" Habit : cria (author_user_id)
+    User "1" --> "0..*" Habit : cria pessoal (author_user_id)
+    Group "1" --> "0..*" Habit : cria de grupo (author_group_id)
     User "1" --> "0..*" CheckIn : registra (user_id)
     Habit "1" --> "0..1" Goal : define meta (habit_id UNIQUE)
     CheckIn "1" --> "1..*" CheckInHabit : vincula (CASCADE)
     Habit "1" --> "0..*" CheckInHabit : contabiliza (CASCADE)
-    User "1" --> "0..*" Member : participa
-    Group "1" --> "1..*" Member : agrega
-    Group "1" --> "1" Habit : compartilha
+    User "1" --> "0..*" GroupMember : participa (CASCADE)
+    Group "1" --> "1..30" GroupMember : agrega (CASCADE)
 ```
 
 ![Figura 06 - Diagrama do Banco](../assets/images/diagrama-banco-v2.png)
@@ -161,17 +168,19 @@ Representa os hábitos criados pelos usuários, com status de ciclo de vida e ca
 | `category` | `VARCHAR(50)` | Não | Catálogo `HabitCategory` | Uma das 16 categorias predefinidas (`D-08`). |
 | `is_public` | `BOOLEAN` | Não | `DEFAULT false` | Define se outros usuários autenticados podem visualizar o hábito. |
 | `status` | `VARCHAR` | Não | `INDEX`, `'ACTIVE'` ou `'FINISHED'` | Estado atual do hábito. |
-| `author_user_id` | `UUID` | Não | `FK -> users.id (ON DELETE CASCADE)`, `INDEX` | Autor criador do hábito. |
+| `author_user_id` | `UUID` | **Sim** | `FK -> users.id (ON DELETE CASCADE)`, `INDEX` | Autor criador do hábito pessoal (`NULL` em hábito de grupo). |
+| `author_group_id` | `UUID` | **Sim** | `FK -> groups.id (ON DELETE CASCADE)`, `INDEX` | Grupo autor do hábito compartilhado (`NULL` em hábito pessoal; Sprint 5). |
 | `created_at` | `DATE` | Não | — | Data de criação no fuso `America/Sao_Paulo`. |
 | `target_end_date` | `DATE` | Sim | `DEFAULT NULL` | Data alvo opcional planejada pelo autor. |
-| `finished_at` | `DATE` | Sim | `DEFAULT NULL` | Data em que o hábito foi encerrado via `POST /habits/{id}/finish`. |
+| `finished_at` | `DATE` | Sim | `DEFAULT NULL` | Data em que o hábito foi encerrado via `finish`. |
 
-**Constraint de Coerência (`ck_habits_status_finished_at`):**
+**Constraints de Coerência (`ck_habits_status_finished_at` e `ck_habits_single_author`):**
 ```sql
 CHECK (
   (status = 'ACTIVE' AND finished_at IS NULL) OR
   (status = 'FINISHED' AND finished_at IS NOT NULL)
 )
+CHECK ((author_user_id IS NULL) <> (author_group_id IS NULL))
 ```
 
 ---
@@ -229,3 +238,37 @@ Modelam os registros de execução dos usuários e sua associação N:N com os h
 
 !!! tip "Preservação de Histórico na Exclusão de Hábito (`D-11`)"
     Graças à modelagem da tabela associativa `check_in_habits` com `ON DELETE CASCADE` em ambas as chaves estrangeiras, quando um usuário exclui definitivamente um hábito (`DELETE /habits/{id}`), apenas os vínculos na tabela `check_in_habits` são apagados, preservando intactos os registros em `check_ins` e seus vínculos com outros hábitos.
+
+---
+
+### 2.6. Tabelas `groups` e `group_members` (`app/group/models.py` — Sprint 5)
+
+Adicionadas pela migração Alembic `5c948effbeee`, sustentam grupos multi-hábito com até 30 membros, convite por código, sucessão de administrador e estado calculado sob demanda (`active`/`ended`).
+
+#### Tabela `groups`
+
+| Coluna | Tipo no PostgreSQL | Nulo? | Restrições / Índices | Descrição |
+| :--- | :--- | :---: | :--- | :--- |
+| `id` | `UUID` | Não | `PRIMARY KEY` | Identificador único do grupo. |
+| `name` | `VARCHAR(100)` | Não | — | Nome do grupo. |
+| `description` | `VARCHAR(500)` | Sim | `DEFAULT NULL` | Descrição/recado opcional do grupo. |
+| `starts_on` | `DATE` | Não | — | Data de início informada na criação (informativa). |
+| `ends_on` | `DATE` | Sim | `CHECK ck_groups_period` (`ends_on IS NULL OR ends_on >= starts_on`) | Último dia do desafio; quando anterior a hoje (São Paulo), o grupo torna-se `ended`. |
+| `ranking_criterion` | `VARCHAR(20)` | Não | `'check_ins'` ou `'goals'` | Critério ativo de pontuação do ranking. |
+| `invite_code` | `VARCHAR(8)` | Não | `UNIQUE` | Código de convite de 8 caracteres (sem `I`, `O`, `0`, `1`). |
+| `created_at` | `TIMESTAMPTZ` | Não | `DEFAULT now()` | Instante de criação do grupo. |
+
+#### Tabela `group_members`
+
+| Coluna | Tipo no PostgreSQL | Nulo? | Restrições / Índices | Descrição |
+| :--- | :--- | :---: | :--- | :--- |
+| `group_id` | `UUID` | Não | `PK Composta`, `FK -> groups.id (ON DELETE CASCADE)` | Grupo ao qual o vínculo pertence. |
+| `user_id` | `UUID` | Não | `PK Composta`, `FK -> users.id (ON DELETE CASCADE)`, `INDEX` | Integrante do grupo. |
+| `role` | `VARCHAR(10)` | Não | `'admin'` ou `'member'` | Papel do integrante no grupo. |
+| `joined_at` | `TIMESTAMPTZ` | Não | `DEFAULT now()` | Instante de ingresso; define o corte "desde a entrada" e a ordem de sucessão do último admin. |
+
+---
+
+### 2.7. Evolução Sprint 6 — `check_in_photos` *(Em Andamento)*
+
+Na **Sprint 6** (`FOTO-4`, PR `#160`), foi modelada a tabela `check_in_photos` (relação 1:1 com `check_ins`, `ON DELETE CASCADE`) para persistir metadados das imagens (chaves do objeto cheio e da miniatura no **Cloudflare R2**, tipo MIME e dimensões), garantindo limpeza sincronizada de objetos ao substituir foto ou excluir check-in (`FOTO-7`).
