@@ -10,7 +10,11 @@ from app.goals.exceptions import GoalNotFoundError
 from app.goals.repository import APP_TIMEZONE_NAME
 from app.goals.streak import ProgressStatus, completion_dates, period_results
 from app.habits import service as habits_service
-from app.habits.exceptions import HabitForbiddenError, HabitNotFoundError
+from app.habits.exceptions import (
+  GroupHabitForbiddenError,
+  HabitForbiddenError,
+  HabitNotFoundError,
+)
 from app.habits.models import Habit, HabitStatus
 from app.statistics import repository as statistics_repository
 from app.statistics.calculations import (
@@ -81,6 +85,8 @@ def get_habit_calendar(
   """Devolve o calendário mensal de um hábito do usuário logado."""
   try:
     habit = habits_service.get_owned_habit(db, habit_id, user)
+  except GroupHabitForbiddenError:
+    raise
   except HabitForbiddenError:
     raise HabitNotFoundError from None
 
@@ -279,6 +285,8 @@ def get_habit_statistics(
 
   try:
     habit = habits_service.get_owned_habit(db, habit_id, user)
+  except GroupHabitForbiddenError:
+    raise
   except HabitForbiddenError as exc:
     raise HabitNotFoundError from exc
 

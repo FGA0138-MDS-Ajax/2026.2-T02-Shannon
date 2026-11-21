@@ -10,8 +10,10 @@ from app.goals import service
 from app.goals.exceptions import (
   MSG_GOAL_HABIT_FINISHED,
   MSG_GOAL_NOT_FOUND,
+  MSG_GROUP_HABIT_GOAL_LOCKED,
   GoalHabitFinishedError,
   GoalNotFoundError,
+  GroupHabitGoalLockedError,
 )
 from app.goals.responses import RESPONSES_PROGRESS, RESPONSES_SET_GOAL
 from app.goals.schemas import GoalInput, GoalPublic, HabitProgressPublic
@@ -54,6 +56,8 @@ def set_goal(
     raise HTTPException(status.HTTP_403_FORBIDDEN, MSG_HABIT_FORBIDDEN) from None
   except GoalHabitFinishedError:
     raise HTTPException(status.HTTP_409_CONFLICT, MSG_GOAL_HABIT_FINISHED) from None
+  except GroupHabitGoalLockedError:
+    raise HTTPException(status.HTTP_409_CONFLICT, MSG_GROUP_HABIT_GOAL_LOCKED) from None
 
 
 @goals_router.get(
