@@ -39,11 +39,11 @@ flowchart LR
     P1["P1: Visitante\n(Não autenticado)\n• Signup (US-01)\n• Login (US-02)"]
     P2["P2: Usuário / Membro Autenticado\n• Criar e listar hábitos (US-04, US-05)\n• Registrar, editar e excluir próprios check-ins (US-09, US-10, US-36)\n• Consultar progresso, streaks, estatísticas e calendário (US-11 a US-17)\n• Configurar lembretes e gerir perfil (US-25 a US-27)\n• Criar grupos e interagir como membro (US-18, US-21 a US-23)"]
     P3["P3: Autor do Hábito\n(Herdado de P2 por hábito criado)\n• Editar dados do hábito (US-06)\n• Definir/trocar meta diária, semanal ou mensal (US-08)\n• Encerrar hábito preservando histórico (US-07)\n• Excluir hábito definitivamente (US-35)"]
-    P4["P4: Administrador do Grupo\n(Herdado de P2 por grupo administrado)\n• Adicionar membros por username (US-19)\n• Remover membros e promover a Admin (US-20)\n• Editar nome e descrição do grupo (US-24)"]
+    P4["P4: Administrador do Grupo\n(Herdado de P2 por grupo administrado)\n• Adicionar membros por username (US-19)\n• Gerar/renovar código de convite\n• Remover membros e promover a Admin (US-20)\n• Criar/editar/encerrar hábitos do grupo\n• Editar nome, descrição, fim e critério (US-24)"]
 
     P1 -->|"Autenticação\nJWT + Sessão"| P2
     P2 -->|"Criação de hábito\n(author_user_id)"| P3
-    P2 -->|"Criação de grupo ou\npromoção (is_admin)"| P4
+    P2 -->|"Criação de grupo ou\npromoção (role = 'admin')"| P4
 ```
 
 ### Quadro 12 — Especificação dos Perfis de Acesso
@@ -51,9 +51,9 @@ flowchart LR
 | # | Nome do Perfil | Características do Perfil | Permissões de Acesso |
 | :---: | :--- | :--- | :--- |
 | **P1** | **Visitante** | Usuário que instalou o aplicativo móvel ou acessou via web, mas ainda não possui sessão ativa. | Acesso restrito às rotas públicas de Cadastro (`POST /auth/signup`, `US-01`), Login (`POST /auth/login`, `US-02`) e Renovação (`POST /auth/refresh`). Não visualiza nem manipula hábitos ou check-ins. |
-| **P2** | **Usuário / Membro Autenticado** | Usuário regular com conta ativa e token de acesso válido. | Criar e listar hábitos com progresso (`US-04`, `US-05`); registrar, editar e excluir seus próprios check-ins (`US-09`, `US-10`, `US-34`, `US-36`, `US-28`, `US-29`); consultar acompanhamento, streaks, estatísticas e calendário (`US-11` a `US-17`); configurar lembretes (`US-25`); gerir o próprio perfil (`US-26`, `US-27`); criar grupos (`US-18`); e, como membro, visualizar progresso do grupo, ranking e sair dele (`US-21` a `US-23`, `US-30`, `US-31`). |
-| **P3** | **Autor do Hábito** | Usuário criador de um hábito individual ou compartilhado (`habit.author_user_id == user.id`). | Todas as permissões de `P2`, somadas ao poder exclusivo de editar o hábito (`PATCH /habits/{id}`, `US-06`), definir ou alterar sua meta (`PUT /goals/habits/{id}/goal`, `US-08`), encerrar o hábito (`POST /habits/{id}/finish`, `US-07`) e excluí-lo definitivamente (`DELETE /habits/{id}`, `US-35`). |
-| **P4** | **Administrador do Grupo** | Criador do grupo compartilhado ou membro promovido a administrador (`member.is_admin == true`). | Todas as permissões de Membro do grupo, somadas a adicionar novos participantes pelo *username* (`US-19`), remover participantes (`US-20`), promover outros membros a administradores (`US-20`) e editar nome e descrição do grupo (`US-24`). |
+| **P2** | **Usuário / Membro Autenticado** | Usuário regular com conta ativa e token de acesso válido. | Criar e listar hábitos pessoais e de seus grupos (`US-04`, `US-05`); registrar, editar e excluir seus próprios check-ins (`US-09`, `US-10`, `US-34`, `US-36`, `US-28`, `US-29`); consultar acompanhamento, streaks, estatísticas e calendário (`US-11` a `US-17`); configurar lembretes (`US-25`); gerir o próprio perfil (`US-26`, `US-27`); criar grupos (`US-18`), pré-visualizar e entrar por código de convite; e, como membro (`role = 'member'`), acompanhar feed, progresso dos integrantes, estatísticas coletivas, ranking e sair do grupo (`US-21` a `US-23`, `US-30`). |
+| **P3** | **Autor do Hábito** | Usuário criador de um hábito pessoal (`habit.author_user_id == user.id`). | Todas as permissões de `P2`, somadas ao poder exclusivo de editar o hábito (`PATCH /habits/{id}`, `US-06`), definir ou alterar sua meta (`PUT /goals/habits/{id}/goal`, `US-08`), encerrar o hábito (`POST /habits/{id}/finish`, `US-07`) e excluí-lo definitivamente (`DELETE /habits/{id}`, `US-35`). |
+| **P4** | **Administrador do Grupo** | Criador do grupo ou membro promovido a administrador (`group_members.role == 'admin'`). | Todas as permissões de Membro do grupo, somadas a visualizar/renovar código de convite (`invite_code`), adicionar participantes por *username* (`US-19`), remover participantes ou promover membros (`US-20`), criar/editar/encerrar hábitos do grupo e editar nome, descrição, data de término (`ends_on`) e critério do ranking (`US-24`). |
 
 ---
 
@@ -63,12 +63,12 @@ Os requisitos e histórias de usuário do **HABBIT** são agrupados em sete cen�
 
 ### Quadro 13 — Cenários Funcionais e Alocação por Sprints
 
-| Código | Nome do Cenário Funcional | Escopo Resumido | Sprints Alocadas (BE / FE) | Status na v3.0 |
+| Código | Nome do Cenário Funcional | Escopo Resumido | Sprints Alocadas (BE / FE) | Status na v4.0 |
 | :---: | :--- | :--- | :---: | :---: |
 | **C1** | **Acesso e Conta** | Cadastro, login por *username* ou e-mail, sessões persistidas em banco com rotação de *refresh token*, consulta do usuário logado (`/auth/session/me`) e logout idempotente. | Sprints 1 e 2 | **Concluído (100%)** |
-| **C2** | **Gestão de Hábitos e Metas** | Criação, listagem com progresso, consulta por ID (respeitando visibilidade pública/privada), edição parcial, encerramento, exclusão definitiva e configuração de metas (`day`, `week`, `month`). | Sprints 2, 3 e 4 | **Concluído (100%)** |
-| **C3** | **Registro e Constância** | Registro de check-in multi-hábito (1 a 20 hábitos) com título, descrição e duração ISO 8601, listagem por categorias e opções paginadas, histórico agrupado por dias, edição/exclusão e motor de streaks. | Sprints 2, 3 e 4 | **Concluído (100%)** |
-| **C4** | **Acompanhamento do Progresso** | Painel diário de hábitos, estatísticas gerais do usuário (modos `calendar` e `rolling`, série diária, taxa de conclusão, hábitos em risco e sequência de atividade) e calendário mensal por hábito. | Sprints 4 e 5 | **Concluído no BE / Em integração final no FE** |
-| **C5** | **Hábitos em Grupo** | Criação de grupos vinculados a hábitos compartilhados, gestão de membros e administradores, painel coletivo e ranking dos últimos 30 dias. | Sprints 5 e 6 | **Em desenvolvimento (Sprint 5)** |
-| **C6** | **Engajamento e Lembretes** | Agendamento e disparo de notificações locais enquanto a meta do período permanecer pendente. | Sprints 6 e 7 | **Planejado (Sprint 6)** |
-| **C7** | **Comunidade e Personalização** | Duração do check-in (`C7-RF-19`, **já entregue**), tela e privacidade de estatísticas do usuário, anexo de fotos em storage bucket e feed de atividades. | Sprints 2, 4, 6 e 7 | **Parcialmente concluído** |
+| **C2** | **Gestão de Hábitos e Metas** | Criação, listagem com progresso (pessoais e de grupo), consulta por ID, edição parcial, encerramento, exclusão definitiva e configuração de metas (`day`, `week`, `month`). | Sprints 2, 3 e 4 | **Concluído (100%)** |
+| **C3** | **Registro e Constância** | Registro de check-in multi-hábito (1 a 20 hábitos pessoais/grupo) com título, descrição e duração ISO 8601, listagem por categorias e opções paginadas, histórico agrupado por dias, edição/exclusão e motor de streaks. | Sprints 2, 3 e 4 | **Concluído (100%)** |
+| **C4** | **Acompanhamento do Progresso** | Painel diário de hábitos, estatísticas gerais (`/user/statistics`), estatísticas individuais (`/user/statistics/habits/{id}`) e calendário mensal por hábito. | Sprints 4 e 5 | **Concluído no BE / Painel integrado no FE** |
+| **C5** | **Hábitos em Grupo** | Grupos multi-hábito (até 30 membros), convite por código de 8 caracteres, sucessão automática de admin, feed por cursor, estatísticas coletivas/por integrante e ranking (`check_ins` ou `goals`). | Sprints 5 e 6 | **Concluído no BE (S5) / Previsto no FE (S6)** |
+| **C6** | **Engajamento e Lembretes** | Agendamento e disparo de notificações locais enquanto a meta do período permanecer pendente. | Realocado pós-Sprint 6 | **Replanejado** |
+| **C7** | **Comunidade e Personalização** | Duração do check-in (`C7-RF-19`, **entregue**), feed de check-ins de grupo (`C7-RF-17`, **entregue no BE na S5**), edição de perfil/troca de senha e fotos em Cloudflare R2 (**em desenvolvimento na Sprint 6**). | Sprints 2, 4, 5 e 6 | **Em desenvolvimento (Sprint 6)** |

@@ -113,9 +113,12 @@ $$
 
 ---
 
-## 4.3. Coleta e Interpretação Conjunta
+## 4.3. Coleta, Evidências Reais e Interpretação Conjunta
 
 Os dados das três métricas são registrados continuamente no GitHub durante a sprint à medida que os cartões transitam entre estados, os pipelines de CI e revisões de QA são executados e eventuais débitos técnicos são abertos ou sanados.
+
+!!! tip "Resultados Coletados das Sprints 1 a 6"
+    As medições reais apuradas sprint a sprint — incluindo a tabela consolidada (`M1`, `M2`, `M3`), o gráfico de evolução, o ciclo de vida dos débitos técnicos (`DT-01` a `DT-05`) e os links diretos para Issues, PRs e commits de evidência — estão documentadas no **[Painel Consolidado de Métricas GQM](../acompanhamento/metricas-coletas.md)** e nas páginas individuais de cada sprint em **[Acompanhamento](../acompanhamento/index.md)**.
 
 Na revisão semanal, a interpretação ocorre **de baixo para cima** (*bottom-up*, conforme a Figura 4):
 
@@ -124,4 +127,4 @@ Na revisão semanal, a interpretação ocorre **de baixo para cima** (*bottom-up
    - $\text{TCS} \ge 90\%$
    - $\text{TRT} \le 20\%$
    - $\text{DTA} \le 1\text{ item}$
-3. Caso qualquer um dos limiares seja violado, a ação corretiva associada à métrica é imediatamente aplicada no planejamento da sprint subsequente.
+3. Caso qualquer um dos limiares seja violado, a ação corretiva associada à métrica é imediatamente aplicada no planejamento da sprint subsequente — como ocorreu na quitação de `DT-01` (Alembic na Sprint 4), `DT-02` (expansão de testes na Sprint 3) e no replanejamento da Sprint 6 após a Sprint 5.
