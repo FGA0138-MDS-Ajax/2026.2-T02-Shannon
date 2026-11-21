@@ -57,6 +57,11 @@ flowchart TB
 | `tests/checkins/test_check_in_list.py` | Listagem de check-ins agrupados por dias no fuso `America/Sao_Paulo` (`GET /check-ins`). | Integração |
 | `tests/checkins/test_check_in_privacy.py` | Controle de visibilidade e recusa de acesso a hábitos/check-ins privados de terceiros (`C1-RNF-03`). | Integração |
 | `tests/statistics/unit/test_calculations.py` | Cálculos de `UserStatistics` (`calendar` vs. `rolling`), `activity_streak`, `at_risk`, séries e calendário mensal (`US-13`, `US-16`, `US-17`). | Unitário |
+| `tests/statistics/test_statistics_*.py` e `test_habit_statistics.py` | Integração das 3 rotas de estatísticas, número fixo de queries SQL, calendário, streaks e isolamento de hábitos de grupo (8 arquivos). | Integração |
+| `tests/group/unit/test_*.py` | Regras puras de grupos: estado (`active`/`ended`), sucessão de admin, convite, cursor opaco de feed, ranking (`check_ins`/`goals`), data de referência e stats (7 arquivos). | Unitário |
+| `tests/group/test_*.py` | Integração completa de grupos: CRUD, membros, convites, hábitos de grupo, feed, ranking, `GRP-12`, concorrência (`SELECT ... FOR UPDATE`), número de queries e adaptação de rotas existentes (18 arquivos). | Integração |
+
+*(Total consolidado no Back-end até a Sprint 5: **452 funções de teste** em **64 arquivos**.)*
 
 ---
 
@@ -67,13 +72,16 @@ flowchart TB
 | `src/__tests__/contexts/auth-context.test.tsx` | Ciclo de vida de autenticação, hidratação de sessão, login, signup e logout no `AuthContext`. | Componente / Contexto |
 | `src/__tests__/services/api.test.ts` | Cliente Axios, injeção de `Bearer token` e fila de renovação automática em caso de `HTTP 401`. | Integração de Serviço |
 | `src/__tests__/services/token-storage.test.ts` | Persistência e limpeza segura de tokens (`expo-secure-store` e web). | Unitário |
-| `src/__tests__/services/habits-check-ins-api.test.ts` | Chamadas aos serviços de hábitos, metas e check-ins. | Unitário / Serviço |
+| `src/__tests__/services/habits-check-ins-api.test.ts` e `statistics-api.test.ts` | Chamadas aos serviços de hábitos, metas, check-ins e estatísticas. | Unitário / Serviço |
 | `src/__tests__/services/api-errors.test.ts` | Extração e formatação amigável de mensagens de erro da API. | Unitário |
-| `src/__tests__/utils/duration.test.ts` | Conversão e formatação de durações ISO 8601 (`PT30M` $\leftrightarrow$ minutos/texto). | Unitário |
-| `src/__tests__/app/check-in.test.tsx` | Fluxo completo de check-in em etapas (seleção de categoria, seleção de hábitos, formulário e envio). | Componente / Fluxo |
+| `src/__tests__/utils/duration.test.ts`, `check-in-progress.test.ts` e `habit-history.test.ts` | Formatação de durações ISO 8601, resumo pós-check-in e montagem de histórico por hábito. | Unitário |
+| `src/__tests__/hooks/useUserStatistics.test.tsx` | Hook SWR de estatísticas do usuário na Home. | Hook |
+| `src/__tests__/app/check-in.test.tsx` e `create-check-in.test.tsx` | Fluxo completo de check-in em etapas (seleção de categoria, seleção de hábitos, formulário e envio). | Componente / Fluxo |
+| `src/__tests__/app/habit-*.test.tsx` e `habits-list.test.tsx` | Telas de criação, detalhe, edição de meta e listagem de hábitos com progresso (`US-04`–`US-08`, `US-15`). | Componente / Tela |
 | `src/__tests__/app/user.test.tsx` | Tela de perfil do usuário com SWR, exibição de dados e logout (`US-27`). | Componente / Tela |
-| `src/__tests__/components/calendar.test.tsx` | Renderização e navegação de meses do componente de Calendário (`US-16`). | Componente |
-| `src/__tests__/components/button.test.tsx` | Variantes visuais, estado de carregamento e disparo de eventos do `Button`. | Componente |
+| `src/__tests__/components/calendar.test.tsx`, `goal-progress.test.tsx`, `habit-card.test.tsx`, `statistics-panel.test.tsx`, `statistics.test.tsx`, `button.test.tsx` | Componentes visuais de calendário, progresso de meta, cartões de hábito e painel estatístico da Home. | Componente |
+
+*(Total consolidado no Front-end até a Sprint 5: **152 casos de teste** em **25 arquivos**.)*
 
 ---
 
@@ -86,8 +94,8 @@ flowchart TB
 | **CT-03** | Múltiplos check-ins no mesmo dia (`US-09`, `D-02`) | Garantir que vários check-ins no mesmo dia sejam gravados no histórico, mas contem `1` dia cumprido no período da meta. | Unitário & Integração | Primeiro check-in do dia incrementa `done`; segundo check-in do mesmo dia é salvo no histórico com seu timestamp, mantendo `done` e `current_streak` consistentes. | **Passou** (`test_streak.py`, `test_goal_list_and_check_in.py`) |
 | **CT-04** | Cálculo de quebra e manutenção do Streak (`US-11`, `US-14`) | Verificar que período aberto incompleto não zera a sequência anterior, mas período fechado sem atingir `target_count` zera o `current_streak` preservando `best_streak`. | Unitário / Funcional | `current_streak` reflete exatamente os períodos consecutivos cumpridos e `best_streak` preserva o recorde histórico. | **Passou** (`test_streak.py`) |
 | **CT-05** | Isolamento e privacidade de hábitos e check-ins (`C1-RNF-03`) | Impedir visualização de hábitos privados de terceiros e bloquear edição/exclusão por não-autor. | Integração / Segurança | Retornar `HTTP 404` para recursos privados de outro usuário e `HTTP 403` para tentativa de mutação em hábito público alheio. | **Passou** (`test_habits.py`, `test_check_in_privacy.py`) |
-| **CT-06** | Calendário mensal e estatísticas (`US-16`, `US-17`) | Verificar a classificação de cada dia do mês (`completed`, `partial`, `none`, `outside`) e o cálculo da série temporal nos modos `calendar` e `rolling`. | Unitário / Funcional | Estados do calendário e taxas de cumprimento (`CompletionRate`) calculados sem distorção por períodos abertos. | **Passou** (`test_calculations.py`, `calendar.test.tsx`) |
+| **CT-06** | Calendário mensal e estatísticas (`US-16`, `US-17`) | Verificar a classificação de cada dia do mês (`completed`, `partial`, `none`, `outside`) e o cálculo da série temporal nos modos `calendar` e `rolling`. | Unitário / Funcional | Estados do calendário e taxas de cumprimento (`CompletionRate`) calculados sem distorção por períodos abertos. | **Passou** (`test_calculations.py`, `test_statistics_calendar.py`, `calendar.test.tsx`) |
 | **CT-07** | Fluxo de check-in em etapas no Mobile (`US-09`, `C3-RNF-04`) | Validar seleção de categorias, paginação de hábitos ("ver mais") e submissão do check-in no React Native. | Componente / Funcional | Categorias e hábitos são listados, selecionados e enviados via `POST /check-ins` com feedback visual. | **Passou** (`check-in.test.tsx`) |
-| **CT-08** | Restrição de permissão de Admin em grupo (`US-20`) | Bloquear remoção ou promoção de membros feita por membro comum do grupo. | Integração / Segurança | Retornar `HTTP 403 Forbidden` ao tentar invocar rotas administrativas sem `is_admin = true`. | **Planejado (Sprint 5)** |
+| **CT-08** | Permissões, concorrência e sucessão em grupos (`US-18`–`US-24`) | Bloquear ações administrativas por membro comum (`403`), ocultar grupo para não membros (`404`) e serializar saídas/vagas concorrentes (`SELECT ... FOR UPDATE`). | Integração / Segurança | Retornar `HTTP 403` para membro sem `role = 'admin'`, `HTTP 404` para não membro, e preservar invariantes sob concorrência. | **Passou** (`test_groups_members.py`, `test_groups_concurrency.py`) |
 | **CT-09** | Fluxo inicial de ponta a ponta (`US-01`, `US-04`, `US-09`) | Verificar cadastro, criação de hábito com meta e primeiro check-in retornando progresso atualizado. | Homologação Manual / Aceitação | Usuário conclui o fluxo e visualiza `done = 1`, `status = completed` (para meta diária) e `current_streak = 1`. | **Passou** |
 | **CT-10** | Usabilidade do check-in em até dois toques (`C3-RNF-04`) | Verificar o requisito não funcional de agilidade no registro de check-in. | Homologação Manual / Usabilidade | Acesso direto ao fluxo de check-in a partir da navegação principal com retorno imediato do progresso na mesma requisição. | **Passou** |
