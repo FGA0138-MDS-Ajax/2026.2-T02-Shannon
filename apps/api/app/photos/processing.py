@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 from io import BytesIO
 
-from PIL import Image, UnidentifiedImageError
+from PIL import Image, ImageOps, UnidentifiedImageError
 
 ALLOWED_FORMATS = {"JPEG", "PNG"}
 MAX_PIXELS = 40_000_000
@@ -59,7 +59,8 @@ def process_photo(data: bytes) -> ProcessedPhoto:
   except (OSError, SyntaxError, ValueError, Image.DecompressionBombError) as exc:
     raise InvalidImageError("arquivo de imagem corrompido ou truncado") from exc
 
-  rgb = _to_rgb(image)
+  upright = ImageOps.exif_transpose(image)
+  rgb = _to_rgb(upright)
   full = rgb.copy()
   full.thumbnail((FULL_MAX_SIDE, FULL_MAX_SIDE), Image.Resampling.LANCZOS)
   thumbnail = full.copy()
@@ -88,6 +89,7 @@ def _to_rgb(image: Image.Image) -> Image.Image:
 
 
 def _encode(image: Image.Image) -> bytes:
+  image.info = {}
   buffer = BytesIO()
   image.save(buffer, format="JPEG", quality=JPEG_QUALITY, optimize=True)
   return buffer.getvalue()
