@@ -120,3 +120,34 @@ def set_check_in_photo(
 
   # 8. Devolve as URLs assinadas (com a versão cheia incluída).
   return photo_public(storage, photo, include_full=True)
+
+
+def remove_check_in_photo(
+  db: Session,
+  check_in_id: UUID,
+  user: User,
+  storage: Storage | None = None,
+) -> None:
+  """Remove a foto de um check-in de hoje; sem foto, não faz nada (idempotente)."""
+  storage = storage or get_storage()
+
+  # 1. Valida posse e se o check-in é de hoje (404 / 403 / 409).
+  check_in = get_owned_check_in(db, check_in_id, user)
+  if not is_check_in_from_today(check_in, habits_service.today()):
+    raise PhotoNotTodayError
+
+  # 2. Trava o check-in para evitar corrida com um PUT simultâneo.
+  if photos_repository.lock_check_in(db, check_in_id) is None:
+    raise CheckInNotFoundError
+
+  photo = photos_repository.get_photo(db, check_in_id)
+  if photo is None:
+    return
+
+  # 3. Guarda as chaves, marca para exclusão e commita antes de tocar no bucket.
+  keys = (photo.full_key, photo.thumbnail_key)
+  photos_repository.delete_photo(db, photo)
+  db.commit()
+
+  # 4. Só depois do commit apaga os objetos do bucket (falha aqui vira apenas log).
+  delete_objects_safely(storage, keys)
