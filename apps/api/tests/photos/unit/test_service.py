@@ -10,7 +10,7 @@ from app.photos.service import (
   is_check_in_from_today,
   photo_public,
 )
-from app.storage import FakeStorage
+from app.storage.fake import FakeStorage
 
 
 def test_build_photo_keys_uses_same_uuid_and_changes_each_call():

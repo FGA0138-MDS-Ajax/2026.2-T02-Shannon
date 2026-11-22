@@ -34,7 +34,7 @@ from app.photos.exceptions import (
 from app.photos.processing import InvalidImageError, UnsupportedImageError
 from app.photos.responses import RESPONSES_PHOTO_DELETE, RESPONSES_PHOTO_PUT
 from app.photos.schemas import CheckInPhotoPublic
-from app.storage import StorageError
+from app.storage.base import StorageError
 
 photos_router = APIRouter(tags=["check-ins"])
 

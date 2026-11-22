@@ -17,7 +17,8 @@ from app.photos.exceptions import PhotoNotTodayError
 from app.photos.models import CheckInPhoto
 from app.photos.processing import OUTPUT_CONTENT_TYPE, process_photo
 from app.photos.schemas import CheckInPhotoPublic
-from app.storage import Storage, StorageError, get_storage
+from app.storage.base import Storage, StorageError
+from app.storage.dependencies import get_storage
 
 logger = logging.getLogger(__name__)
 
