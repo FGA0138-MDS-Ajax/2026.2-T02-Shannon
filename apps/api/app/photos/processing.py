@@ -59,7 +59,7 @@ def process_photo(data: bytes) -> ProcessedPhoto:
   except (OSError, SyntaxError, ValueError, Image.DecompressionBombError) as exc:
     raise InvalidImageError("arquivo de imagem corrompido ou truncado") from exc
 
-  rgb = image.convert("RGB")
+  rgb = _to_rgb(image)
   full = rgb.copy()
   full.thumbnail((FULL_MAX_SIDE, FULL_MAX_SIDE), Image.Resampling.LANCZOS)
   thumbnail = full.copy()
@@ -73,6 +73,18 @@ def process_photo(data: bytes) -> ProcessedPhoto:
     width=full.width,
     height=full.height,
   )
+
+
+def _to_rgb(image: Image.Image) -> Image.Image:
+  has_alpha = image.mode in ("RGBA", "LA", "PA") or (
+    image.mode == "P" and "transparency" in image.info
+  )
+  if not has_alpha:
+    return image.convert("RGB")
+  rgba = image.convert("RGBA")
+  background = Image.new("RGB", rgba.size, (255, 255, 255))
+  background.paste(rgba, mask=rgba.getchannel("A"))
+  return background
 
 
 def _encode(image: Image.Image) -> bytes:
