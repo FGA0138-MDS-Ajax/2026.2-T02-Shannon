@@ -4,11 +4,20 @@ from datetime import UTC, date
 from uuid import UUID, uuid4
 from zoneinfo import ZoneInfo
 
+from sqlmodel import Session
+
+from app.auth.models import User
+from app.checkins.exceptions import CheckInNotFoundError
 from app.checkins.models import CheckIn
 from app.checkins.repository import APP_TIMEZONE_NAME
+from app.checkins.service import get_owned_check_in
+from app.habits import service as habits_service
+from app.photos import repository as photos_repository
+from app.photos.exceptions import PhotoNotTodayError
 from app.photos.models import CheckInPhoto
+from app.photos.processing import OUTPUT_CONTENT_TYPE, process_photo
 from app.photos.schemas import CheckInPhotoPublic
-from app.storage import Storage, StorageError
+from app.storage import Storage, StorageError, get_storage
 
 logger = logging.getLogger(__name__)
 
@@ -54,3 +63,60 @@ def photo_public(
     thumbnail_url=storage.presigned_url(photo.thumbnail_key),
     url=storage.presigned_url(photo.full_key) if include_full else None,
   )
+
+
+def set_check_in_photo(
+  db: Session,
+  check_in_id: UUID,
+  user: User,
+  data: bytes,
+  storage: Storage | None = None,
+) -> CheckInPhotoPublic:
+  """Define ou substitui a foto de um check-in de hoje,
+  mantendo banco e bucket consistentes."""
+  storage = storage or get_storage()
+
+  # 1. Garante que o check-in existe, é visível e pertence ao usuário.
+  check_in = get_owned_check_in(db, check_in_id, user)
+
+  # 2. Só check-in feito hoje no fuso da aplicação aceita alteração de foto.
+  if not is_check_in_from_today(check_in, habits_service.today()):
+    raise PhotoNotTodayError
+
+  # 3. Valida e regrava a imagem fora de transação de escrita/trava.
+  processed = process_photo(data)
+
+  # 4. Sobe cheia e miniatura antes de gravar no banco; se falhar, limpa o que subiu.
+  full_key, thumbnail_key = build_photo_keys(check_in_id)
+  try:
+    storage.save(full_key, processed.full, OUTPUT_CONTENT_TYPE)
+    storage.save(thumbnail_key, processed.thumbnail, OUTPUT_CONTENT_TYPE)
+  except StorageError:
+    delete_objects_safely(storage, (full_key, thumbnail_key))
+    raise
+
+  # 5. Trava o check-in só agora para serializar envios simultâneos.
+  if photos_repository.lock_check_in(db, check_in_id) is None:
+    delete_objects_safely(storage, (full_key, thumbnail_key))
+    raise CheckInNotFoundError
+
+  # 6. Guarda as chaves antigas, grava as novas e commita;
+  # falha no commit limpa as novas.
+  old_photo = photos_repository.get_photo(db, check_in_id)
+  old_keys = (
+    (old_photo.full_key, old_photo.thumbnail_key) if old_photo is not None else ()
+  )
+  photo = photos_repository.upsert_photo(db, check_in_id, full_key, thumbnail_key)
+  try:
+    db.commit()
+  except Exception:
+    db.rollback()
+    delete_objects_safely(storage, (full_key, thumbnail_key))
+    raise
+  db.refresh(photo)
+
+  # 7. Só depois do commit apaga os objetos antigos (falha aqui vira apenas log/órfão).
+  delete_objects_safely(storage, old_keys)
+
+  # 8. Devolve as URLs assinadas (com a versão cheia incluída).
+  return photo_public(storage, photo, include_full=True)
