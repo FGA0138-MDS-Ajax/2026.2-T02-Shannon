@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 from io import BytesIO
 
-from PIL import Image
+from PIL import Image, UnidentifiedImageError
 
 ALLOWED_FORMATS = {"JPEG", "PNG"}
 MAX_PIXELS = 40_000_000
@@ -39,10 +39,25 @@ def process_photo(data: bytes) -> ProcessedPhoto:
   if not data.startswith((_JPEG_MAGIC, _PNG_MAGIC)):
     raise UnsupportedImageError("o arquivo não é JPEG nem PNG")
 
-  image = Image.open(BytesIO(data))
+  try:
+    image = Image.open(BytesIO(data))
+  except Image.DecompressionBombError as exc:
+    raise InvalidImageError("imagem grande demais em pixels") from exc
+  except UnidentifiedImageError as exc:
+    raise UnsupportedImageError("formato de imagem não reconhecido") from exc
+  except (OSError, SyntaxError, ValueError) as exc:
+    raise InvalidImageError("arquivo de imagem corrompido") from exc
   if image.format not in ALLOWED_FORMATS:
     raise UnsupportedImageError(f"formato não aceito: {image.format}")
-  image.load()
+
+  width, height = image.size
+  if width * height > MAX_PIXELS:
+    raise InvalidImageError("imagem grande demais em pixels")
+
+  try:
+    image.load()
+  except (OSError, SyntaxError, ValueError, Image.DecompressionBombError) as exc:
+    raise InvalidImageError("arquivo de imagem corrompido ou truncado") from exc
 
   rgb = image.convert("RGB")
   full = rgb.copy()
