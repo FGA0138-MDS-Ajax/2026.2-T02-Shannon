@@ -1,6 +1,7 @@
 """Processamento das fotos enviadas pelo app (FOTO-3)."""
 
 from dataclasses import dataclass
+from io import BytesIO
 
 from PIL import Image
 
@@ -30,5 +31,36 @@ class ProcessedPhoto:
   height: int
 
 
+_JPEG_MAGIC = b"\xff\xd8\xff"
+_PNG_MAGIC = b"\x89PNG\r\n\x1a\n"
+
+
 def process_photo(data: bytes) -> ProcessedPhoto:
-  raise NotImplementedError
+  if not data.startswith((_JPEG_MAGIC, _PNG_MAGIC)):
+    raise UnsupportedImageError("o arquivo não é JPEG nem PNG")
+
+  image = Image.open(BytesIO(data))
+  if image.format not in ALLOWED_FORMATS:
+    raise UnsupportedImageError(f"formato não aceito: {image.format}")
+  image.load()
+
+  rgb = image.convert("RGB")
+  full = rgb.copy()
+  full.thumbnail((FULL_MAX_SIDE, FULL_MAX_SIDE), Image.Resampling.LANCZOS)
+  thumbnail = full.copy()
+  thumbnail.thumbnail(
+    (THUMBNAIL_MAX_SIDE, THUMBNAIL_MAX_SIDE), Image.Resampling.LANCZOS
+  )
+
+  return ProcessedPhoto(
+    full=_encode(full),
+    thumbnail=_encode(thumbnail),
+    width=full.width,
+    height=full.height,
+  )
+
+
+def _encode(image: Image.Image) -> bytes:
+  buffer = BytesIO()
+  image.save(buffer, format="JPEG", quality=JPEG_QUALITY, optimize=True)
+  return buffer.getvalue()
