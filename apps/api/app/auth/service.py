@@ -10,9 +10,11 @@ from app.auth.exceptions import (
   EmailTakenError,
   InvalidCredentialsError,
   UsernameTakenError,
+  WrongCurrentPasswordError,
 )
 from app.auth.models import User
 from app.auth.schemas import (
+  PasswordChange,
   SignupRequest,
   SignupResponse,
   TokenResponse,
@@ -139,3 +141,27 @@ def logout_session(db: Session, refresh_token: str) -> None:
 
   session_repository.delete_session(db, sid)
   db.commit()
+
+
+def change_password(db: Session, user: User, data: PasswordChange) -> TokenResponse:
+  """Troca a senha, encerra todas as sessões e abre uma nova para este aparelho.
+
+  Levanta `WrongCurrentPasswordError` se a senha atual não conferir; nesse caso
+  nada muda. O access token não diz qual é a sessão deste aparelho, então todas
+  são apagadas, inclusive a atual, e uma nova é aberta. Tudo sai num commit só:
+  ou a senha mudou e as sessões foram trocadas, ou nada mudou.
+  """
+  if not security.verify_password(data.current_password, user.password_hash):
+    raise WrongCurrentPasswordError
+
+  try:
+    user.password_hash = hash_password(data.new_password)
+    db.add(user)
+    session_repository.delete_user_sessions(db, user.id)
+    token = start_session(db, user.id)
+    db.commit()
+  except Exception:
+    db.rollback()
+    raise
+
+  return token
