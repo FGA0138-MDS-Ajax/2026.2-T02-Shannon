@@ -19,6 +19,7 @@ from app.auth.schemas import (
   SignupResponse,
   TokenResponse,
   UserPublic,
+  UserUpdate,
 )
 from app.auth.security import hash_password
 from app.auth.session import repository as session_repository
@@ -27,11 +28,16 @@ from app.auth.tokens import TokenExpiredError, TokenInvalidError
 from app.config import settings
 
 
-def _ensure_available(db: Session, username: str, email: str) -> None:
-  """Levanta `UsernameTakenError` ou `EmailTakenError` se já estiverem em uso."""
-  if auth_repository.get_user_by_username(db, username) is not None:
+def _ensure_available(db: Session, username: str | None, email: str | None) -> None:
+  """Levanta `UsernameTakenError` ou `EmailTakenError` se já estiverem em uso.
+
+  `None` pula a consulta daquele campo (na edição, o valor não mudou).
+  """
+  if username is not None and (
+    auth_repository.get_user_by_username(db, username) is not None
+  ):
     raise UsernameTakenError
-  if auth_repository.get_user_by_email(db, email) is not None:
+  if email is not None and auth_repository.get_user_by_email(db, email) is not None:
     raise EmailTakenError
 
 
@@ -165,3 +171,46 @@ def change_password(db: Session, user: User, data: PasswordChange) -> TokenRespo
     raise
 
   return token
+
+
+def update_account(db: Session, user: User, data: UserUpdate) -> User:
+  """Altera nome, username e e-mail do usuário logado; só os campos enviados.
+
+  Levanta `WrongCurrentPasswordError` se o e-mail vier com a senha atual errada
+  (conferida antes da unicidade, para não revelar quais e-mails existem), e
+  `UsernameTakenError` ou `EmailTakenError` se o valor for de outra conta. Valor
+  igual ao atual não gera consulta nem escrita. Os tokens continuam válidos: o
+  `sub` é o `id`, que não muda.
+  """
+  fields = data.model_dump(exclude_unset=True, exclude={"current_password"})
+
+  if "email" in fields and not security.verify_password(
+    data.current_password, user.password_hash
+  ):
+    raise WrongCurrentPasswordError
+
+  changes = {
+    field: value for field, value in fields.items() if value != getattr(user, field)
+  }
+  if not changes:
+    return user
+
+  # Checa antes de alterar o objeto: com ele alterado, o autoflush das consultas
+  # gravaria o valor novo e o erro de UNIQUE sairia daqui, não do commit.
+  _ensure_available(db, changes.get("username"), changes.get("email"))
+
+  for field, value in changes.items():
+    setattr(user, field, value)
+
+  # Outra conta pode gravar o mesmo valor entre a checagem e o commit: o UNIQUE
+  # do banco recusa, desfazemos e checamos de novo para dar o 409 certo.
+  try:
+    db.add(user)
+    db.commit()
+  except IntegrityError:
+    db.rollback()
+    _ensure_available(db, changes.get("username"), changes.get("email"))
+    raise
+
+  db.refresh(user)
+  return user

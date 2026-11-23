@@ -4,9 +4,11 @@ from uuid import UUID
 from pydantic import (
   AfterValidator,
   BaseModel,
+  BeforeValidator,
   ConfigDict,
   EmailStr,
   Field,
+  StringConstraints,
   field_validator,
   model_validator,
 )
@@ -17,6 +19,10 @@ USERNAME_PATTERN = r"^[a-z0-9_.]+$"
 PASSWORD_MAX_BYTES = 72
 MSG_PASSWORD_CONFIRMATION = "A confirmação não confere com a nova senha."
 MSG_PASSWORD_UNCHANGED = "A nova senha deve ser diferente da atual."
+MSG_UPDATE_NULL_FIELD = "Os campos name, username e email não aceitam null."
+MSG_UPDATE_NO_FIELDS = "Informe ao menos um campo para alterar."
+MSG_UPDATE_EMAIL_NEEDS_PASSWORD = "Informe a senha atual para alterar o e-mail."
+UPDATABLE_FIELDS = ("name", "username", "email")
 
 
 def _password_max_bytes(value: str) -> str:
@@ -45,6 +51,32 @@ def normalize_identifier(value: object) -> object:
   if isinstance(value, str):
     return value.strip().lower()
   return value
+
+
+def _strip_text(value: object) -> object:
+  """Remove espaços nas pontas. Valores que não são texto passam direto."""
+  if isinstance(value, str):
+    return value.strip()
+  return value
+
+
+# Campos da conta, usados no cadastro (AUTH-4) e na edição da conta (PERF-1).
+# Os `BeforeValidator` do `Annotated` rodam de trás para a frente: primeiro a
+# normalização (último da lista), depois o `NoNul`, por fim as restrições do
+# `str`. Assim `"  Maria  "` é limpo antes de contar o tamanho.
+AccountUsername = Annotated[
+  str,
+  StringConstraints(min_length=3, max_length=30, pattern=USERNAME_PATTERN),
+  NoNul,
+  BeforeValidator(normalize_identifier),
+]
+AccountEmail = Annotated[EmailStr, NoNul, BeforeValidator(normalize_identifier)]
+AccountName = Annotated[
+  str,
+  StringConstraints(min_length=1, max_length=100),
+  NoNul,
+  BeforeValidator(_strip_text),
+]
 
 
 class UserPublic(BaseModel):
@@ -110,24 +142,35 @@ class LogoutRequest(BaseModel):
 class SignupRequest(BaseModel):
   """corpo do POST /auth/signup. chega ao serviço já normalizado."""
 
-  username: str = Field(min_length=3, max_length=30, pattern=USERNAME_PATTERN)
-  email: Annotated[EmailStr, NoNul]
+  username: AccountUsername
+  email: AccountEmail
   password: PasswordInput
-  name: Annotated[str, NoNul] = Field(min_length=1, max_length=100)
+  name: AccountName
 
-  @field_validator("username", "email", mode="before")
-  @classmethod
-  def _normalize_identifier(cls, value: object) -> object:
-    """Remove espaços nas pontas e passa para minúsculas."""
-    return normalize_identifier(value)
 
-  @field_validator("name", mode="before")
-  @classmethod
-  def _strip_name(cls, value: object) -> object:
-    """Remove espaços nas pontas do nome."""
-    if isinstance(value, str):
-      return value.strip()
-    return value
+class UserUpdate(BaseModel):
+  """corpo do PATCH /auth/session/me. Só os campos enviados são alterados.
+
+  Campo omitido não muda; campo enviado como `null` é recusado. A senha atual
+  só é exigida para trocar o e-mail, que serve de login, e não perde os espaços.
+  """
+
+  name: AccountName | None = None
+  username: AccountUsername | None = None
+  email: AccountEmail | None = None
+  current_password: str | None = None
+
+  @model_validator(mode="after")
+  def _check_fields(self) -> Self:
+    """Recusa `null`, corpo sem campos e e-mail sem a senha atual, nessa ordem."""
+    sent = self.model_fields_set & set(UPDATABLE_FIELDS)
+    if any(getattr(self, field) is None for field in sent):
+      raise ValueError(MSG_UPDATE_NULL_FIELD)
+    if not sent:
+      raise ValueError(MSG_UPDATE_NO_FIELDS)
+    if "email" in sent and self.current_password is None:
+      raise ValueError(MSG_UPDATE_EMAIL_NEEDS_PASSWORD)
+    return self
 
 
 class SignupResponse(BaseModel):
