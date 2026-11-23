@@ -48,6 +48,13 @@ from app.habits.service import (
   get_check_in_eligible_habits,
   get_visible_habit,
 )
+from app.photos.models import CheckInPhoto
+from app.photos.public import photo_public
+from app.photos.repository import list_photos_by_check_in_ids
+from app.photos.schemas import CheckInPhotoPublic
+from app.photos.visibility import can_view_photo
+from app.storage.base import Storage
+from app.storage.dependencies import get_storage
 
 
 def _user_group_ids(db: Session, user: User, habits: list[Habit]) -> frozenset[UUID]:
@@ -62,7 +69,11 @@ def _user_group_ids(db: Session, user: User, habits: list[Habit]) -> frozenset[U
 
 
 def build_check_ins_public(
-  db: Session, check_ins: list[CheckIn], user: User
+  db: Session,
+  check_ins: list[CheckIn],
+  user: User,
+  *,
+  include_full_photo: bool = False,
 ) -> list[CheckInPublic]:
   """Monta a resposta dos check-ins com os `habit_ids` que o usuário pode ver.
 
@@ -72,6 +83,12 @@ def build_check_ins_public(
   check-in vê todos os hábitos; os outros, só os que passam em `can_view_habit`,
   com os grupos do usuário calculados uma vez. A ordem de `habit_ids` não é
   garantida.
+
+  Acrescenta mais 1 consulta (as fotos da lista inteira). A foto só vai para quem
+  pode vê-la (`can_view_photo`, com todos os hábitos do check-in), com a miniatura
+  e, com `include_full_photo`, também a versão cheia; para os outros, `photo` é
+  nulo. Os grupos do usuário já foram calculados acima, então a foto não os consulta
+  de novo.
   """
   links = list_habit_links(db, [check_in.id for check_in in check_ins])
   habits = list_habits_by_ids(db, list({link.habit_id for link in links}))
@@ -85,6 +102,10 @@ def build_check_ins_public(
   habit_ids_by_check_in: dict[UUID, list[UUID]] = defaultdict(list)
   for link in links:
     habit_ids_by_check_in[link.check_in_id].append(link.habit_id)
+
+  photos = list_photos_by_check_in_ids(db, [check_in.id for check_in in check_ins])
+  habits_by_id = {habit.id: habit for habit in habits}
+  storage = get_storage()
 
   result = []
   for check_in in check_ins:
@@ -100,9 +121,35 @@ def build_check_ins_public(
         created_at=check_in.created_at,
         duration=check_in.duration,
         habit_ids=habit_ids,
+        photo=_visible_photo(
+          storage,
+          photos.get(check_in.id),
+          check_in,
+          [habits_by_id[hid] for hid in habit_ids_by_check_in[check_in.id]],
+          user,
+          group_ids,
+          include_full_photo,
+        ),
       )
     )
   return result
+
+
+def _visible_photo(
+  storage: Storage,
+  photo: CheckInPhoto | None,
+  check_in: CheckIn,
+  habits: list[Habit],
+  user: User,
+  group_ids: frozenset[UUID],
+  include_full: bool,
+) -> CheckInPhotoPublic | None:
+  """A foto do check-in em URLs assinadas, ou `None` se não há ou se não pode ver."""
+  if photo is None:
+    return None
+  if not can_view_photo(check_in.user_id, habits, user.id, group_ids):
+    return None
+  return photo_public(storage, photo, include_full)
 
 
 def list_check_in_categories(db: Session, user: User) -> CheckInCategoriesResponse:
@@ -356,7 +403,7 @@ def get_owned_check_in(db: Session, check_in_id: UUID, user: User) -> CheckIn:
 def get_check_in(db: Session, check_in_id: UUID, user: User) -> CheckInPublic:
   """Consulta um check-in visível ao usuário, com os `habit_ids` que ele pode ver."""
   check_in = get_visible_check_in(db, check_in_id, user)
-  return build_check_ins_public(db, [check_in], user)[0]
+  return build_check_ins_public(db, [check_in], user, include_full_photo=True)[0]
 
 
 def update_check_in(
@@ -373,7 +420,7 @@ def update_check_in(
   db.commit()
   db.refresh(check_in)
 
-  return build_check_ins_public(db, [check_in], user)[0]
+  return build_check_ins_public(db, [check_in], user, include_full_photo=True)[0]
 
 
 def delete_check_in(db: Session, check_in_id: UUID, user: User) -> None:
@@ -416,10 +463,22 @@ def list_user_check_ins(db: Session, user: User, query: CheckInsQuery) -> CheckI
   has_more = len(rows) > query.page_size
   rows = rows[: query.page_size]
 
-  items: list[dict[date, list[CheckInPublic]]] = [
-    {day: [CheckInPublic.model_validate(c) for c in check_ins]}
+  days = [
+    (day, [CheckInPublic.model_validate(c) for c in check_ins])
     for day, check_ins in rows
   ]
+  # São check-ins do próprio usuário: a foto sempre é dele, só a miniatura.
+  photos = list_photos_by_check_in_ids(
+    db, [check_in.id for _, day_check_ins in days for check_in in day_check_ins]
+  )
+  storage = get_storage()
+  for _, day_check_ins in days:
+    for check_in in day_check_ins:
+      photo = photos.get(check_in.id)
+      if photo is not None:
+        check_in.photo = photo_public(storage, photo, include_full=False)
+
+  items: list[dict[date, list[CheckInPublic]]] = [{day: c} for day, c in days]
 
   return CheckInsPage(
     items=items,

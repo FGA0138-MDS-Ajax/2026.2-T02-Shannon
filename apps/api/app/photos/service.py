@@ -14,8 +14,8 @@ from app.checkins.service import get_owned_check_in
 from app.habits import service as habits_service
 from app.photos import repository as photos_repository
 from app.photos.exceptions import PhotoNotTodayError
-from app.photos.models import CheckInPhoto
 from app.photos.processing import OUTPUT_CONTENT_TYPE, process_photo
+from app.photos.public import photo_public
 from app.photos.schemas import CheckInPhotoPublic
 from app.storage.base import Storage, StorageError
 from app.storage.dependencies import get_storage
@@ -54,16 +54,6 @@ def delete_objects_safely(storage: Storage, keys: Sequence[str]) -> None:
       list(keys),
       exc_info=True,
     )
-
-
-def photo_public(
-  storage: Storage, photo: CheckInPhoto, include_full: bool
-) -> CheckInPhotoPublic:
-  """Monta o `CheckInPhotoPublic` com URLs assinadas a partir do registro."""
-  return CheckInPhotoPublic(
-    thumbnail_url=storage.presigned_url(photo.thumbnail_key),
-    url=storage.presigned_url(photo.full_key) if include_full else None,
-  )
 
 
 def set_check_in_photo(
