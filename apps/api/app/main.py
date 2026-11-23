@@ -14,6 +14,7 @@ from app.group.responses import EXAMPLE_GROUP_STATS_EMPTY
 from app.group.router import group_router
 from app.group.stats import stats_router
 from app.habits.router import habit_router
+from app.photos.router import photos_router
 from app.statistics.router import statistics_router
 
 
@@ -49,6 +50,7 @@ app.include_router(group_habits_router)
 app.include_router(feed_router)
 app.include_router(ranking_router)
 app.include_router(stats_router)
+app.include_router(photos_router)
 
 
 _default_openapi = app.openapi
