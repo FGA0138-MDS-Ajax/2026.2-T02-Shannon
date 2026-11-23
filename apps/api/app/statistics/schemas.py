@@ -78,6 +78,14 @@ class Series(BaseModel):
   points: list[SeriesPoint]
 
 
+class UserProfile(BaseModel):
+  id: UUID
+  name: str
+  username: str
+  activity_streak: ActivityStreak
+  check_ins_total: int
+
+
 class UserStatistics(BaseModel):
   reference_date: date
   timezone: str

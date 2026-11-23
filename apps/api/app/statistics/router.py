@@ -17,6 +17,7 @@ from app.statistics import service
 from app.statistics.responses import (
   RESPONSES_CALENDAR,
   RESPONSES_HABIT_STATISTICS,
+  RESPONSES_PROFILE,
   RESPONSES_STATISTICS,
 )
 from app.statistics.schemas import (
@@ -24,6 +25,7 @@ from app.statistics.schemas import (
   HabitCalendar,
   HabitStatistics,
   StatisticsQuery,
+  UserProfile,
   UserStatistics,
 )
 
@@ -55,6 +57,28 @@ def get_user_statistics(
 ) -> UserStatistics:
   """Devolve as estatísticas do usuário logado."""
   return service.get_user_statistics(db, user, query)
+
+
+@statistics_router.get(
+  "/profile",
+  response_model=UserProfile,
+  status_code=status.HTTP_200_OK,
+  summary="Perfil do usuário",
+  description=(
+    "Devolve o resumo da trajetória do usuário logado para a tela de perfil:"
+    " nome, username, sequência de atividade (atual e recorde) e total de"
+    " check-ins. Sem check-ins, os números saem zerados.\n\n"
+    "Os números são calculados pelas mesmas regras de `GET /user/statistics`"
+    " e sempre coincidem com os de lá. Só devolve o perfil do próprio usuário."
+  ),
+  responses=RESPONSES_PROFILE,
+)
+def get_user_profile(
+  db: SessionDep,
+  user: Annotated[User, Depends(get_current_user)],
+) -> UserProfile:
+  """Devolve o perfil do usuário logado."""
+  return service.get_user_profile(db, user)
 
 
 @statistics_router.get(
