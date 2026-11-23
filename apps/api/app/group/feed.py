@@ -20,6 +20,9 @@ from app.group.exceptions import (
 from app.group.permissions import require_member
 from app.group.responses import RESPONSES_FEED
 from app.group.schemas import FeedAuthor, FeedHabit, FeedItem, FeedPage, FeedQuery
+from app.photos.public import photo_public
+from app.photos.repository import list_photos_by_check_in_ids
+from app.storage.dependencies import get_storage
 
 _CURSOR_SEPARATOR = "|"
 
@@ -67,7 +70,7 @@ def get_group_feed(
   itens. Com `after`, `has_more` diz que há ainda mais itens novos (chame de
   novo com o cursor do primeiro item) e `next_cursor` é nulo.
 
-  Depois da permissão, faz 3 consultas (check-ins, hábitos e autores), seja
+  Depois da permissão, faz 4 consultas (check-ins, hábitos, autores e fotos), seja
   qual for o número de itens. Página vazia faz só a primeira.
   """
   require_member(db, group_id, user)
@@ -88,6 +91,8 @@ def get_group_feed(
   authors = repository.list_authors(
     db, list({check_in.user_id for check_in in check_ins})
   )
+  photos = list_photos_by_check_in_ids(db, [check_in.id for check_in in check_ins])
+  storage = get_storage()
   habits_by_check_in: dict[UUID, list[FeedHabit]] = defaultdict(list)
   for check_in_id, habit in links:
     habits_by_check_in[check_in_id].append(FeedHabit(id=habit.id, name=habit.name))
@@ -103,6 +108,12 @@ def get_group_feed(
       description=check_in.description,
       habits=habits_by_check_in[check_in.id],
       created_at=check_in.created_at,
+      # Todo item tem hábito do grupo e quem lê é membro: a regra sempre permite.
+      photo=(
+        photo_public(storage, photos[check_in.id], include_full=False)
+        if check_in.id in photos
+        else None
+      ),
     )
     for check_in in check_ins
   ]

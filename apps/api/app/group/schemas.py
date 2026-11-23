@@ -18,6 +18,7 @@ from app.goals.schemas import HabitProgressPublic
 from app.group.models import GroupRole, RankingCriterion
 from app.habits.models import HabitStatus
 from app.habits.schemas import HabitCreate, HabitPublic, HabitUpdate
+from app.photos.schemas import CheckInPhotoPublic
 from app.validators import NoNul
 
 UsernameInput = Annotated[
@@ -256,6 +257,7 @@ class FeedItem(BaseModel):
   description: str | None
   habits: list[FeedHabit]
   created_at: datetime
+  photo: CheckInPhotoPublic | None = None
 
 
 class FeedPage(BaseModel):
