@@ -48,9 +48,10 @@ from app.habits.service import (
   get_check_in_eligible_habits,
   get_visible_habit,
 )
+from app.photos.cleanup import delete_objects_safely
 from app.photos.models import CheckInPhoto
 from app.photos.public import photo_public
-from app.photos.repository import list_photos_by_check_in_ids
+from app.photos.repository import list_photo_keys, list_photos_by_check_in_ids
 from app.photos.schemas import CheckInPhotoPublic
 from app.photos.visibility import can_view_photo
 from app.storage.base import Storage
@@ -427,12 +428,15 @@ def delete_check_in(db: Session, check_in_id: UUID, user: User) -> None:
   """Exclui definitivamente o check-in de quem o fez, junto com os vínculos.
 
   Levanta `CheckInNotFoundError` ou `CheckInForbiddenError` conforme
-  `get_owned_check_in`.
+  `get_owned_check_in`. Apaga os objetos da foto no bucket só depois do commit.
   """
   check_in = get_owned_check_in(db, check_in_id, user)
+  photo_keys = list_photo_keys(db, [check_in.id])
 
   checkins_repository.delete_check_in(db, check_in)
   db.commit()
+
+  delete_objects_safely(get_storage(), photo_keys)
 
 
 def list_habit_check_ins(

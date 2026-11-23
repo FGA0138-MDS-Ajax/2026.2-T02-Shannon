@@ -1,5 +1,4 @@
 import logging
-from collections.abc import Sequence
 from datetime import UTC, date
 from uuid import UUID, uuid4
 from zoneinfo import ZoneInfo
@@ -13,6 +12,7 @@ from app.checkins.repository import APP_TIMEZONE_NAME
 from app.checkins.service import get_owned_check_in
 from app.habits import service as habits_service
 from app.photos import repository as photos_repository
+from app.photos.cleanup import delete_objects_safely
 from app.photos.exceptions import PhotoNotTodayError
 from app.photos.processing import OUTPUT_CONTENT_TYPE, process_photo
 from app.photos.public import photo_public
@@ -40,20 +40,6 @@ def is_check_in_from_today(check_in: CheckIn, today: date) -> bool:
   if created_at.tzinfo is None:
     created_at = created_at.replace(tzinfo=UTC)
   return created_at.astimezone(_APP_TIMEZONE).date() == today
-
-
-def delete_objects_safely(storage: Storage, keys: Sequence[str]) -> None:
-  """Apaga objetos no bucket sem relançar `StorageError`; falhas vão para o log."""
-  if not keys:
-    return
-  try:
-    storage.delete(keys)
-  except StorageError:
-    logger.warning(
-      "Falha ao apagar objetos do bucket: %s",
-      list(keys),
-      exc_info=True,
-    )
 
 
 def set_check_in_photo(
