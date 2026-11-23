@@ -78,6 +78,18 @@ Para validar credenciais, envio, URL pré-assinada, expiração e bloqueio de ac
 uv run python scripts/storage_smoke.py
 ```
 
+### Varredor de fotos órfãs
+
+Para encontrar e remover objetos sob `check-ins/` no bucket que não possuem mais registro em `check_in_photos` e têm mais de 24 horas (margem de segurança para não apagar envios em andamento):
+
+```bash
+# Apenas lista e conta os órfãos sem apagar nada
+uv run python -m app.photos.sweep --dry-run
+
+# Remove efetivamente os órfãos encontrados
+uv run python -m app.photos.sweep
+```
+
 ---
 
 ## 📦 Instalação das Dependências
