@@ -1,20 +1,28 @@
-import { StyleSheet, Text } from "react-native";
+import { ScrollView, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { theme } from "@/config/theme";
+import { palette } from "@/components/statistics/palette";
+import StatisticsPanel from "@/components/statistics-panel";
 
 export default function Home() {
   return (
-    <SafeAreaView style={styles.container}>
-      <Text>Home</Text>
+    <SafeAreaView edges={["top"]} style={styles.container}>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+      >
+        <StatisticsPanel />
+      </ScrollView>
     </SafeAreaView>
   );
 }
 
+// Mesmo fundo das outras abas, inclusive atrás do relógio e da bateria
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingHorizontal: 24,
-    paddingTop: 16,
-    backgroundColor: theme.colors.gray,
+    backgroundColor: palette.background,
+  },
+  content: {
+    flexGrow: 1,
   },
 });
