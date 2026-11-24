@@ -20,7 +20,6 @@ from app.habits import service as habits_service
 from app.habits.models import Habit, HabitCategory, HabitStatus
 from app.habits.service import APP_TIMEZONE, today
 from app.main import app
-from app.storage.dependencies import get_storage
 from tests.support.db import db_connection
 
 
@@ -44,15 +43,6 @@ def connection_url(postgres_container: PostgresContainer) -> str:
       split.fragment,
     )
   )
-
-
-@pytest.fixture(autouse=True)
-def clear_storage() -> Iterator[None]:
-  """Esvazia o armazenamento em memória entre os testes."""
-  yield
-  storage = get_storage()
-  if hasattr(storage, "clear"):
-    storage.clear()
 
 
 @pytest.fixture(autouse=True)

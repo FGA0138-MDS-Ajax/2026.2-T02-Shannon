@@ -2,29 +2,24 @@ from collections.abc import Generator
 from typing import Annotated
 
 from fastapi import Depends
-from sqlmodel import Session, create_engine
+from sqlmodel import Session, SQLModel, create_engine
 
 from app.auth import models as auth_models  # noqa: F401  registra User no metadata
-from app.auth.session import (
-  models as session_models,  # noqa: F401  registra SessionToken no metadata
-)
 from app.checkins import (
   models as checkins_models,  # noqa: F401  registra CheckIn no metadata
 )
 from app.config import settings
 from app.goals import models as goals_models  # noqa: F401  registra Goal no metadata
-from app.group import (
-  models as group_models,  # noqa: F401  registra Group e Member no metadata
-)
 from app.habits import models as habits_models  # noqa: F401  registra Habit no metadata
-from app.photos import (
-  models as photos_models,  # noqa: F401  registra CheckInPhoto no metadata
-)
 
 engine = create_engine(
   settings.database_url_sync,
   echo=False,
 )
+
+
+def create_db_and_tables() -> None:
+  SQLModel.metadata.create_all(engine)
 
 
 def get_session() -> Generator[Session]:

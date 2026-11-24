@@ -5,7 +5,6 @@ MSG_TOKEN_EXPIRED = "Token expirado."
 MSG_TOKEN_INVALID = "Token inválido."
 MSG_USERNAME_TAKEN = "Username já cadastrado."
 MSG_EMAIL_TAKEN = "E-mail já cadastrado."
-MSG_WRONG_CURRENT_PASSWORD = "Senha atual incorreta."
 
 
 class UsernameTakenError(Exception):
@@ -28,7 +27,3 @@ def unauthorized_exception(message: str) -> HTTPException:
 
 class InvalidCredentialsError(Exception):
   """Usuário ou senha inválidos."""
-
-
-class WrongCurrentPasswordError(Exception):
-  """A senha atual informada não confere com a gravada."""

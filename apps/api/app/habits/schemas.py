@@ -11,7 +11,6 @@ from pydantic import (
   model_validator,
 )
 
-from app.checkins.schemas import GroupSummary
 from app.goals.schemas import GoalInput, GoalPublic, HabitProgressPublic
 from app.habits.models import HabitCategory, HabitStatus
 from app.validators import NoNul
@@ -59,20 +58,15 @@ class HabitPublic(BaseModel):
   category: HabitCategory
   is_public: bool
   status: HabitStatus
-  author_user_id: UUID | None = None
-  author_group_id: UUID | None = None
+  author_user_id: UUID
   created_at: date
   target_end_date: date | None
   finished_at: date | None
   goal: GoalPublic | None
-  group: GroupSummary | None = None
 
 
 class HabitWithProgress(HabitPublic):
-  """Item de GET /habits: o hábito com o progresso da meta (null se não tiver).
-
-  Em hábito de grupo, `group` vem preenchido e `progress` é o do usuário que pede.
-  """
+  """Item de GET /habits: o hábito com o progresso da meta (null se não tiver)."""
 
   progress: HabitProgressPublic | None = None
 

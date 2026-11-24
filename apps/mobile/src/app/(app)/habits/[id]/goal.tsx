@@ -51,10 +51,7 @@ export default function HabitGoalScreen() {
       return (
         <View style={styles.errorBanner}>
           <Text style={styles.errorBannerText}>{errorMessage}</Text>
-          <Button variant="secondary" onPress={() => {
-        setErrorMessage(null);
-        refreshHabit();
-        }}>
+          <Button variant="secondary" onPress={() => refreshHabit()}>
             Tentar novamente
           </Button>
         </View>
@@ -64,11 +61,7 @@ export default function HabitGoalScreen() {
     if (isLoading || !habit) {
       return (
         <View style={styles.centered}>
-          <ActivityIndicator
-            testID="goal-edit-loading"
-            size="large"
-            color={theme.colors.primary}
-          />
+          <ActivityIndicator size="large" color={theme.colors.primary} />
         </View>
       );
     }

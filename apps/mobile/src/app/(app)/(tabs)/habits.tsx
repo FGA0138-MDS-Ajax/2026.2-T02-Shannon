@@ -53,11 +53,7 @@ export default function HabitsScreen() {
     if (isLoading && !habits) {
       return (
         <View style={styles.centered}>
-          <ActivityIndicator
-            testID="habits-loading"
-            size="large"
-            color={theme.colors.primary}
-          />
+          <ActivityIndicator size="large" color={theme.colors.primary} />
         </View>
       );
     }
@@ -66,9 +62,7 @@ export default function HabitsScreen() {
       return (
         <View style={styles.errorBanner}>
           <Text style={styles.errorBannerText}>{errorMessage}</Text>
-          <Button variant="secondary" onPress={() => { setErrorMessage(null);
-          refreshHabits();
-        }}>
+          <Button variant="secondary" onPress={() => refreshHabits()}>
             Tentar novamente
           </Button>
         </View>

@@ -14,7 +14,6 @@ from pydantic import (
 
 from app.goals.schemas import HabitProgressPublic
 from app.habits.models import HabitCategory
-from app.photos.schemas import CheckInPhotoPublic
 from app.validators import NoNul
 
 # dias, horas, minutos e segundos (ex.: PT30M, PT1H15M, P1DT2H, PT0.5S).
@@ -75,7 +74,6 @@ class CheckInPublic(BaseModel):
   created_at: datetime
   duration: timedelta | None
   habit_ids: list[UUID]
-  photo: CheckInPhotoPublic | None = None
 
 
 class CheckInCreatedPublic(CheckInPublic):

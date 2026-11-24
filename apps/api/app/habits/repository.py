@@ -2,10 +2,9 @@ from datetime import date
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import ColumnElement, func, or_
+from sqlalchemy import ColumnElement, func
 from sqlmodel import Session, col, select
 
-from app.group.models import Group, Member
 from app.habits.models import Habit, HabitCategory, HabitStatus
 
 
@@ -14,37 +13,20 @@ def get_habit_by_id(db: Session, habit_id: UUID) -> Habit | None:
   return db.get(Habit, habit_id)
 
 
-def check_in_eligible_conditions(
-  user_id: UUID, today: date
-) -> list[ColumnElement[bool]]:
-  """Condições do WHERE para hábito elegível a check-in.
+def check_in_eligible_conditions(user_id: UUID) -> list[ColumnElement[bool]]:
+  """Condições do WHERE para hábito elegível a check-in: do usuário e ativo.
 
-  Hábito ativo do usuário ou de um grupo ativo de que ele é membro. Grupo ativo
-  não tem `ends_on` ou tem `ends_on` a partir de hoje, como em `group_status`.
   Única definição da regra. Outras consultas usam `.where(*conditions, ...)`.
   """
-  active_group_ids = (
-    select(col(Member.group_id))
-    .join(Group, col(Group.id) == col(Member.group_id))
-    .where(
-      col(Member.user_id) == user_id,
-      or_(col(Group.ends_on).is_(None), col(Group.ends_on) >= today),
-    )
-  )
   return [
-    or_(
-      col(Habit.author_user_id) == user_id,
-      col(Habit.author_group_id).in_(active_group_ids),
-    ),
+    col(Habit.author_user_id) == user_id,
     col(Habit.status) == HabitStatus.ACTIVE,
   ]
 
 
-def list_check_in_eligible_habits(
-  db: Session, user_id: UUID, today: date
-) -> list[Habit]:
+def list_check_in_eligible_habits(db: Session, user_id: UUID) -> list[Habit]:
   """Lista os hábitos elegíveis a check-in do usuário. Não faz commit."""
-  statement = select(Habit).where(*check_in_eligible_conditions(user_id, today))
+  statement = select(Habit).where(*check_in_eligible_conditions(user_id))
   return list(db.exec(statement).all())
 
 
@@ -75,44 +57,6 @@ def list_habits_by_author(
   return list(db.exec(statement).all())
 
 
-def list_habits_for_user_with_groups(
-  db: Session, user_id: UUID, status: HabitStatus | None = None
-) -> list[Habit]:
-  """Lista os hábitos do usuário e os dos grupos de que ele é membro.
-
-  Mesma ordem de `list_habits_by_author`: `created_at` decrescente e `name`.
-  """
-  member_group_ids = select(col(Member.group_id)).where(col(Member.user_id) == user_id)
-  statement = select(Habit).where(
-    or_(
-      col(Habit.author_user_id) == user_id,
-      col(Habit.author_group_id).in_(member_group_ids),
-    )
-  )
-  if status is not None:
-    statement = statement.where(col(Habit.status) == status)
-
-  statement = statement.order_by(col(Habit.created_at).desc(), col(Habit.name))
-
-  return list(db.exec(statement).all())
-
-
-def list_habits_by_group(
-  db: Session, group_id: UUID, status: HabitStatus | None = None
-) -> list[Habit]:
-  """Lista os hábitos do grupo, opcionalmente filtrados por status. Não faz commit.
-
-  Mesma ordem de `list_habits_by_author`: `created_at` decrescente e `name`.
-  """
-  statement = select(Habit).where(col(Habit.author_group_id) == group_id)
-  if status is not None:
-    statement = statement.where(col(Habit.status) == status)
-
-  statement = statement.order_by(col(Habit.created_at).desc(), col(Habit.name))
-
-  return list(db.exec(statement).all())
-
-
 def create_habit(db: Session, habit: Habit) -> Habit:
   """Adiciona e faz flush do novo hábito no banco. Não faz commit."""
   db.add(habit)
@@ -121,12 +65,12 @@ def create_habit(db: Session, habit: Habit) -> Habit:
 
 
 def count_eligible_habits_by_category(
-  db: Session, user_id: UUID, today: date
+  db: Session, user_id: UUID
 ) -> list[tuple[str, int]]:
-  """Conta os hábitos elegíveis a check-in por categoria. Não faz commit."""
+  """Conta hábitos ativos por categoria para o usuário. Não faz commit."""
   statement = (
     select(Habit.category, func.count())
-    .where(*check_in_eligible_conditions(user_id, today))
+    .where(*check_in_eligible_conditions(user_id))
     .group_by(Habit.category)
   )
   return list(db.exec(statement).all())
@@ -135,7 +79,6 @@ def count_eligible_habits_by_category(
 def list_eligible_habits_page(
   db: Session,
   user_id: UUID,
-  today: date,
   *,
   category: HabitCategory | None = None,
   exclude_category: HabitCategory | None = None,
@@ -143,7 +86,7 @@ def list_eligible_habits_page(
   offset: int,
 ) -> list[Habit]:
   """Lista uma página de hábitos elegíveis, com ordem estável. Não faz commit."""
-  statement = select(Habit).where(*check_in_eligible_conditions(user_id, today))
+  statement = select(Habit).where(*check_in_eligible_conditions(user_id))
 
   if category is not None:
     statement = statement.where(col(Habit.category) == category.value)
