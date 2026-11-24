@@ -42,6 +42,8 @@ function makeHabit(progress: HabitProgress | null): HabitWithProgress {
     is_public: true,
     status: "active",
     author_user_id: "1",
+    author_group_id: null,
+    group: null,
     created_at: "2026-10-05",
     target_end_date: null,
     finished_at: null,

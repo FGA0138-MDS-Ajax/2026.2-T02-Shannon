@@ -84,15 +84,20 @@ export interface Habit {
   category: HabitCategory;
   is_public: boolean;
   status: HabitStatus;
-  author_user_id: string;
+  // Hábito de grupo não tem usuário autor: vem `author_group_id` e `group`.
+  author_user_id: string | null;
+  author_group_id: string | null;
   created_at: string;
   target_end_date: string | null;
   finished_at: string | null;
   // `null` só em hábito criado antes das metas.
   goal: GoalPublic | null;
+  group: GroupSummary | null;
 }
 
 // Item de GET /habits. `progress` é `null` quando o hábito não tem meta.
+// Em hábito de grupo, `progress.status` vem "ended" por engano (bug L1 do
+// back): a situação certa está em GET /groups/{id}/habits/{id}/stats.
 export interface HabitWithProgress extends Habit {
   progress: HabitProgress | null;
 }

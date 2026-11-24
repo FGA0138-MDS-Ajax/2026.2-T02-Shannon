@@ -46,6 +46,8 @@ function makeHabit(habitGoal: GoalPublic | null = goal): Habit {
     is_public: false,
     status: "active",
     author_user_id: "user-1",
+    author_group_id: null,
+    group: null,
     created_at: "2026-11-02",
     target_end_date: null,
     finished_at: null,
