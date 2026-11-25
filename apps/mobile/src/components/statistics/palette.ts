@@ -20,4 +20,9 @@ export const palette = {
   headerRing: "#4A4D42",
   riskBackground: "#FBE4D6",
   riskText: "#B4461F",
+  // Feed do grupo: fundos dos ícones, quadro da meta e fundo do modal
+  sand: "#EEE7CF",
+  sageSoft: "#E5E8D9",
+  sageInk: "#4C5B31",
+  overlay: "rgba(37, 40, 31, 0.92)",
 };

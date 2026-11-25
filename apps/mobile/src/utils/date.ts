@@ -29,5 +29,61 @@ export function formatDate(date: Date): string {
 /** Data e hora ISO em UTC (ex.: `created_at` do check-in) → `"28/10/2026 às 07:30"` no fuso do aparelho */
 export function formatDateTime(isoDateTime: string): string {
   const date = new Date(isoDateTime);
-  return `${formatDate(date)} às ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  return `${formatDate(date)} às ${formatTime(isoDateTime)}`;
+}
+
+/** Data e hora ISO em UTC → `"07:30"` no fuso do aparelho */
+export function formatTime(isoDateTime: string): string {
+  const date = new Date(isoDateTime);
+  return `${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+const MONTHS = [
+  "janeiro",
+  "fevereiro",
+  "março",
+  "abril",
+  "maio",
+  "junho",
+  "julho",
+  "agosto",
+  "setembro",
+  "outubro",
+  "novembro",
+  "dezembro",
+];
+
+/** `Date` → `"13 de novembro de 2026"` */
+export function formatLongDate(date: Date): string {
+  return `${date.getDate()} de ${MONTHS[date.getMonth()]} de ${date.getFullYear()}`;
+}
+
+/** Data e hora ISO em UTC → `"13 de novembro de 2026 · 09:32"` no fuso do aparelho */
+export function formatLongDateTime(isoDateTime: string): string {
+  return `${formatLongDate(new Date(isoDateTime))} · ${formatTime(isoDateTime)}`;
+}
+
+/** `Date` → `"NOVEMBRO 2026"` */
+export function formatMonthYear(date: Date): string {
+  return `${MONTHS[date.getMonth()].toUpperCase()} ${date.getFullYear()}`;
+}
+
+/** Os 7 dias da semana da data, de segunda a domingo */
+export function weekDays(date: Date): Date[] {
+  // getDay(): 0 = domingo ... 6 = sábado; a semana do app começa na segunda
+  const sinceMonday = (date.getDay() + 6) % 7;
+  const monday = new Date(
+    date.getFullYear(),
+    date.getMonth(),
+    date.getDate() - sinceMonday,
+  );
+  return Array.from(
+    { length: 7 },
+    (_, index) =>
+      new Date(
+        monday.getFullYear(),
+        monday.getMonth(),
+        monday.getDate() + index,
+      ),
+  );
 }
