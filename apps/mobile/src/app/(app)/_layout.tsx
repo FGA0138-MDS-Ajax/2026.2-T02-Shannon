@@ -17,6 +17,7 @@ export default function AppLayout() {
       <Stack.Screen name="check-ins/[id]/edit/index" />
       <Stack.Screen name="groups/create" />
       <Stack.Screen name="groups/join" />
+      <Stack.Screen name="groups/[id]/index" />
     </Stack>
   );
 }
