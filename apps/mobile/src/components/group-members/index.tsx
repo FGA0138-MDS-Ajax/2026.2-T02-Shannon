@@ -1,4 +1,5 @@
-import { StyleSheet, Text, View } from "react-native";
+import { Lucide } from "@react-native-vector-icons/lucide";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Badge } from "@/components/group-row";
 import { palette } from "@/components/statistics/palette";
 import { theme } from "@/config/theme";
@@ -8,22 +9,28 @@ import { formatDate } from "@/utils/date";
 export interface GroupMembersProps {
   members: MemberPublic[];
   currentUserId?: string;
+  /** Só para admin: tocar num integrante (menos em si mesmo) abre as ações. */
+  onMemberPress?: (member: MemberPublic) => void;
 }
 
 // Integrantes na ordem da API: quem entrou primeiro aparece antes
 export default function GroupMembers({
   members,
   currentUserId,
+  onMemberPress,
 }: GroupMembersProps) {
   return (
     <View>
       {members.map((member) => {
         const isMe = member.user_id === currentUserId;
+        const canPress = !!onMemberPress && !isMe;
         return (
-          <View
+          <Pressable
             key={member.user_id}
             testID={`member-${member.user_id}`}
-            style={styles.row}
+            disabled={!canPress}
+            onPress={() => onMemberPress?.(member)}
+            style={({ pressed }) => [styles.row, pressed && styles.pressed]}
           >
             <View style={styles.texts}>
               <Text style={styles.username}>
@@ -35,7 +42,14 @@ export default function GroupMembers({
               </Text>
             </View>
             {member.role === "admin" && <Badge label="Admin" highlight />}
-          </View>
+            {canPress && (
+              <Lucide
+                name="ellipsis-vertical"
+                size={18}
+                color={palette.inkSoft}
+              />
+            )}
+          </Pressable>
         );
       })}
     </View>
@@ -50,6 +64,9 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.gray300,
+  },
+  pressed: {
+    opacity: 0.6,
   },
   texts: {
     flex: 1,

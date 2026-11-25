@@ -1,7 +1,14 @@
-import { render } from "@testing-library/react-native";
+import { fireEvent, render, waitFor } from "@testing-library/react-native";
+import { Alert, type AlertButton } from "react-native";
 import { SWRConfig } from "swr";
 import GroupAboutScreen from "@/app/(app)/groups/[id]/about";
-import { getGroup } from "@/services/groups-api";
+import { ApiError } from "@/services/api";
+import {
+  addMember,
+  getGroup,
+  promoteMember,
+  removeMember,
+} from "@/services/groups-api";
 import type { GroupDetail } from "@/services/types/groups";
 
 jest.mock("expo-router", () => {
@@ -17,9 +24,25 @@ jest.mock("@/hooks/useSession", () => ({
   useSession: () => ({ user: { id: "u-caio" } }),
 }));
 
-jest.mock("@/services/groups-api", () => ({ getGroup: jest.fn() }));
+jest.mock("@/services/groups-api", () => ({
+  getGroup: jest.fn(),
+  addMember: jest.fn(),
+  promoteMember: jest.fn(),
+  removeMember: jest.fn(),
+}));
 
 const mockGetGroup = getGroup as jest.MockedFunction<typeof getGroup>;
+
+// Responde aos Alerts tocando nos botões com estes textos, na ordem
+function pressInAlerts(...texts: string[]) {
+  const queue = [...texts];
+  jest.spyOn(Alert, "alert").mockImplementation((_title, _message, buttons) => {
+    const text = queue.shift();
+    (buttons as AlertButton[] | undefined)
+      ?.find((button) => button.text === text)
+      ?.onPress?.();
+  });
+}
 
 const aboutGroup: GroupDetail = {
   id: "g1",
@@ -88,14 +111,80 @@ describe("GroupAboutScreen", () => {
     expect(screen.getByText("Entrou em 18/11/2026")).toBeTruthy();
   });
 
-  it("shows the admin actions only to admins", async () => {
-    const member = await renderScreen();
-    await member.findByText("Corrida da firma");
-    expect(member.queryByText("Editar grupo")).toBeNull();
-    member.unmount();
+  it("hides the admin actions from members", async () => {
+    const screen = await renderScreen();
 
-    mockGetGroup.mockResolvedValue({ ...aboutGroup, my_role: "admin" });
-    const admin = await renderScreen();
-    expect(await admin.findByText("Editar grupo")).toBeTruthy();
+    await screen.findByText("Corrida da firma");
+    expect(screen.queryByText("Editar grupo")).toBeNull();
+    expect(screen.queryByTestId("add-member-input")).toBeNull();
+  });
+
+  describe("as admin", () => {
+    beforeEach(() => {
+      mockGetGroup.mockResolvedValue({ ...aboutGroup, my_role: "admin" });
+    });
+
+    it("offers to edit the group", async () => {
+      const screen = await renderScreen();
+
+      expect(await screen.findByText("Editar grupo")).toBeTruthy();
+    });
+
+    it("promotes a member", async () => {
+      mockGetGroup.mockResolvedValue({
+        ...aboutGroup,
+        my_role: "admin",
+        members: [
+          aboutGroup.members[0],
+          { ...aboutGroup.members[1], role: "member" },
+        ],
+      });
+      pressInAlerts("Tornar admin");
+      const screen = await renderScreen();
+
+      await fireEvent.press(await screen.findByTestId("member-u-ana"));
+
+      await waitFor(() =>
+        expect(promoteMember).toHaveBeenCalledWith("g1", "u-ana"),
+      );
+    });
+
+    it("removes a member after the confirmation", async () => {
+      pressInAlerts("Remover do grupo", "Remover");
+      const screen = await renderScreen();
+
+      await fireEvent.press(await screen.findByTestId("member-u-ana"));
+
+      await waitFor(() =>
+        expect(removeMember).toHaveBeenCalledWith("g1", "u-ana"),
+      );
+    });
+
+    it("does not offer actions on the current user", async () => {
+      const alertSpy = jest.spyOn(Alert, "alert");
+      const screen = await renderScreen();
+
+      await fireEvent.press(await screen.findByTestId("member-u-caio"));
+
+      expect(alertSpy).not.toHaveBeenCalled();
+    });
+
+    it("adds a member by username and shows API errors", async () => {
+      (addMember as jest.Mock).mockRejectedValueOnce(
+        new ApiError("Not found", 404, {
+          detail: "Usuário não encontrado.",
+        }),
+      );
+      const screen = await renderScreen();
+
+      await fireEvent.changeText(
+        await screen.findByTestId("add-member-input"),
+        "joao",
+      );
+      await fireEvent.press(screen.getByText("Adicionar"));
+
+      expect(await screen.findByText("Usuário não encontrado.")).toBeTruthy();
+      expect(addMember).toHaveBeenCalledWith("g1", "joao");
+    });
   });
 });

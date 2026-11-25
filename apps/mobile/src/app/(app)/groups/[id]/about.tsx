@@ -7,12 +7,14 @@ import {
 import { useCallback } from "react";
 import {
   ActivityIndicator,
+  Alert,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import AddMember from "@/components/add-member";
 import BackButton from "@/components/back-button";
 import Button from "@/components/button";
 import GroupMembers from "@/components/group-members";
@@ -21,6 +23,8 @@ import { theme } from "@/config/theme";
 import { useGroup } from "@/hooks/useGroup";
 import { useSession } from "@/hooks/useSession";
 import { getErrorMessage } from "@/services/api-errors";
+import { promoteMember, removeMember } from "@/services/groups-api";
+import type { MemberPublic } from "@/services/types/groups";
 import { formatDate, parseApiDate } from "@/utils/date";
 import { criterionLabels, endsOnLabel } from "@/utils/groups";
 
@@ -40,6 +44,59 @@ export default function GroupAboutScreen() {
       refreshGroup();
     }, [refreshGroup]),
   );
+
+  // Ações do admin terminam recarregando o detalhe (membros e contagem)
+  const runAction = async (
+    failTitle: string,
+    action: () => Promise<unknown>,
+  ) => {
+    try {
+      await action();
+    } catch (err: unknown) {
+      Alert.alert(failTitle, getErrorMessage(err));
+    }
+    refreshGroup();
+  };
+
+  const confirmRemove = (member: MemberPublic) => {
+    Alert.alert(
+      `Remover ${member.username}?`,
+      "A pessoa sai do grupo e deixa de aparecer no ranking.",
+      [
+        { text: "Cancelar", style: "cancel" },
+        {
+          text: "Remover",
+          style: "destructive",
+          onPress: () =>
+            runAction("Não foi possível remover", () =>
+              removeMember(id, member.user_id),
+            ),
+        },
+      ],
+    );
+  };
+
+  const handleMemberPress = (member: MemberPublic) => {
+    Alert.alert(member.username, undefined, [
+      ...(member.role === "member"
+        ? [
+            {
+              text: "Tornar admin",
+              onPress: () =>
+                runAction("Não foi possível promover", () =>
+                  promoteMember(id, member.user_id),
+                ),
+            },
+          ]
+        : []),
+      {
+        text: "Remover do grupo",
+        style: "destructive" as const,
+        onPress: () => confirmRemove(member),
+      },
+      { text: "Cancelar", style: "cancel" as const },
+    ]);
+  };
 
   const renderContent = () => {
     if (isLoading && !group) {
@@ -104,7 +161,12 @@ export default function GroupAboutScreen() {
         )}
 
         <Text style={styles.sectionTitle}>Membros ({group.members_count})</Text>
-        <GroupMembers members={group.members} currentUserId={user?.id} />
+        <GroupMembers
+          members={group.members}
+          currentUserId={user?.id}
+          onMemberPress={isAdmin ? handleMemberPress : undefined}
+        />
+        {isAdmin && <AddMember groupId={group.id} onAdded={refreshGroup} />}
       </ScrollView>
     );
   };
