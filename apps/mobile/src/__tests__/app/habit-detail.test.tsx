@@ -1,7 +1,9 @@
 import { fireEvent, render, waitFor } from "@testing-library/react-native";
 import { SWRConfig } from "swr";
+import { router } from "expo-router";
 import HabitDetailScreen from "@/app/(app)/habits/[id]";
 import { ApiError, request } from "@/services/api";
+import type { GroupHabitStatistics } from "@/services/types/groups";
 import type {
   CheckIn,
   GoalPublic,
@@ -167,5 +169,98 @@ describe("HabitDetailScreen", () => {
     await fireEvent.press(screen.getByText("Tentar novamente"));
     expect(await screen.findByText("Correr")).toBeTruthy();
 
+  });
+});
+
+describe("HabitDetailScreen with a group habit", () => {
+  const groupHabit: Habit = {
+    ...makeHabit(),
+    author_user_id: null,
+    author_group_id: "g1",
+    group: { id: "g1", name: "Corrida da firma" },
+  };
+
+  function checkIn(id: string, userId: string): CheckIn {
+    return {
+      id,
+      user_id: userId,
+      title: `Treino ${id}`,
+      description: null,
+      created_at: "2026-11-04T10:00:00Z",
+      duration: null,
+      habit_ids: ["habit-1"],
+    };
+  }
+
+  const groupCheckIns = [
+    checkIn("c1", "user-1"),
+    checkIn("c2", "user-2"),
+    checkIn("c3", "user-gone"),
+  ];
+
+  const groupStats: GroupHabitStatistics = {
+    as_of: "2026-11-05",
+    habit_id: "habit-1",
+    name: "Correr",
+    habit_status: "active",
+    members: [
+      {
+        user: { id: "user-2", username: "ana" },
+        progress: makeProgress(),
+        check_in_days: 4,
+      },
+      {
+        user: { id: "user-1", username: "caio" },
+        progress: { ...makeProgress(), status: "at_risk" },
+        check_in_days: 2,
+      },
+    ],
+  };
+
+  beforeEach(() => {
+    mockRequest.mockImplementation(async (path: string) => {
+      if (path === "/habits/habit-1") return groupHabit;
+      if (path === "/habits/habit-1/check-ins") return groupCheckIns;
+      // L1: o back manda "ended" aqui em hábito de grupo
+      if (path === "/goals/habits/habit-1/progress")
+        return { ...makeProgress(), status: "ended" };
+      if (path === "/groups/g1/habits/habit-1/stats") return groupStats;
+      throw new Error(`Unexpected request: ${path}`);
+    });
+  });
+
+  it("uses the user's own status from the group stats (bug L1)", async () => {
+    const screen = await renderScreen();
+
+    expect(await screen.findByText("Não pode faltar nenhum dia")).toBeTruthy();
+    expect(screen.queryByText("Streak final")).toBeNull();
+  });
+
+  it("names the group and links to it", async () => {
+    const screen = await renderScreen();
+
+    await fireEvent.press(
+      await screen.findByText("Hábito do grupo Corrida da firma"),
+    );
+
+    expect(router.push).toHaveBeenCalledWith("/groups/g1");
+  });
+
+  it("hides the personal actions", async () => {
+    const screen = await renderScreen();
+
+    await screen.findByText("Hábito do grupo Corrida da firma");
+    expect(screen.queryByText("Editar")).toBeNull();
+    expect(screen.queryByText("Finalizar")).toBeNull();
+    expect(screen.queryByText("Deletar")).toBeNull();
+    expect(screen.queryByText(/Privado/)).toBeNull();
+  });
+
+  it("shows who made each check-in", async () => {
+    const screen = await renderScreen();
+
+    expect(await screen.findByText("Você")).toBeTruthy();
+    expect(screen.getByText("ana")).toBeTruthy();
+    expect(screen.getByText("Ex-membro do grupo")).toBeTruthy();
   });
 });

@@ -26,6 +26,7 @@ import { useSession } from "@/hooks/useSession";
 import { request } from "@/services/api";
 import { getErrorMessage } from "@/services/api-errors";
 import { deleteHabit, finishHabit } from "@/services/habits-api";
+import type { GroupHabitStatistics } from "@/services/types/groups";
 import type { CheckIn, Habit, HabitProgress } from "@/services/types/habits";
 import { formatDate, formatDateTime, parseApiDate } from "@/utils/date";
 import { formatDuration } from "@/utils/duration";
@@ -65,6 +66,26 @@ export default function HabitDetailScreen() {
     },
   );
 
+  // Bug L1 do back: em hábito de grupo, `progress.status` vem "ended" por
+  // engano. A situação certa é a do próprio usuário nas estatísticas do grupo.
+  const groupId = habit?.group?.id;
+  const {
+    data: groupStats,
+    error: groupStatsError,
+    mutate: refreshGroupStats,
+  } = useSWR<GroupHabitStatistics>(
+    groupId ? `/groups/${groupId}/habits/${id}/stats` : null,
+    request,
+  );
+  const myGroupProgress = groupStats?.members.find(
+    (member) => member.user.id === user?.id,
+  )?.progress;
+  const shownProgress =
+    progress && myGroupProgress
+      ? { ...progress, status: myGroupProgress.status }
+      : progress;
+  const waitingGroupStats = !!groupId && !groupStats && !groupStatsError;
+
   useFocusEffect(
     useCallback(() => {
       setErrorMessage(null);
@@ -73,7 +94,8 @@ export default function HabitDetailScreen() {
       refreshHabit();
       refreshCheckIns();
       refreshProgress();
-    }, [refreshHabit, refreshCheckIns, refreshProgress]),
+      refreshGroupStats();
+    }, [refreshHabit, refreshCheckIns, refreshProgress, refreshGroupStats]),
   );
 
   const handleFinish = () => {
@@ -160,7 +182,7 @@ export default function HabitDetailScreen() {
       );
     }
 
-    if (!progress) {
+    if (!shownProgress || waitingGroupStats) {
       return (
         <ActivityIndicator
           testID="habit-progress-loading"
@@ -169,7 +191,15 @@ export default function HabitDetailScreen() {
       );
     }
 
-    return <GoalProgress progress={progress} />;
+    return <GoalProgress progress={shownProgress} />;
+  };
+
+  // Em hábito de grupo o histórico traz os check-ins de todos os membros
+  const authorName = (userId: string) => {
+    if (userId === user?.id) return "Você";
+    const member = groupStats?.members.find((item) => item.user.id === userId);
+    // Quem saiu do grupo não aparece mais nas estatísticas
+    return member?.user.username ?? "Ex-membro do grupo";
   };
 
   const renderCheckIns = () => {
@@ -203,6 +233,9 @@ export default function HabitDetailScreen() {
         onPress={() => router.push(`/check-ins/${checkIn.id}` as Href)}
       >
         <Text style={styles.checkInTitle}>{checkIn.title}</Text>
+        {groupId && (
+          <Text style={styles.checkInAuthor}>{authorName(checkIn.user_id)}</Text>
+        )}
         <Text style={styles.checkInDetails}>
           {formatDateTime(checkIn.created_at)}
           {checkIn.duration ? ` · ${formatDuration(checkIn.duration)}` : ""}
@@ -252,7 +285,8 @@ export default function HabitDetailScreen() {
     }
 
     const isFinished = habit.status === "finished";
-    const isAuthor = habit.author_user_id === user?.id;
+    // Hábito de grupo só muda pelas rotas do grupo: as rotas pessoais dão 403
+    const isAuthor = habit.group === null && habit.author_user_id === user?.id;
     const canChangeGoal = isAuthor && !isFinished;
 
     return (
@@ -268,9 +302,28 @@ export default function HabitDetailScreen() {
           </View>
         </View>
         <Text style={styles.details}>
-          {habitCategoryLabels[habit.category]} ·{" "}
-          {habit.is_public ? "Público" : "Privado"}
+          {habitCategoryLabels[habit.category]}
+          {habit.group ? "" : ` · ${habit.is_public ? "Público" : "Privado"}`}
         </Text>
+
+        {habit.group && (
+          <Pressable
+            testID="habit-group-link"
+            accessibilityRole="link"
+            style={styles.groupLink}
+            onPress={() => router.push(`/groups/${habit.group?.id}` as Href)}
+          >
+            <Lucide name="users" size={16} color={theme.colors.primaryDark} />
+            <Text style={styles.groupLinkText}>
+              Hábito do grupo {habit.group.name}
+            </Text>
+            <Lucide
+              name="chevron-right"
+              size={16}
+              color={theme.colors.primaryDark}
+            />
+          </Pressable>
+        )}
 
         {habit.description && (
           <View style={styles.section}>
@@ -466,6 +519,18 @@ const styles = StyleSheet.create({
   section: {
     marginTop: 24,
   },
+  groupLink: {
+    marginTop: 12,
+    alignSelf: "flex-start",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  groupLinkText: {
+    fontFamily: theme.font.medium,
+    fontSize: 14,
+    color: theme.colors.primaryDark,
+  },
   sectionTitle: {
     fontFamily: theme.font.semiBold,
     fontSize: 15,
@@ -524,6 +589,11 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 14,
     marginBottom: 8,
+  },
+  checkInAuthor: {
+    fontFamily: theme.font.medium,
+    fontSize: 13,
+    color: theme.colors.primaryDark,
   },
   checkInTitle: {
     fontFamily: theme.font.semiBold,
