@@ -87,4 +87,15 @@ describe("GroupAboutScreen", () => {
     expect(screen.getByText("ana")).toBeTruthy();
     expect(screen.getByText("Entrou em 18/11/2026")).toBeTruthy();
   });
+
+  it("shows the admin actions only to admins", async () => {
+    const member = await renderScreen();
+    await member.findByText("Corrida da firma");
+    expect(member.queryByText("Editar grupo")).toBeNull();
+    member.unmount();
+
+    mockGetGroup.mockResolvedValue({ ...aboutGroup, my_role: "admin" });
+    const admin = await renderScreen();
+    expect(await admin.findByText("Editar grupo")).toBeTruthy();
+  });
 });

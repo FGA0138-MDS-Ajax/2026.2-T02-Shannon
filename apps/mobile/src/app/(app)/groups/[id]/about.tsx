@@ -1,4 +1,9 @@
-import { useFocusEffect, useLocalSearchParams } from "expo-router";
+import {
+  type Href,
+  router,
+  useFocusEffect,
+  useLocalSearchParams,
+} from "expo-router";
 import { useCallback } from "react";
 import {
   ActivityIndicator,
@@ -62,6 +67,7 @@ export default function GroupAboutScreen() {
       );
     }
 
+    const isAdmin = group.my_role === "admin";
     const details = [
       { label: "Começou em", value: formatDate(parseApiDate(group.starts_on)) },
       { label: "Fim", value: endsOnLabel(group) },
@@ -87,6 +93,15 @@ export default function GroupAboutScreen() {
             </View>
           ))}
         </View>
+        {isAdmin && (
+          <Button
+            variant="secondary"
+            onPress={() => router.push(`/groups/${group.id}/edit` as Href)}
+            style={styles.editButton}
+          >
+            Editar grupo
+          </Button>
+        )}
 
         <Text style={styles.sectionTitle}>Membros ({group.members_count})</Text>
         <GroupMembers members={group.members} currentUserId={user?.id} />
@@ -164,6 +179,10 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: palette.ink,
     textAlign: "right",
+  },
+  editButton: {
+    alignSelf: "flex-start",
+    paddingHorizontal: 0,
   },
   sectionTitle: {
     marginTop: 24,
