@@ -44,6 +44,15 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="groups"
+        options={{
+          title: "Grupos",
+          tabBarIcon: ({ color }) => (
+            <Lucide name="users" size={20} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="user"
         options={{
           title: "Usuário",
