@@ -26,6 +26,7 @@ import { useSession } from "@/hooks/useSession";
 import { request } from "@/services/api";
 import { getErrorMessage } from "@/services/api-errors";
 import { deleteHabit, finishHabit } from "@/services/habits-api";
+import type { GroupHabitStatistics } from "@/services/types/groups";
 import type { CheckIn, Habit, HabitProgress } from "@/services/types/habits";
 import { formatDate, formatDateTime, parseApiDate } from "@/utils/date";
 import { formatDuration } from "@/utils/duration";
@@ -65,6 +66,26 @@ export default function HabitDetailScreen() {
     },
   );
 
+  // Bug L1 do back: em hábito de grupo, `progress.status` vem "ended" por
+  // engano. A situação certa é a do próprio usuário nas estatísticas do grupo.
+  const groupId = habit?.group?.id;
+  const {
+    data: groupStats,
+    error: groupStatsError,
+    mutate: refreshGroupStats,
+  } = useSWR<GroupHabitStatistics>(
+    groupId ? `/groups/${groupId}/habits/${id}/stats` : null,
+    request,
+  );
+  const myGroupProgress = groupStats?.members.find(
+    (member) => member.user.id === user?.id,
+  )?.progress;
+  const shownProgress =
+    progress && myGroupProgress
+      ? { ...progress, status: myGroupProgress.status }
+      : progress;
+  const waitingGroupStats = !!groupId && !groupStats && !groupStatsError;
+
   useFocusEffect(
     useCallback(() => {
       setErrorMessage(null);
@@ -73,7 +94,8 @@ export default function HabitDetailScreen() {
       refreshHabit();
       refreshCheckIns();
       refreshProgress();
-    }, [refreshHabit, refreshCheckIns, refreshProgress]),
+      refreshGroupStats();
+    }, [refreshHabit, refreshCheckIns, refreshProgress, refreshGroupStats]),
   );
 
   const handleFinish = () => {
@@ -160,7 +182,7 @@ export default function HabitDetailScreen() {
       );
     }
 
-    if (!progress) {
+    if (!shownProgress || waitingGroupStats) {
       return (
         <ActivityIndicator
           testID="habit-progress-loading"
@@ -169,7 +191,7 @@ export default function HabitDetailScreen() {
       );
     }
 
-    return <GoalProgress progress={progress} />;
+    return <GoalProgress progress={shownProgress} />;
   };
 
   const renderCheckIns = () => {
