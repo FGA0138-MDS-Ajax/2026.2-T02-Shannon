@@ -66,9 +66,13 @@ export default function HabitsScreen() {
       return (
         <View style={styles.errorBanner}>
           <Text style={styles.errorBannerText}>{errorMessage}</Text>
-          <Button variant="secondary" onPress={() => { setErrorMessage(null);
-          refreshHabits();
-        }}>
+          <Button
+            variant="secondary"
+            onPress={() => {
+              setErrorMessage(null);
+              refreshHabits();
+            }}
+          >
             Tentar novamente
           </Button>
         </View>
@@ -87,7 +91,7 @@ export default function HabitsScreen() {
           />
         )}
         contentContainerStyle={[
-          { paddingBottom: 74 },
+          { paddingBottom: 96 },
           !habits && styles.emptyContainer,
         ]}
         ListEmptyComponent={

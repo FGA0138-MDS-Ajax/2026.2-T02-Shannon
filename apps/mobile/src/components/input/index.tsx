@@ -15,7 +15,7 @@ export interface InputProps extends TextInputProps {
 }
 
 const Input = forwardRef<ComponentRef<typeof TextInput>, InputProps>(
-  ({ label, error, secureTextEntry, style, ...props }, ref) => {
+  ({ label, error, secureTextEntry, multiline, style, ...props }, ref) => {
     const [isPasswordVisible, setIsPasswordVisible] = useState(false);
     const [isFocused, setIsFocused] = useState(false);
 
@@ -34,7 +34,8 @@ const Input = forwardRef<ComponentRef<typeof TextInput>, InputProps>(
           <TextInput
             ref={ref}
             placeholderTextColor="#8C8885"
-            style={[styles.input, style]}
+            multiline={multiline}
+            style={[styles.input, multiline && styles.multiline, style]}
             secureTextEntry={isSecure}
             onFocus={() => setIsFocused(true)}
             onBlur={() => setIsFocused(false)}
@@ -94,6 +95,14 @@ const styles = StyleSheet.create({
     fontFamily: theme.font.regular,
     fontSize: 15,
     color: "#1C1917",
+  },
+  // Altura livre: com altura fixa a primeira linha ficava cortada
+  multiline: {
+    height: undefined,
+    minHeight: 96,
+    paddingTop: 12,
+    paddingBottom: 12,
+    textAlignVertical: "top",
   },
   eyeButton: {
     paddingLeft: 8,

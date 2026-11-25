@@ -113,7 +113,9 @@ export default function StatisticsPanel() {
       {status === "error" && (
         <StatisticsError message={error ?? undefined} onRetry={refetch} />
       )}
-      {status === "success" && data && isEmpty && <StatisticsEmpty />}
+      {status === "success" && data && isEmpty && (
+        <StatisticsEmpty userName={user?.name} />
+      )}
       {status === "success" && data && !isEmpty && (
         <StatisticsContent
           data={data}
@@ -126,7 +128,7 @@ export default function StatisticsPanel() {
         />
       )}
 
-      {/* No fim do painel: o cabeçalho escuro do protótipo fica no topo da tela */}
+      {/* No fim do painel: o resumo do dia é o que importa primeiro */}
       <StatisticsFilters
         mode={filters.mode}
         days={filters.days}

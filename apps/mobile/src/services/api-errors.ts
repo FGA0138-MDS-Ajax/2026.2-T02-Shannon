@@ -95,3 +95,18 @@ export function getRejectedHabitIds(error: unknown): string[] {
 
   return [];
 }
+
+/**
+ * Separa o erro de um envio de formulário: os erros por campo (422) ficam em
+ * `fieldErrors` e o resto vira `formError`, a frase da faixa de erro.
+ */
+export function getFormErrors(error: unknown): {
+  fieldErrors: Record<string, string>;
+  formError: string | null;
+} {
+  const { [FORM_ERROR_KEY]: bodyError, ...fieldErrors } = getFieldErrors(error);
+  if (bodyError) return { fieldErrors, formError: bodyError };
+  if (Object.keys(fieldErrors).length > 0)
+    return { fieldErrors, formError: null };
+  return { fieldErrors, formError: getErrorMessage(error) };
+}

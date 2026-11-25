@@ -51,10 +51,13 @@ export default function HabitGoalScreen() {
       return (
         <View style={styles.errorBanner}>
           <Text style={styles.errorBannerText}>{errorMessage}</Text>
-          <Button variant="secondary" onPress={() => {
-        setErrorMessage(null);
-        refreshHabit();
-        }}>
+          <Button
+            variant="secondary"
+            onPress={() => {
+              setErrorMessage(null);
+              refreshHabit();
+            }}
+          >
             Tentar novamente
           </Button>
         </View>

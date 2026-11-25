@@ -1,29 +1,39 @@
 import { StyleSheet, Text, useWindowDimensions, View } from "react-native";
+import { Card, ScreenHeader } from "@/components/ui";
 import { theme } from "@/config/theme";
 import { parseApiDate } from "@/utils/date";
 import { type WeekDayProgress, weekDates } from "@/utils/habit-history";
 import DayRing from "./day-ring";
-import { palette } from "./palette";
 
 const WEEKDAYS = ["SEG", "TER", "QUA", "QUI", "SEX", "SÁB", "DOM"];
+const WEEKDAY_NAMES = [
+  "Domingo",
+  "Segunda",
+  "Terça",
+  "Quarta",
+  "Quinta",
+  "Sexta",
+  "Sábado",
+];
 const MONTHS = [
-  "JANEIRO",
-  "FEVEREIRO",
-  "MARÇO",
-  "ABRIL",
-  "MAIO",
-  "JUNHO",
-  "JULHO",
-  "AGOSTO",
-  "SETEMBRO",
-  "OUTUBRO",
-  "NOVEMBRO",
-  "DEZEMBRO",
+  "janeiro",
+  "fevereiro",
+  "março",
+  "abril",
+  "maio",
+  "junho",
+  "julho",
+  "agosto",
+  "setembro",
+  "outubro",
+  "novembro",
+  "dezembro",
 ];
 
-const SIDE_PADDING = 22;
-const DAY_GAP = 8;
-const MAX_RING = 44;
+// Margem da tela + padding do card, dos dois lados
+const HORIZONTAL_SPACE = (theme.spacing.screen + 16) * 2;
+const DAY_GAP = 6;
+const MAX_RING = 40;
 
 export interface WeekHeaderProps {
   referenceDate: string;
@@ -32,16 +42,17 @@ export interface WeekHeaderProps {
   userName?: string;
 }
 
+// Saudação com a data de hoje e a semana atual, um anel por dia
 export default function WeekHeader({
   referenceDate,
   week,
   userName,
 }: WeekHeaderProps) {
   const { width } = useWindowDimensions();
-  // Tamanho fixo e igual para as 7 bolinhas: com % elas saíam ovais
+  // Tamanho fixo e igual para os 7 anéis: com % eles saíam ovais
   const ringSize = Math.min(
     MAX_RING,
-    Math.floor((width - SIDE_PADDING * 2 - DAY_GAP * 6) / 7),
+    Math.floor((Math.min(width, 640) - HORIZONTAL_SPACE - DAY_GAP * 6) / 7),
   );
   const firstName = userName?.trim().split(" ")[0];
   const today = parseApiDate(referenceDate);
@@ -49,68 +60,67 @@ export default function WeekHeader({
     week ??
     weekDates(referenceDate).map((date) => ({ date, done: 0, total: 0 }));
   const dayOf = (date: string) => parseApiDate(date).getDate();
-  const pad = (value: number) => String(value).padStart(2, "0");
+  const doneDays = days.filter(
+    (day) =>
+      day.date <= referenceDate && day.total > 0 && day.done >= day.total,
+  ).length;
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.greeting} accessibilityRole="header">
-        {firstName ? `Olá, ${firstName}!` : "Olá!"}
-      </Text>
+    <View>
+      <ScreenHeader
+        title={firstName ? `Olá, ${firstName}!` : "Olá!"}
+        subtitle={`${WEEKDAY_NAMES[today.getDay()]}, ${today.getDate()} de ${MONTHS[today.getMonth()]}`}
+      />
 
-      <View style={styles.week}>
-        {days.map((day, index) => (
-          <View key={day.date} style={[styles.day, { width: ringSize }]}>
-            <Text
-              style={[
-                styles.weekday,
-                day.date === referenceDate && styles.weekdayToday,
-              ]}
-            >
-              {WEEKDAYS[index]}
-            </Text>
-            <DayRing
-              day={dayOf(day.date)}
-              done={day.done}
-              total={day.total}
-              size={ringSize}
-              isToday={day.date === referenceDate}
-              isFuture={day.date > referenceDate}
-            />
-          </View>
-        ))}
-      </View>
+      <Card testID="week-card" style={styles.card}>
+        <View style={styles.cardHeader}>
+          <Text style={styles.cardTitle}>Sua semana</Text>
+          <Text style={styles.cardMeta}>{doneDays}/7 dias completos</Text>
+        </View>
 
-      <View style={styles.monthRow}>
-        <Text style={styles.month}>
-          {MONTHS[today.getMonth()]} {today.getFullYear()}
-        </Text>
-        <Text style={styles.range}>
-          {pad(dayOf(days[0].date))} — {pad(dayOf(days[6].date))}
-        </Text>
-      </View>
+        <View style={styles.week}>
+          {days.map((day, index) => {
+            const isToday = day.date === referenceDate;
+            return (
+              <View key={day.date} style={[styles.day, { width: ringSize }]}>
+                <Text style={[styles.weekday, isToday && styles.weekdayToday]}>
+                  {WEEKDAYS[index]}
+                </Text>
+                <DayRing
+                  day={dayOf(day.date)}
+                  done={day.done}
+                  total={day.total}
+                  size={ringSize}
+                  isToday={isToday}
+                  isFuture={day.date > referenceDate}
+                />
+              </View>
+            );
+          })}
+        </View>
+      </Card>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    backgroundColor: palette.ink,
-    paddingHorizontal: SIDE_PADDING,
-    paddingTop: 40,
-    // Espaço para a folha clara subir por cima com cantos arredondados
-    paddingBottom: 48,
+  card: {
+    gap: 14,
   },
-  greeting: {
-    fontFamily: theme.font.regular,
-    fontSize: 30,
-    color: palette.cream,
-    marginBottom: 20,
-  },
-  monthRow: {
+  cardHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
-    marginTop: 14,
+    alignItems: "baseline",
+  },
+  cardTitle: {
+    fontFamily: theme.font.semiBold,
+    fontSize: 15,
+    color: theme.colors.text,
+  },
+  cardMeta: {
+    fontFamily: theme.font.regular,
+    fontSize: 13,
+    color: theme.colors.muted,
   },
   week: {
     flexDirection: "row",
@@ -118,24 +128,14 @@ const styles = StyleSheet.create({
   },
   day: {
     alignItems: "center",
-    gap: 9,
+    gap: 8,
   },
   weekday: {
     fontFamily: theme.font.medium,
-    fontSize: 9,
-    color: palette.headerLabel,
+    fontSize: 10,
+    color: theme.colors.muted,
   },
   weekdayToday: {
-    color: palette.primary,
-  },
-  month: {
-    fontFamily: theme.font.medium,
-    fontSize: 9,
-    color: palette.headerLabel,
-  },
-  range: {
-    fontFamily: theme.font.medium,
-    fontSize: 11,
-    color: palette.cream,
+    color: theme.colors.primaryDark,
   },
 });

@@ -38,26 +38,21 @@ describe("GoalProgress", () => {
     ["at_risk", "Não pode faltar nenhum dia", 1],
     ["failed", "Este período não fecha mais; recomece no próximo", 2],
     ["ended", "Streak final", 2],
-  ] as const)(
-    "renders the %s status",
-    async (status, label, done) => {
-      const statusProgress: HabitProgress = {
-        ...progress,
-        status,
-        current_period: { ...progress.current_period, done },
-      };
-      const screen = await render(
-        <GoalProgress progress={statusProgress} />,
-      );
+  ] as const)("renders the %s status", async (status, label, done) => {
+    const statusProgress: HabitProgress = {
+      ...progress,
+      status,
+      current_period: { ...progress.current_period, done },
+    };
+    const screen = await render(<GoalProgress progress={statusProgress} />);
 
-      expect(screen.getByText(label)).toBeTruthy();
-      if (status === "at_risk") {
-        expect(screen.getByTestId("goal-progress-status")).toHaveStyle({
-          color: "#C2410C",
-        });
-      }
-    },
-  );
+    expect(screen.getByText(label)).toBeTruthy();
+    if (status === "at_risk") {
+      expect(screen.getByTestId("goal-progress-status")).toHaveStyle({
+        color: "#C2410C",
+      });
+    }
+  });
 
   it("caps the progress bar at 100 percent", async () => {
     const overTarget: HabitProgress = {

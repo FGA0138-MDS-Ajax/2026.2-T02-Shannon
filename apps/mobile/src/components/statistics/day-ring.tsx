@@ -2,7 +2,6 @@ import { Lucide } from "@react-native-vector-icons/lucide";
 import { StyleSheet, Text, View } from "react-native";
 import Svg, { Circle } from "react-native-svg";
 import { theme } from "@/config/theme";
-import { palette } from "./palette";
 
 export interface DayRingProps {
   day: number;
@@ -15,8 +14,8 @@ export interface DayRingProps {
 
 const STROKE = 3;
 
-// Bolinha de um dia da semana. Todos os hábitos feitos: preenchida com check.
-// Faltando algum: anel laranja proporcional ao que já foi feito.
+// Anel de um dia da semana. Todos os hábitos feitos: preenchido com check.
+// Faltando algum: arco laranja proporcional ao que já foi feito.
 export default function DayRing({
   day,
   done,
@@ -43,7 +42,7 @@ export default function DayRing({
           { width: size, height: size, borderRadius: size / 2 },
         ]}
       >
-        <Lucide name="check" size={size * 0.5} color={palette.cream} />
+        <Lucide name="check" size={size * 0.5} color={theme.colors.surface} />
       </View>
     );
   }
@@ -59,8 +58,8 @@ export default function DayRing({
           cx={size / 2}
           cy={size / 2}
           r={radius}
-          stroke={isToday ? palette.cream : palette.headerRing}
-          strokeOpacity={isFuture ? 0.5 : 1}
+          stroke={isToday ? theme.colors.primary : theme.colors.gray200}
+          strokeOpacity={isToday && ratio === 0 ? 0.4 : 1}
           strokeWidth={STROKE}
           fill="none"
         />
@@ -69,7 +68,7 @@ export default function DayRing({
             cx={size / 2}
             cy={size / 2}
             r={radius}
-            stroke={palette.primary}
+            stroke={theme.colors.primary}
             strokeWidth={STROKE}
             strokeLinecap="round"
             fill="none"
@@ -96,28 +95,25 @@ export default function DayRing({
 
 const styles = StyleSheet.create({
   complete: {
-    backgroundColor: palette.primary,
+    backgroundColor: theme.colors.primary,
     alignItems: "center",
     justifyContent: "center",
   },
   center: {
-    position: "absolute",
-    top: 0,
-    right: 0,
-    bottom: 0,
-    left: 0,
+    ...StyleSheet.absoluteFill,
     alignItems: "center",
     justifyContent: "center",
   },
   number: {
     fontFamily: theme.font.regular,
-    fontSize: 14,
-    color: palette.cream,
+    fontSize: 13,
+    color: theme.colors.text,
   },
   numberFuture: {
-    color: palette.headerMuted,
+    color: theme.colors.subtle,
   },
   numberToday: {
     fontFamily: theme.font.bold,
+    color: theme.colors.primaryDark,
   },
 });

@@ -53,7 +53,7 @@ export default function GoalProgress({ progress }: GoalProgressProps) {
         </Text>
         <View style={styles.track}>
           <View
-          testID="goal-progress-fill"
+            testID="goal-progress-fill"
             style={[
               styles.fill,
               {

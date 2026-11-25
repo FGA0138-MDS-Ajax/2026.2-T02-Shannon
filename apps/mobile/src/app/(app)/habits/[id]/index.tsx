@@ -269,8 +269,29 @@ export default function HabitDetailScreen() {
         </View>
         <Text style={styles.details}>
           {habitCategoryLabels[habit.category]} ·{" "}
-          {habit.is_public ? "Público" : "Privado"}
+          {habit.group
+            ? `Grupo ${habit.group.name}`
+            : habit.is_public
+              ? "Público"
+              : "Privado"}
         </Text>
+
+        {/* Hábito de grupo só é gerenciado pela tela do grupo */}
+        {habit.group && (
+          <Button
+            testID="open-group-habit"
+            variant="outline"
+            width="full"
+            style={styles.groupButton}
+            onPress={() =>
+              router.push(
+                `/groups/${habit.group?.id}/habits/${habit.id}` as Href,
+              )
+            }
+          >
+            Ver no grupo
+          </Button>
+        )}
 
         {habit.description && (
           <View style={styles.section}>
@@ -506,6 +527,9 @@ const styles = StyleSheet.create({
     fontFamily: theme.font.regular,
     fontSize: 14,
     color: "#6B6560",
+  },
+  groupButton: {
+    marginTop: 16,
   },
   defineGoalButton: {
     marginHorizontal: 0,

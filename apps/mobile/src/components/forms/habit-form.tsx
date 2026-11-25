@@ -1,17 +1,11 @@
-import DateTimePicker from "@expo/ui/community/datetime-picker";
 import { useState } from "react";
-import {
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Switch,
-  Text,
-  View,
-} from "react-native";
+import { ScrollView, StyleSheet, Switch, Text, View } from "react-native";
 import Button from "@/components/button";
 import CategoryPicker from "@/components/category-picker";
+import DateField from "@/components/date-field";
 import GoalPicker from "@/components/goal-picker";
 import Input from "@/components/input";
+import { ErrorBanner } from "@/components/ui";
 import { theme } from "@/config/theme";
 import {
   FORM_ERROR_KEY,
@@ -19,12 +13,7 @@ import {
   getFieldErrors,
 } from "@/services/api-errors";
 import type { GoalInput, HabitCategory } from "@/services/types/habits";
-import {
-  formatDate,
-  parseApiDate,
-  startOfToday,
-  toApiDate,
-} from "@/utils/date";
+import { parseApiDate, toApiDate } from "@/utils/date";
 
 // Valores já validados, no formato da API
 export interface HabitFormValues {
@@ -41,6 +30,8 @@ export interface HabitFormProps {
   initialValues?: Partial<HabitFormValues>;
   /** Mostra o campo de meta. Só na criação: a edição de hábito não muda a meta. */
   withGoal?: boolean;
+  /** Mostra a chave "Público". Hábito de grupo nunca é público. */
+  withVisibility?: boolean;
   /** Primeiro dia aceito no calendário. Padrão: hoje. */
   minimumDate?: Date;
   submitLabel: string;
@@ -60,6 +51,7 @@ type FieldErrors = {
 export function HabitForm({
   initialValues,
   withGoal = false,
+  withVisibility = true,
   minimumDate,
   submitLabel,
   submittingLabel,
@@ -81,13 +73,10 @@ export function HabitForm({
       ? parseApiDate(initialValues.target_end_date)
       : null,
   );
-  const [showDatePicker, setShowDatePicker] = useState(false);
 
   const [submitting, setSubmitting] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-
-  const minimum = minimumDate ?? startOfToday();
 
   const handleSubmit = async () => {
     setErrorMessage(null);
@@ -155,11 +144,7 @@ export function HabitForm({
 
   return (
     <View style={styles.container}>
-      {errorMessage && (
-        <View style={styles.errorBanner}>
-          <Text style={styles.errorBannerText}>{errorMessage}</Text>
-        </View>
-      )}
+      {errorMessage && <ErrorBanner message={errorMessage} />}
 
       <ScrollView style={styles.form} keyboardShouldPersistTaps="handled">
         <Input
@@ -201,60 +186,33 @@ export function HabitForm({
           error={fieldErrors.description}
         />
 
-        <View style={styles.switchRow}>
-          <View style={styles.switchLabels}>
-            <Text style={styles.label}>Público</Text>
-            <Text style={styles.hint}>
-              {isPublic
-                ? "Outras pessoas podem ver este hábito."
-                : "Só você vê este hábito."}
-            </Text>
-          </View>
-          <Switch
-            testID="habit-public-switch"
-            value={isPublic}
-            onValueChange={setIsPublic}
-            trackColor={{ true: theme.colors.primary }}
-          />
-        </View>
-
-        <View style={styles.dateField}>
-          <Text style={styles.label}>Data final (opcional)</Text>
-          <View style={styles.dateRow}>
-            <Pressable
-              testID="habit-date-button"
-              onPress={() => setShowDatePicker(true)}
-              style={styles.dateButton}
-            >
-              <Text style={styles.dateButtonText}>
-                {targetEndDate ? formatDate(targetEndDate) : "Escolher data"}
+        {withVisibility && (
+          <View style={styles.switchRow}>
+            <View style={styles.switchLabels}>
+              <Text style={styles.label}>Público</Text>
+              <Text style={styles.hint}>
+                {isPublic
+                  ? "Outras pessoas podem ver este hábito."
+                  : "Só você vê este hábito."}
               </Text>
-            </Pressable>
-            {targetEndDate && (
-              <Pressable onPress={() => setTargetEndDate(null)}>
-                <Text style={styles.removeDateText}>Remover</Text>
-              </Pressable>
-            )}
+            </View>
+            <Switch
+              testID="habit-public-switch"
+              value={isPublic}
+              onValueChange={setIsPublic}
+              trackColor={{ true: theme.colors.primary }}
+            />
           </View>
-          {fieldErrors.target_end_date && (
-            <Text style={styles.errorText}>{fieldErrors.target_end_date}</Text>
-          )}
-        </View>
-
-        {showDatePicker && (
-          <DateTimePicker
-            value={targetEndDate ?? minimum}
-            mode="date"
-            minimumDate={minimum}
-            presentation="dialog"
-            accentColor={theme.colors.primary}
-            onValueChange={(_event, date) => {
-              setShowDatePicker(false);
-              setTargetEndDate(date);
-            }}
-            onDismiss={() => setShowDatePicker(false)}
-          />
         )}
+
+        <DateField
+          testID="habit-date-button"
+          label="Data final (opcional)"
+          value={targetEndDate}
+          onChange={setTargetEndDate}
+          minimumDate={minimumDate}
+          error={fieldErrors.target_end_date}
+        />
       </ScrollView>
 
       <View style={styles.actions}>
@@ -275,33 +233,19 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  errorBanner: {
-    backgroundColor: "#FEE2E2",
-    borderWidth: 1,
-    borderColor: "#FCA5A5",
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    marginBottom: 20,
-  },
-  errorBannerText: {
-    fontFamily: theme.font.medium,
-    fontSize: 14,
-    color: "#B91C1C",
-  },
   form: {
     width: "100%",
   },
   label: {
     fontFamily: theme.font.medium,
     fontSize: 14,
-    color: "#3D3835",
+    color: theme.colors.label,
     marginBottom: 6,
   },
   hint: {
     fontFamily: theme.font.regular,
     fontSize: 12,
-    color: "#6B6560",
+    color: theme.colors.muted,
   },
   switchRow: {
     flexDirection: "row",
@@ -312,38 +256,6 @@ const styles = StyleSheet.create({
   },
   switchLabels: {
     flex: 1,
-  },
-  dateField: {
-    marginBottom: 16,
-  },
-  dateRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 16,
-  },
-  dateButton: {
-    backgroundColor: "#FFFFFF",
-    borderWidth: 1,
-    borderColor: "#D8D2CD",
-    borderRadius: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-  },
-  dateButtonText: {
-    fontFamily: theme.font.regular,
-    fontSize: 15,
-    color: "#1C1917",
-  },
-  removeDateText: {
-    fontFamily: theme.font.medium,
-    fontSize: 14,
-    color: theme.colors.primaryDark,
-  },
-  errorText: {
-    fontFamily: theme.font.regular,
-    fontSize: 12,
-    color: "#DC2626",
-    marginTop: 4,
   },
   actions: {
     marginTop: 12,

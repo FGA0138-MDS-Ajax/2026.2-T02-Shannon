@@ -1,0 +1,208 @@
+import { API_URL } from "@/services/api";
+import {
+  addMember,
+  createGroup,
+  createGroupHabit,
+  finishGroupHabit,
+  getGroupHabitStatistics,
+  getGroupRanking,
+  getGroupStatistics,
+  joinGroup,
+  leaveGroup,
+  listGroupFeed,
+  listGroupHabits,
+  listGroups,
+  normalizeInviteCode,
+  previewGroup,
+  promoteMember,
+  regenerateInviteCode,
+  removeMember,
+  updateGroup,
+  updateGroupHabit,
+} from "@/services/groups-api";
+
+jest.mock("expo-secure-store", () => ({
+  getItemAsync: jest.fn(async () =>
+    JSON.stringify({ accessToken: "acc", refreshToken: "ref", exp: 1 }),
+  ),
+  setItemAsync: jest.fn(),
+  deleteItemAsync: jest.fn(),
+}));
+
+const mockFetch = jest.fn();
+global.fetch = mockFetch;
+
+function makeResponse(body: unknown, status = 200): Response {
+  return {
+    ok: status >= 200 && status < 300,
+    status,
+    json: jest.fn().mockResolvedValue(body),
+  } as unknown as Response;
+}
+
+function lastCall(): { url: string; method: string; body: unknown } {
+  const [url, init] = mockFetch.mock.calls[mockFetch.mock.calls.length - 1];
+  return {
+    url: url.replace(API_URL, ""),
+    method: init.method ?? "GET",
+    body: init.body === undefined ? undefined : JSON.parse(init.body),
+  };
+}
+
+beforeEach(() => {
+  jest.clearAllMocks();
+  mockFetch.mockResolvedValue(makeResponse({}));
+});
+
+describe("normalizeInviteCode", () => {
+  it("removes spaces and hyphens and uppercases, like the API", () => {
+    expect(normalizeInviteCode(" k7p4-m9x2 ")).toBe("K7P4M9X2");
+    expect(normalizeInviteCode("k7 p4 m9 x2")).toBe("K7P4M9X2");
+  });
+});
+
+describe("groups-api", () => {
+  it.each([
+    ["listGroups", () => listGroups(), "GET", "/groups", undefined],
+    [
+      "createGroup",
+      () => createGroup({ name: "Corrida", ranking_criterion: "check_ins" }),
+      "POST",
+      "/groups",
+      { name: "Corrida", ranking_criterion: "check_ins" },
+    ],
+    [
+      "updateGroup reopens with ends_on null",
+      () => updateGroup("g1", { ends_on: null }),
+      "PATCH",
+      "/groups/g1",
+      { ends_on: null },
+    ],
+    [
+      "previewGroup normalizes the code",
+      () => previewGroup("k7p4-m9x2"),
+      "GET",
+      "/groups/invite/K7P4M9X2",
+      undefined,
+    ],
+    [
+      "joinGroup normalizes the code",
+      () => joinGroup("k7p4 m9x2"),
+      "POST",
+      "/groups/join",
+      { code: "K7P4M9X2" },
+    ],
+    [
+      "regenerateInviteCode",
+      () => regenerateInviteCode("g1"),
+      "POST",
+      "/groups/g1/invite/regenerate",
+      undefined,
+    ],
+    [
+      "addMember",
+      () => addMember("g1", "ana"),
+      "POST",
+      "/groups/g1/members",
+      { username: "ana" },
+    ],
+    [
+      "promoteMember",
+      () => promoteMember("g1", "u2"),
+      "POST",
+      "/groups/g1/members/u2/promote",
+      undefined,
+    ],
+    [
+      "leaveGroup",
+      () => leaveGroup("g1"),
+      "POST",
+      "/groups/g1/leave",
+      undefined,
+    ],
+    [
+      "listGroupHabits with status",
+      () => listGroupHabits("g1", "finished"),
+      "GET",
+      "/groups/g1/habits?status=finished",
+      undefined,
+    ],
+    [
+      "createGroupHabit",
+      () =>
+        createGroupHabit("g1", {
+          name: "Ler",
+          category: "leitura",
+          goal: { period: "day" },
+        }),
+      "POST",
+      "/groups/g1/habits",
+      { name: "Ler", category: "leitura", goal: { period: "day" } },
+    ],
+    [
+      "updateGroupHabit",
+      () => updateGroupHabit("g1", "h1", { name: "Ler 20" }),
+      "PATCH",
+      "/groups/g1/habits/h1",
+      { name: "Ler 20" },
+    ],
+    [
+      "finishGroupHabit",
+      () => finishGroupHabit("g1", "h1"),
+      "POST",
+      "/groups/g1/habits/h1/finish",
+      undefined,
+    ],
+    [
+      "listGroupFeed with cursor",
+      () => listGroupFeed("g1", { limit: 20, before: "abc" }),
+      "GET",
+      "/groups/g1/check-ins?limit=20&before=abc",
+      undefined,
+    ],
+    [
+      "getGroupRanking",
+      () => getGroupRanking("g1"),
+      "GET",
+      "/groups/g1/ranking",
+      undefined,
+    ],
+    [
+      "getGroupStatistics",
+      () => getGroupStatistics("g1"),
+      "GET",
+      "/groups/g1/stats",
+      undefined,
+    ],
+    [
+      "getGroupHabitStatistics",
+      () => getGroupHabitStatistics("g1", "h1"),
+      "GET",
+      "/groups/g1/habits/h1/stats",
+      undefined,
+    ],
+  ])("%s calls the right route", async (_name, call, method, url, body) => {
+    await call();
+    expect(lastCall()).toEqual({ url, method, body });
+  });
+
+  it("removeMember sends DELETE and handles 204", async () => {
+    mockFetch.mockResolvedValue(makeResponse(null, 204));
+
+    await expect(removeMember("g1", "u2")).resolves.toBeUndefined();
+    expect(lastCall()).toEqual({
+      url: "/groups/g1/members/u2",
+      method: "DELETE",
+      body: undefined,
+    });
+  });
+
+  it("rejects with the API message when the group is full", async () => {
+    mockFetch.mockResolvedValue(makeResponse({ detail: "Grupo cheio." }, 409));
+
+    await expect(joinGroup("K7P4M9X2")).rejects.toMatchObject({
+      status: 409,
+      message: "Grupo cheio.",
+    });
+  });
+});

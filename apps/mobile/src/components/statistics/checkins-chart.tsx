@@ -1,8 +1,8 @@
 import { StyleSheet, Text, View } from "react-native";
+import { Card } from "@/components/ui";
 import { theme } from "@/config/theme";
 import type { SeriesPoint } from "@/services/types/statistics";
 import { formatDayMonth, plural } from "./format";
-import { palette } from "./palette";
 
 export interface CheckInsChartProps {
   points: SeriesPoint[];
@@ -22,7 +22,7 @@ export default function CheckInsChart({
   const gap = sorted.length > 60 ? 1 : 3;
 
   return (
-    <View testID="checkins-chart" style={styles.card}>
+    <Card testID="checkins-chart" style={styles.card}>
       <View style={styles.row}>
         <Text style={styles.title}>Seu ritmo</Text>
         <Text style={styles.muted}>
@@ -42,58 +42,47 @@ export default function CheckInsChart({
       </View>
 
       <View style={styles.row}>
-        <Text style={styles.small}>
+        <Text style={styles.muted}>
           {plural(completedToday, "hábito concluído", "hábitos concluídos")}{" "}
           hoje
         </Text>
-        <Text style={styles.small}>{plural(sorted.length, "dia", "dias")}</Text>
+        <Text style={styles.muted}>{plural(sorted.length, "dia", "dias")}</Text>
       </View>
-    </View>
+    </Card>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
-    height: 88,
-    justifyContent: "space-between",
-    backgroundColor: palette.card,
-    borderWidth: 1,
-    borderColor: palette.cardBorder,
-    borderRadius: 20,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    gap: 12,
   },
   row: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    gap: 8,
   },
   title: {
-    fontFamily: theme.font.medium,
-    fontSize: 13,
-    color: palette.ink,
+    fontFamily: theme.font.semiBold,
+    fontSize: 15,
+    color: theme.colors.text,
   },
   muted: {
     fontFamily: theme.font.regular,
-    fontSize: 10,
-    color: palette.inkSoft,
+    fontSize: 12,
+    color: theme.colors.muted,
   },
   bars: {
     flexDirection: "row",
-    height: 18,
+    height: 24,
   },
   bar: {
     flex: 1,
     maxWidth: 8,
     borderRadius: 4,
-    backgroundColor: palette.cell,
+    backgroundColor: theme.colors.gray200,
   },
   barActive: {
-    backgroundColor: palette.primary,
-  },
-  small: {
-    fontFamily: theme.font.regular,
-    fontSize: 9,
-    color: palette.inkSoft,
+    backgroundColor: theme.colors.primary,
   },
 });
