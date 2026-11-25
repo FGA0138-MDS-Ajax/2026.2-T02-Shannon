@@ -10,7 +10,6 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Button from "@/components/button";
-import { membersLabel } from "@/components/group-row";
 import Input from "@/components/input";
 import { palette } from "@/components/statistics/palette";
 import { theme } from "@/config/theme";
@@ -18,6 +17,7 @@ import { ApiError } from "@/services/api";
 import { getErrorMessage } from "@/services/api-errors";
 import { joinGroup, previewInvite } from "@/services/groups-api";
 import type { GroupPreview } from "@/services/types/groups";
+import { membersLabel } from "@/utils/groups";
 
 const ALREADY_MEMBER = "Você já participa deste grupo.";
 
