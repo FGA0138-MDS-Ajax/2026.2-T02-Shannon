@@ -17,6 +17,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import AddMember from "@/components/add-member";
 import BackButton from "@/components/back-button";
 import Button from "@/components/button";
+import GroupInvite from "@/components/group-invite";
 import GroupMembers from "@/components/group-members";
 import { palette } from "@/components/statistics/palette";
 import { theme } from "@/config/theme";
@@ -158,6 +159,15 @@ export default function GroupAboutScreen() {
           >
             Editar grupo
           </Button>
+        )}
+
+        {isAdmin && group.invite_code && (
+          <GroupInvite
+            groupId={group.id}
+            groupName={group.name}
+            code={group.invite_code}
+            onRegenerated={refreshGroup}
+          />
         )}
 
         <Text style={styles.sectionTitle}>Membros ({group.members_count})</Text>
