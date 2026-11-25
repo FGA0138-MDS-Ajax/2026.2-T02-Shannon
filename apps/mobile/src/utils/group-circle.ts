@@ -73,3 +73,30 @@ export function memberTodayLabel({ done, total }: MemberToday): string {
   const doneText = done === 1 ? "1 concluído" : `${done} concluídos`;
   return `${doneText} · ${total - done} a fazer hoje`;
 }
+
+/** `"12 metas individuais para hoje."` */
+export function goalsForTodayLabel({ total }: GroupToday): string {
+  return total === 1
+    ? "1 meta individual para hoje."
+    : `${total} metas individuais para hoje.`;
+}
+
+export interface HabitToday {
+  habitId: string;
+  name: string;
+  // Pessoas que já bateram a meta hoje, de quantas têm o hábito
+  done: number;
+  total: number;
+}
+
+/** Quantas pessoas concluíram cada hábito hoje, na ordem da API */
+export function habitsToday(stats: GroupHabitStatistics[]): HabitToday[] {
+  return stats.map((habitStats) => ({
+    habitId: habitStats.habit_id,
+    name: habitStats.name,
+    done: habitStats.members.filter(
+      (member) => member.progress.status === "completed",
+    ).length,
+    total: habitStats.members.length,
+  }));
+}

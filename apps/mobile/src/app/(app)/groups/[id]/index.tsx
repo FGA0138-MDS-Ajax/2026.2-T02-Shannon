@@ -5,10 +5,11 @@ import {
   useLocalSearchParams,
 } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { type ReactNode, useCallback, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Animated,
+  type FlatList,
   StyleSheet,
   Text,
   View,
@@ -24,23 +25,31 @@ import {
   MemberHabitCard,
   type MemberHabitDetail,
 } from "@/components/group-feed";
-import {
-  feedCompleteDays,
-  feedGroupHabits,
-  feedHabitStats,
-  feedPage,
-} from "@/components/group-feed/__fixtures__/feed";
 import GroupHeader from "@/components/group-header";
-import GroupWeek from "@/components/group-week";
+import {
+  AboutHero,
+  AboutSheet,
+  type GroupTab,
+  GroupTabBar,
+  HabitsHero,
+  HabitsSheet,
+  RankingHero,
+  RankingSheet,
+} from "@/components/group-tabs";
 import MembersCircle from "@/components/members-circle";
+import { memberColor } from "@/components/members-circle/colors";
 import PressableScale from "@/components/pressable-scale";
 import { palette } from "@/components/statistics/palette";
+import { describeGoal } from "@/config/goal-labels";
 import { theme } from "@/config/theme";
 import { useGroup } from "@/hooks/useGroup";
+import { useGroupBoard } from "@/hooks/useGroupBoard";
+import { useSession } from "@/hooks/useSession";
 import { getErrorMessage } from "@/services/api-errors";
-import type { FeedItem } from "@/services/types/groups";
+import type { FeedItem, UserRef } from "@/services/types/groups";
 import {
   groupToday,
+  habitsToday,
   type MemberHabitToday,
   membersToday,
   memberTodayLabel,
@@ -51,19 +60,18 @@ import {
   latestCheckIn,
 } from "@/utils/group-feed";
 
-// Rolando até a parte clara cobrir a roda, ela fica com 35% de opacidade
-// e 92% do tamanho, sem sumir de todo
-const WHEEL_FADE_DISTANCE = 260;
-const WHEEL_MIN_OPACITY = 0.35;
-const WHEEL_MIN_SCALE = 0.92;
+// Rolando até a parte clara cobrir a parte escura de cima, ela fica com 35%
+// de opacidade e 92% do tamanho, sem sumir de todo
+const HERO_FADE_DISTANCE = 260;
+const HERO_MIN_OPACITY = 0.35;
+const HERO_MIN_SCALE = 0.92;
 
-// Uma linha da lista de baixo: check-in do feed ou hábito da pessoa escolhida
+// Uma linha da lista de baixo na Visão geral: check-in do feed ou hábito da
+// pessoa escolhida. As outras abas não têm linhas: tudo fica no cabeçalho.
 type Row =
   | { kind: "check-in"; item: FeedItem }
   | { kind: "habit"; habit: MemberHabitToday };
 
-// O círculo e o feed ainda usam dados falsos (__fixtures__). A troca pela
-// API, a paginação e as novidades automáticas são os próximos passos da #179.
 export default function GroupScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const {
@@ -73,17 +81,42 @@ export default function GroupScreen() {
     notFound,
     mutate: refreshGroup,
   } = useGroup(id);
+  const board = useGroupBoard(id);
+  const { refresh: refreshBoard } = board;
+  const { user } = useSession();
+  const me: UserRef | undefined = user
+    ? { id: user.id, username: user.username }
+    : undefined;
+  const listRef = useRef<FlatList<Row>>(null);
+
+  const [tab, setTab] = useState<GroupTab>("overview");
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
-  // Quando a lista de baixo trocou, para os itens novos entrarem animados
+  // Quando o conteúdo de baixo trocou, para as partes novas entrarem animadas
   const [switchedAt, setSwitchedAt] = useState(() => Date.now());
+  const [openCheckIn, setOpenCheckIn] = useState<FeedItem | null>(null);
+  const [openHabit, setOpenHabit] = useState<MemberHabitDetail | null>(null);
+
   const selectMember = useCallback((userId: string | null) => {
     setSelectedMemberId(userId);
     setSwitchedAt(Date.now());
   }, []);
-  const [openCheckIn, setOpenCheckIn] = useState<FeedItem | null>(null);
-  const [openHabit, setOpenHabit] = useState<MemberHabitDetail | null>(null);
 
-  // Rolagem da lista, lida no nativo para a roda acompanhar sem atraso
+  const changeTab = useCallback((next: GroupTab) => {
+    setTab(next);
+    setSwitchedAt(Date.now());
+    listRef.current?.scrollToOffset({ offset: 0, animated: true });
+  }, []);
+
+  // Pessoa tocada no ranking: abre os hábitos dela na Visão geral
+  const openMember = useCallback(
+    (userId: string) => {
+      changeTab("overview");
+      selectMember(userId);
+    },
+    [changeTab, selectMember],
+  );
+
+  // Rolagem da lista, lida no nativo para a parte de cima acompanhar sem atraso
   const scrollY = useRef(new Animated.Value(0)).current;
   const handleScroll = useMemo(
     () =>
@@ -92,21 +125,21 @@ export default function GroupScreen() {
       }),
     [scrollY],
   );
-  // Puxando para baixo no topo (valor negativo) a roda vai junto com a lista
-  const wheelShift = scrollY.interpolate({
+  // A parte de cima desce o mesmo tanto que a lista sobe: fica parada na tela
+  // e a parte clara passa por cima. Puxando para baixo no topo, vai junto.
+  const heroShift = scrollY.interpolate({
     inputRange: [0, 1],
     outputRange: [0, 1],
     extrapolateLeft: "clamp",
   });
-  // Enquanto a parte clara cobre a roda, ela escurece e vai um pouco para trás
-  const wheelOpacity = scrollY.interpolate({
-    inputRange: [0, WHEEL_FADE_DISTANCE],
-    outputRange: [1, WHEEL_MIN_OPACITY],
+  const heroOpacity = scrollY.interpolate({
+    inputRange: [0, HERO_FADE_DISTANCE],
+    outputRange: [1, HERO_MIN_OPACITY],
     extrapolate: "clamp",
   });
-  const wheelScale = scrollY.interpolate({
-    inputRange: [0, WHEEL_FADE_DISTANCE],
-    outputRange: [1, WHEEL_MIN_SCALE],
+  const heroScale = scrollY.interpolate({
+    inputRange: [0, HERO_FADE_DISTANCE],
+    outputRange: [1, HERO_MIN_SCALE],
     extrapolate: "clamp",
   });
 
@@ -117,40 +150,89 @@ export default function GroupScreen() {
     [],
   );
 
+  // Enquanto carrega, listas vazias; a roda e o ranking mostram o carregando
+  const groupHabits = useMemo(() => board.habits ?? [], [board.habits]);
+  const habitStats = useMemo(() => board.habitStats ?? [], [board.habitStats]);
+  const feedItems = board.feed?.items ?? [];
+
+  // Todos os hábitos, até os encerrados: um check-in antigo pode citar um deles
   const habitsById = useMemo(
-    () => new Map(feedGroupHabits.map((habit) => [habit.id, habit])),
-    [],
+    () => new Map(groupHabits.map((habit) => [habit.id, habit])),
+    [groupHabits],
   );
-  const progress = useMemo(() => indexMemberProgress(feedHabitStats), []);
-  const members = useMemo(() => membersToday(feedHabitStats), []);
+  const activeHabits = useMemo(
+    () => groupHabits.filter((habit) => habit.status === "active"),
+    [groupHabits],
+  );
+  const progress = useMemo(() => indexMemberProgress(habitStats), [habitStats]);
+  const members = useMemo(() => membersToday(habitStats), [habitStats]);
   const totals = useMemo(() => groupToday(members), [members]);
-  const asOf = feedHabitStats[0]?.as_of;
+  const habits = useMemo(() => habitsToday(habitStats), [habitStats]);
+  const asOf = habitStats[0]?.as_of;
+
+  // Todas as pessoas do grupo, mesmo sem hábito ainda (a roda só tem quem tem)
+  const groupMembers = useMemo<UserRef[]>(
+    () =>
+      (group?.members ?? []).map((member) => ({
+        id: member.user_id,
+        username: member.username,
+      })),
+    [group?.members],
+  );
+
+  // Mesma cor da roda para a mesma pessoa no ranking e no Sobre; quem não
+  // está na roda ganha as cores seguintes
+  const colorOf = useMemo(() => {
+    const colors = new Map(
+      members.map((member, index) => [member.user.id, memberColor(index)]),
+    );
+    for (const member of groupMembers) {
+      if (!colors.has(member.id)) {
+        colors.set(member.id, memberColor(colors.size));
+      }
+    }
+    return (userId: string) => colors.get(userId) ?? memberColor(0);
+  }, [members, groupMembers]);
+
+  // "3 hábitos · Todo dia"; a frequência só aparece quando é a mesma para todos
+  const habitsSummary = useMemo(() => {
+    const count =
+      activeHabits.length === 1 ? "1 hábito" : `${activeHabits.length} hábitos`;
+    const goals = new Set(
+      activeHabits.map((habit) => describeGoal(habit.goal)),
+    );
+    return goals.size === 1 ? `${count} · ${[...goals][0]}` : count;
+  }, [activeHabits]);
 
   const selectedMember = members.find(
     (member) => member.user.id === selectedMemberId,
   );
 
-  const rows: Row[] = selectedMember
-    ? // Feitos primeiro, como no Figma
-      [...selectedMember.habits]
-        .sort((a, b) => Number(b.done) - Number(a.done))
-        .map((habit) => ({ kind: "habit", habit }))
-    : feedPage.items.map((item) => ({ kind: "check-in", item }));
+  const rows: Row[] =
+    tab !== "overview"
+      ? []
+      : selectedMember
+        ? // Feitos primeiro, como no Figma
+          [...selectedMember.habits]
+            .sort((a, b) => Number(b.done) - Number(a.done))
+            .map((habit) => ({ kind: "habit", habit }))
+        : feedItems.map((item) => ({ kind: "check-in", item }));
 
   useFocusEffect(
     useCallback(() => {
       refreshGroup();
+      refreshBoard();
       // Cabeçalho escuro: relógio e bateria claros só enquanto a tela está na frente
       StatusBar.setStyle("light");
       return () => StatusBar.setStyle("auto");
-    }, [refreshGroup]),
+    }, [refreshGroup, refreshBoard]),
   );
 
   const openMemberHabit = (habit: MemberHabitToday) => {
     if (!selectedMember || !asOf) return;
     if (habit.done) {
       const checkIn = latestCheckIn(
-        feedPage.items,
+        feedItems,
         selectedMember.user.id,
         habit.habitId,
       );
@@ -191,6 +273,118 @@ export default function GroupScreen() {
       </FadeIn>
     </View>
   );
+
+  // Parte escura de cima de cada aba
+  const renderHero = (): ReactNode => {
+    if (!group) return null;
+    switch (tab) {
+      case "ranking":
+        return board.ranking ? (
+          <RankingHero
+            ranking={board.ranking}
+            ended={group.status === "ended"}
+            colorOf={colorOf}
+          />
+        ) : (
+          <HeroLoading />
+        );
+      case "about":
+        return (
+          <AboutHero
+            description={group.description}
+            membersCount={group.members_count}
+            habitsCount={activeHabits.length}
+          />
+        );
+      case "habits":
+        return board.habitStats ? (
+          <HabitsHero group={totals} />
+        ) : (
+          <HeroLoading />
+        );
+      default:
+        return !board.habitStats ? (
+          <HeroLoading />
+        ) : (
+          <MembersCircle
+            members={members}
+            group={totals}
+            selectedId={selectedMemberId}
+            onSelect={selectMember}
+            onTouchingChange={handleTouchingChange}
+          />
+        );
+    }
+  };
+
+  // Parte clara de cada aba, logo abaixo da barra de abas
+  const renderSheet = (): ReactNode => {
+    switch (tab) {
+      case "ranking":
+        return board.ranking && board.stats && me ? (
+          <RankingSheet
+            ranking={board.ranking}
+            stats={board.stats}
+            me={me}
+            colorOf={colorOf}
+            onOpenMember={openMember}
+          />
+        ) : null;
+      case "about":
+        return (
+          <AboutSheet
+            members={groupMembers}
+            colorOf={colorOf}
+            onManage={() => router.push(`/groups/${id}/about` as Href)}
+          />
+        );
+      case "habits":
+        return (
+          <HabitsSheet
+            habits={habits}
+            summary={habitsSummary}
+            descriptionOf={(habitId) =>
+              habitsById.get(habitId)?.description ?? null
+            }
+            onManage={() => router.push(`/groups/${id}/habits` as Href)}
+          />
+        );
+      default:
+        return selectedMember ? (
+          <View style={styles.memberHeader}>
+            <View style={styles.titles}>
+              <Text style={styles.title}>
+                Hábitos de {selectedMember.user.username}
+              </Text>
+              <Text style={styles.subtitle}>
+                {memberTodayLabel(selectedMember)}
+              </Text>
+            </View>
+            <PressableScale
+              accessibilityRole="button"
+              onPress={() => selectMember(null)}
+              style={styles.seeAll}
+            >
+              <Text style={styles.seeAllText}>Ver todos</Text>
+            </PressableScale>
+          </View>
+        ) : (
+          <View>
+            <View style={styles.titles}>
+              <Text style={styles.title}>Check-ins recentes</Text>
+              <Text style={styles.subtitle}>
+                O grupo em movimento, em tempo real.
+              </Text>
+            </View>
+            {board.feed && feedItems.length === 0 && (
+              <Text style={styles.emptyFeed}>
+                Ninguém fez check-in ainda. O primeiro pode ser o seu.
+              </Text>
+            )}
+          </View>
+        );
+    }
+  };
 
   const renderState = () => {
     if (isLoading && !group) {
@@ -237,6 +431,7 @@ export default function GroupScreen() {
         <View style={[styles.sheet, styles.centered]}>{renderState()}</View>
       ) : (
         <Animated.FlatList
+          ref={listRef}
           data={rows}
           scrollEnabled={scrollEnabled}
           onScroll={handleScroll}
@@ -251,89 +446,31 @@ export default function GroupScreen() {
           ItemSeparatorComponent={Separator}
           ListHeaderComponent={
             <>
-              {/* A roda desce o mesmo tanto que a lista sobe: fica parada na
-                  tela e a parte clara passa por cima dela */}
               <Animated.View
                 style={{
-                  opacity: wheelOpacity,
-                  transform: [
-                    { translateY: wheelShift },
-                    { scale: wheelScale },
-                  ],
+                  opacity: heroOpacity,
+                  transform: [{ translateY: heroShift }, { scale: heroScale }],
                 }}
               >
-                <MembersCircle
-                  members={members}
-                  group={totals}
-                  selectedId={selectedMemberId}
-                  onSelect={selectMember}
-                  onTouchingChange={handleTouchingChange}
-                />
+                {/* A `key` troca o conteúdo com esmaecido a cada aba */}
+                <FadeIn key={tab} since={switchedAt}>
+                  {renderHero()}
+                </FadeIn>
               </Animated.View>
               <View style={styles.sheetTop}>
-                {asOf && (
-                  <View style={styles.week}>
-                    <GroupWeek today={asOf} completeDays={feedCompleteDays} />
-                  </View>
-                )}
-                {/* A `key` faz o título remontar e entrar animado a cada troca */}
-                <FadeIn key={selectedMemberId ?? "all"} since={switchedAt}>
-                  {selectedMember ? (
-                    <View style={styles.memberHeader}>
-                      <View style={styles.titles}>
-                        <Text style={styles.title}>
-                          Hábitos de {selectedMember.user.username}
-                        </Text>
-                        <Text style={styles.subtitle}>
-                          {memberTodayLabel(selectedMember)}
-                        </Text>
-                      </View>
-                      <PressableScale
-                        accessibilityRole="button"
-                        onPress={() => selectMember(null)}
-                        style={styles.seeAll}
-                      >
-                        <Text style={styles.seeAllText}>Ver todos</Text>
-                      </PressableScale>
-                    </View>
-                  ) : (
-                    <View style={styles.titles}>
-                      <Text style={styles.title}>Check-ins recentes</Text>
-                      <Text style={styles.subtitle}>
-                        O grupo em movimento, em tempo real.
-                      </Text>
-                    </View>
-                  )}
+                <GroupTabBar value={tab} onChange={changeTab} />
+                <FadeIn
+                  key={`${tab}-${selectedMemberId ?? "all"}`}
+                  since={switchedAt}
+                  style={styles.sheetContent}
+                >
+                  {renderSheet()}
                 </FadeIn>
               </View>
             </>
           }
-          ListFooterComponent={
-            <View style={styles.links}>
-              <Button
-                variant="secondary"
-                width="full"
-                onPress={() => router.push(`/groups/${id}/habits` as Href)}
-              >
-                Hábitos
-              </Button>
-              <Button
-                variant="secondary"
-                width="full"
-                onPress={() => router.push(`/groups/${id}/ranking` as Href)}
-              >
-                Ranking
-              </Button>
-              <Button
-                variant="secondary"
-                width="full"
-                onPress={() => router.push(`/groups/${id}/about` as Href)}
-              >
-                Sobre
-              </Button>
-            </View>
-          }
-          // A parte clara vai até o fim da tela mesmo com poucos itens
+          ListFooterComponent={<View style={styles.footerSpace} />}
+          // A parte clara vai até o fim da tela mesmo com pouco conteúdo
           contentContainerStyle={styles.listContent}
           ListFooterComponentStyle={styles.footer}
         />
@@ -360,6 +497,15 @@ export default function GroupScreen() {
 
 function Separator() {
   return <View style={styles.separator} />;
+}
+
+// Parte escura enquanto os dados da aba chegam
+function HeroLoading() {
+  return (
+    <View style={styles.heroLoading}>
+      <ActivityIndicator color={palette.cream} />
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({
@@ -390,7 +536,8 @@ const styles = StyleSheet.create({
   listContent: {
     flexGrow: 1,
   },
-  // Cada pedaço da parte clara tem fundo próprio; atrás deles fica a roda
+  // Cada pedaço da parte clara tem fundo próprio; atrás deles fica a parte
+  // escura de cima
   sheetTop: {
     paddingTop: 16,
     paddingBottom: 14,
@@ -399,8 +546,8 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
   },
-  week: {
-    marginBottom: 14,
+  sheetContent: {
+    marginTop: 26,
   },
   memberHeader: {
     flexDirection: "row",
@@ -445,10 +592,19 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     backgroundColor: palette.cream,
   },
-  links: {
-    paddingTop: 24,
-    paddingHorizontal: 22,
-    paddingBottom: 32,
-    gap: 8,
+  footerSpace: {
+    height: 32,
+  },
+  heroLoading: {
+    height: 280,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  emptyFeed: {
+    marginTop: 18,
+    fontFamily: theme.font.regular,
+    fontSize: 13,
+    lineHeight: 19.5,
+    color: palette.inkSoft,
   },
 });

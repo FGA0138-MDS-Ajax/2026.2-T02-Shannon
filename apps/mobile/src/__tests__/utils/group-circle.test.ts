@@ -6,12 +6,33 @@ import {
   slicePath,
 } from "@/components/members-circle/geometry";
 import {
+  goalsForTodayLabel,
   groupToday,
   groupTodayLabel,
+  habitsToday,
   memberRatio,
   membersToday,
   memberTodayLabel,
 } from "@/utils/group-circle";
+
+describe("habitsToday", () => {
+  it("counts how many people finished each habit", () => {
+    expect(
+      habitsToday(feedHabitStats).map(
+        ({ name, done, total }) => `${name}:${done}/${total}`,
+      ),
+    ).toEqual(["Pedalar:2/4", "Beber água:3/4", "Ler 10 páginas:3/4"]);
+  });
+
+  it("says how many individual goals there are today", () => {
+    expect(goalsForTodayLabel({ done: 8, total: 12, percent: 67 })).toBe(
+      "12 metas individuais para hoje.",
+    );
+    expect(goalsForTodayLabel({ done: 0, total: 1, percent: 0 })).toBe(
+      "1 meta individual para hoje.",
+    );
+  });
+});
 
 const members = membersToday(feedHabitStats);
 

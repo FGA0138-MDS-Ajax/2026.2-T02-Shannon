@@ -25,4 +25,14 @@ export const palette = {
   sageSoft: "#E5E8D9",
   sageInk: "#4C5B31",
   overlay: "rgba(37, 40, 31, 0.92)",
+  // Telas do grupo: o laranja do Figma (um pouco diferente do `primary`),
+  // borda clara das listas e o verde do "Você no ranking"
+  orange: "#F16532",
+  line: "#D4D4C6",
+  sageLine: "#849362",
+  podiumSilver: "#C99759",
+  podiumBronze: "#BA8A52",
+  podiumBase: "#32352A",
+  progressTrack: "#F8B89B",
+  todo: "#EAE9E0",
 };

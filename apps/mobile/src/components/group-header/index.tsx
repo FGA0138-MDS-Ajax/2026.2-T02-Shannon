@@ -20,7 +20,7 @@ export default function GroupHeader({ name }: GroupHeaderProps) {
         onPress={() => router.back()}
         style={({ pressed }) => [styles.back, pressed && styles.pressed]}
       >
-        <Lucide name="chevron-left" size={24} color={palette.cream} />
+        <Lucide name="chevron-left" size={26} color={palette.cream} />
       </Pressable>
       {name && (
         <Text style={styles.name} numberOfLines={1}>
@@ -35,9 +35,11 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
-    paddingTop: 4,
-    paddingBottom: 4,
+    gap: 6,
+    // Um pouco mais alto; fica no fluxo da tela, então empurra o conteúdo
+    // para baixo em vez de ficar por cima dele
+    paddingTop: 10,
+    paddingBottom: 12,
     paddingLeft: 16,
     paddingRight: 22,
   },
@@ -50,7 +52,7 @@ const styles = StyleSheet.create({
   name: {
     flex: 1,
     fontFamily: theme.font.regular,
-    fontSize: 20,
+    fontSize: 22,
     color: palette.cream,
   },
 });

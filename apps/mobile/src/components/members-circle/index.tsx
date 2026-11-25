@@ -16,22 +16,9 @@ import {
   type MemberToday,
   memberRatio,
 } from "@/utils/group-circle";
+import { memberColor } from "./colors";
 import { angleAround, angleDelta, sliceAngles, slicePath } from "./geometry";
 
-// Cores do Figma: as 4 primeiras são as do grupo de 4 pessoas, as outras
-// vêm do círculo de 30 pessoas
-const MEMBER_COLORS = [
-  "#F16532",
-  "#D9AD6C",
-  "#8FA77B",
-  "#A998BB",
-  "#7DAEAA",
-  "#8C9FC0",
-  "#D5836C",
-  "#D6BE81",
-  "#A3B476",
-  "#E98243",
-];
 const TRACK = "#34382C";
 
 // Caixa da roda na tela (SIZE) e área de desenho, um pouco maior (DRAW)
@@ -227,7 +214,7 @@ export default function MembersCircle({
     };
     return {
       member,
-      color: MEMBER_COLORS[index % MEMBER_COLORS.length],
+      color: memberColor(index),
       track: slicePath({ ...shape, outer: OUTER, corner: CORNER }),
       fill:
         ratio > 0

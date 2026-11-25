@@ -4,6 +4,8 @@ import type {
   FeedPage,
   GroupHabit,
   GroupHabitStatistics,
+  GroupStatistics,
+  RankingResponse,
   UserRef,
 } from "@/services/types/groups";
 import type {
@@ -12,7 +14,7 @@ import type {
   ProgressStatus,
 } from "@/services/types/habits";
 
-// Dados falsos do grupo, para desenvolver a tela e os testes sem a API.
+// Dados falsos do grupo, para os testes sem a API (a tela já usa a API).
 // Mesmo grupo, pessoas e números do protótipo no Figma (8 de 12 hábitos).
 // Diferença: no Figma a Lu fez "Meditar", que não é hábito do grupo; aqui
 // todo mundo tem os mesmos 3 hábitos, como na API.
@@ -189,5 +191,34 @@ function habitStats(habit: GroupHabit): GroupHabitStatistics {
 export const feedHabitStats: GroupHabitStatistics[] =
   feedGroupHabits.map(habitStats);
 
-// Dias da semana em que as 4 pessoas fizeram tudo (a segunda laranja do Figma)
-export const feedCompleteDays: string[] = ["2026-11-09"];
+// Quem está usando o app nos dados falsos: o Breno ("Breno · você")
+export const feedMe: UserRef = breno;
+
+// Ranking do Figma: Ana e Breno empatados em 2º, por isso não há 3º
+export const feedRanking: RankingResponse = {
+  criterion: "goals",
+  as_of: TODAY,
+  items: [
+    { position: 1, user: caio, score: 128 },
+    { position: 2, user: ana, score: 112 },
+    { position: 2, user: breno, score: 112 },
+    { position: 4, user: lu, score: 80 },
+  ],
+  me: { position: 2, score: 112 },
+};
+
+export const feedGroupStats: GroupStatistics = {
+  as_of: TODAY,
+  most_consistent: {
+    user: ana,
+    habit: { id: ler.id, name: ler.name },
+    consistent_days: 12,
+  },
+  best_record: {
+    user: caio,
+    habit: { id: pedalar.id, name: pedalar.name },
+    best_streak: 3,
+    unit: "week",
+  },
+  check_ins_last_7_days: 23,
+};

@@ -62,28 +62,3 @@ export function formatLongDate(date: Date): string {
 export function formatLongDateTime(isoDateTime: string): string {
   return `${formatLongDate(new Date(isoDateTime))} · ${formatTime(isoDateTime)}`;
 }
-
-/** `Date` → `"NOVEMBRO 2026"` */
-export function formatMonthYear(date: Date): string {
-  return `${MONTHS[date.getMonth()].toUpperCase()} ${date.getFullYear()}`;
-}
-
-/** Os 7 dias da semana da data, de segunda a domingo */
-export function weekDays(date: Date): Date[] {
-  // getDay(): 0 = domingo ... 6 = sábado; a semana do app começa na segunda
-  const sinceMonday = (date.getDay() + 6) % 7;
-  const monday = new Date(
-    date.getFullYear(),
-    date.getMonth(),
-    date.getDate() - sinceMonday,
-  );
-  return Array.from(
-    { length: 7 },
-    (_, index) =>
-      new Date(
-        monday.getFullYear(),
-        monday.getMonth(),
-        monday.getDate() + index,
-      ),
-  );
-}
