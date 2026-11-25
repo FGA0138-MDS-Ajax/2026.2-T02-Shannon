@@ -1,3 +1,4 @@
+import { Lucide } from "@react-native-vector-icons/lucide";
 import {
   type Href,
   router,
@@ -162,7 +163,10 @@ export default function GroupAboutScreen() {
     ];
 
     return (
-      <ScrollView contentContainerStyle={styles.scroll}>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scroll}
+      >
         <Text style={styles.title}>{group.name}</Text>
         {group.description && (
           <Text style={styles.description}>{group.description}</Text>
@@ -179,6 +183,13 @@ export default function GroupAboutScreen() {
         {isAdmin && (
           <Button
             variant="secondary"
+            prefix={
+              <Lucide
+                name="pencil"
+                size={16}
+                color={theme.colors.primaryDark}
+              />
+            }
             onPress={() => router.push(`/groups/${group.id}/edit` as Href)}
             style={styles.editButton}
           >
@@ -246,7 +257,13 @@ const styles = StyleSheet.create({
     color: palette.inkSoft,
     textAlign: "center",
   },
+  // A rolagem ocupa a largura toda: assim a barra fica na borda da tela, e
+  // não por cima do texto
+  scrollView: {
+    marginHorizontal: -24,
+  },
   scroll: {
+    paddingHorizontal: 24,
     paddingBottom: 32,
   },
   title: {
@@ -287,8 +304,10 @@ const styles = StyleSheet.create({
     textAlign: "right",
   },
   editButton: {
+    marginTop: 16,
     alignSelf: "flex-start",
-    paddingHorizontal: 0,
+    borderWidth: 1,
+    borderColor: theme.colors.primaryDark,
   },
   leaveButton: {
     marginTop: 32,

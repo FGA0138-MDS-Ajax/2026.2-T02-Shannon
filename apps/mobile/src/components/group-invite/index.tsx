@@ -54,7 +54,12 @@ export default function GroupInvite({
   return (
     <View style={styles.card}>
       <Text style={styles.label}>Código de convite</Text>
-      <Text style={styles.code} selectable>
+      <Text
+        style={styles.code}
+        selectable
+        numberOfLines={1}
+        adjustsFontSizeToFit
+      >
         {code}
       </Text>
       <Button width="full" onPress={handleShare}>
@@ -91,8 +96,8 @@ const styles = StyleSheet.create({
   code: {
     marginBottom: 8,
     fontFamily: theme.font.bold,
-    fontSize: 42,
-    letterSpacing: 4,
+    fontSize: 32,
+    letterSpacing: 2,
     color: palette.ink,
   },
 });

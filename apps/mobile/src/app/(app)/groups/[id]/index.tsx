@@ -110,7 +110,10 @@ export default function GroupScreen() {
     }
 
     return (
-      <ScrollView contentContainerStyle={styles.scroll}>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scroll}
+      >
         <Text style={styles.name}>{group.name}</Text>
         <View style={styles.meta}>
           <Text style={styles.detail}>{membersLabel(group.members_count)}</Text>
@@ -186,7 +189,13 @@ const styles = StyleSheet.create({
     color: palette.inkSoft,
     textAlign: "center",
   },
+  // A rolagem ocupa a largura toda: assim a barra fica na borda da tela, e
+  // não por cima do texto
+  scrollView: {
+    marginHorizontal: -24,
+  },
   scroll: {
+    paddingHorizontal: 24,
     paddingBottom: 32,
     gap: 4,
   },
