@@ -194,6 +194,14 @@ export default function HabitDetailScreen() {
     return <GoalProgress progress={shownProgress} />;
   };
 
+  // Em hábito de grupo o histórico traz os check-ins de todos os membros
+  const authorName = (userId: string) => {
+    if (userId === user?.id) return "Você";
+    const member = groupStats?.members.find((item) => item.user.id === userId);
+    // Quem saiu do grupo não aparece mais nas estatísticas
+    return member?.user.username ?? "Ex-membro do grupo";
+  };
+
   const renderCheckIns = () => {
     if (checkInsError) {
       return (
@@ -225,6 +233,9 @@ export default function HabitDetailScreen() {
         onPress={() => router.push(`/check-ins/${checkIn.id}` as Href)}
       >
         <Text style={styles.checkInTitle}>{checkIn.title}</Text>
+        {groupId && (
+          <Text style={styles.checkInAuthor}>{authorName(checkIn.user_id)}</Text>
+        )}
         <Text style={styles.checkInDetails}>
           {formatDateTime(checkIn.created_at)}
           {checkIn.duration ? ` · ${formatDuration(checkIn.duration)}` : ""}
@@ -578,6 +589,11 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 14,
     marginBottom: 8,
+  },
+  checkInAuthor: {
+    fontFamily: theme.font.medium,
+    fontSize: 13,
+    color: theme.colors.primaryDark,
   },
   checkInTitle: {
     fontFamily: theme.font.semiBold,

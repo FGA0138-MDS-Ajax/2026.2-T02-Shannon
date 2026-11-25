@@ -180,6 +180,24 @@ describe("HabitDetailScreen with a group habit", () => {
     group: { id: "g1", name: "Corrida da firma" },
   };
 
+  function checkIn(id: string, userId: string): CheckIn {
+    return {
+      id,
+      user_id: userId,
+      title: `Treino ${id}`,
+      description: null,
+      created_at: "2026-11-04T10:00:00Z",
+      duration: null,
+      habit_ids: ["habit-1"],
+    };
+  }
+
+  const groupCheckIns = [
+    checkIn("c1", "user-1"),
+    checkIn("c2", "user-2"),
+    checkIn("c3", "user-gone"),
+  ];
+
   const groupStats: GroupHabitStatistics = {
     as_of: "2026-11-05",
     habit_id: "habit-1",
@@ -202,7 +220,7 @@ describe("HabitDetailScreen with a group habit", () => {
   beforeEach(() => {
     mockRequest.mockImplementation(async (path: string) => {
       if (path === "/habits/habit-1") return groupHabit;
-      if (path === "/habits/habit-1/check-ins") return [] as CheckIn[];
+      if (path === "/habits/habit-1/check-ins") return groupCheckIns;
       // L1: o back manda "ended" aqui em hábito de grupo
       if (path === "/goals/habits/habit-1/progress")
         return { ...makeProgress(), status: "ended" };
@@ -236,5 +254,13 @@ describe("HabitDetailScreen with a group habit", () => {
     expect(screen.queryByText("Finalizar")).toBeNull();
     expect(screen.queryByText("Deletar")).toBeNull();
     expect(screen.queryByText(/Privado/)).toBeNull();
+  });
+
+  it("shows who made each check-in", async () => {
+    const screen = await renderScreen();
+
+    expect(await screen.findByText("Você")).toBeTruthy();
+    expect(screen.getByText("ana")).toBeTruthy();
+    expect(screen.getByText("Ex-membro do grupo")).toBeTruthy();
   });
 });
