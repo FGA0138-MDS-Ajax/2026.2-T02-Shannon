@@ -101,7 +101,10 @@ export default function GroupHabitScreen() {
       habit.status === "active";
 
     return (
-      <ScrollView contentContainerStyle={styles.scroll}>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scroll}
+      >
         <View style={styles.titleRow}>
           <Text style={styles.title}>{habit.name}</Text>
           {habit.status === "finished" && <Badge label="Encerrado" />}
@@ -180,7 +183,12 @@ const styles = StyleSheet.create({
     color: palette.inkSoft,
     textAlign: "center",
   },
+  // Largura toda para a barra de rolagem não ficar por cima do texto
+  scrollView: {
+    marginHorizontal: -24,
+  },
   scroll: {
+    paddingHorizontal: 24,
     paddingBottom: 32,
     gap: 2,
   },

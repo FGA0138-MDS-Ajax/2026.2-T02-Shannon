@@ -75,6 +75,7 @@ export default function GroupHabitsScreen() {
             }
           />
         )}
+        style={styles.list}
         contentContainerStyle={[
           styles.listContent,
           habits?.length === 0 && styles.emptyContainer,
@@ -136,7 +137,12 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
   },
+  // Largura toda para a barra de rolagem não ficar por cima das linhas
+  list: {
+    marginHorizontal: -24,
+  },
   listContent: {
+    paddingHorizontal: 24,
     paddingBottom: 96,
   },
   centered: {
