@@ -1,8 +1,17 @@
-import { render } from "@testing-library/react-native";
+import { fireEvent, render, waitFor } from "@testing-library/react-native";
+import { router } from "expo-router";
+import { Alert, type AlertButton } from "react-native";
 import { SWRConfig } from "swr";
 import GroupHabitScreen from "@/app/(app)/groups/[id]/habits/[habitId]/index";
-import { getGroupHabit, getGroupHabitStats } from "@/services/groups-api";
+import { ApiError } from "@/services/api";
+import {
+  finishGroupHabit,
+  getGroup,
+  getGroupHabit,
+  getGroupHabitStats,
+} from "@/services/groups-api";
 import type {
+  GroupDetail,
   GroupHabit,
   GroupHabitStatistics,
   MemberHabitStats,
@@ -23,6 +32,8 @@ jest.mock("@/hooks/useSession", () => ({
 }));
 
 jest.mock("@/services/groups-api", () => ({
+  finishGroupHabit: jest.fn(),
+  getGroup: jest.fn(),
   getGroupHabit: jest.fn(),
   getGroupHabitStats: jest.fn(),
 }));
@@ -90,8 +101,23 @@ const stats: GroupHabitStatistics = {
   ],
 };
 
+const adminGroup = {
+  id: "g1",
+  status: "active",
+  my_role: "admin",
+} as GroupDetail;
+
+function answerAlert(text: string) {
+  jest.spyOn(Alert, "alert").mockImplementation((_title, _message, buttons) => {
+    (buttons as AlertButton[] | undefined)
+      ?.find((button) => button.text === text)
+      ?.onPress?.();
+  });
+}
+
 beforeEach(() => {
   jest.clearAllMocks();
+  (getGroup as jest.Mock).mockResolvedValue(adminGroup);
   (getGroupHabit as jest.Mock).mockResolvedValue(habit);
   (getGroupHabitStats as jest.Mock).mockResolvedValue(stats);
 });
@@ -123,5 +149,58 @@ describe("GroupHabitScreen", () => {
     expect(screen.getByText("2 de 3 nesta semana")).toBeTruthy();
     expect(screen.getByText("2 semanas")).toBeTruthy();
     expect(screen.getByText("1 dia com check-in")).toBeTruthy();
+  });
+
+  it("lets an admin edit the habit", async () => {
+    const screen = await renderScreen();
+
+    await fireEvent.press(await screen.findByText("Editar hábito"));
+
+    expect(router.push).toHaveBeenCalledWith("/groups/g1/habits/h1/edit");
+  });
+
+  it("finishes the habit after the confirmation", async () => {
+    (finishGroupHabit as jest.Mock).mockResolvedValueOnce({
+      ...habit,
+      status: "finished",
+    });
+    answerAlert("Encerrar");
+    const screen = await renderScreen();
+
+    await fireEvent.press(await screen.findByText("Encerrar hábito"));
+
+    await waitFor(() => expect(screen.getByText("Encerrado")).toBeTruthy());
+    expect(finishGroupHabit).toHaveBeenCalledWith("g1", "h1");
+    expect(screen.queryByText("Encerrar hábito")).toBeNull();
+  });
+
+  it("shows the API message when the habit was already finished", async () => {
+    (finishGroupHabit as jest.Mock).mockRejectedValueOnce(
+      new ApiError("Conflict", 409, { detail: "Hábito já encerrado." }),
+    );
+    const alertSpy = jest.spyOn(Alert, "alert");
+    answerAlert("Encerrar");
+    const screen = await renderScreen();
+
+    await fireEvent.press(await screen.findByText("Encerrar hábito"));
+
+    await waitFor(() =>
+      expect(alertSpy).toHaveBeenCalledWith(
+        "Não foi possível encerrar",
+        "Hábito já encerrado.",
+      ),
+    );
+  });
+
+  it.each([
+    ["members", { ...adminGroup, my_role: "member" as const }],
+    ["ended groups", { ...adminGroup, status: "ended" as const }],
+  ])("hides the admin actions for %s", async (_case, current) => {
+    (getGroup as jest.Mock).mockResolvedValue(current);
+    const screen = await renderScreen();
+
+    await screen.findByText("Pedalar");
+    expect(screen.queryByText("Editar hábito")).toBeNull();
+    expect(screen.queryByText("Encerrar hábito")).toBeNull();
   });
 });

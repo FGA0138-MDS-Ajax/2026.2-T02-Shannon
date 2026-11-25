@@ -1,7 +1,13 @@
-import { useFocusEffect, useLocalSearchParams } from "expo-router";
+import {
+  type Href,
+  router,
+  useFocusEffect,
+  useLocalSearchParams,
+} from "expo-router";
 import { useCallback } from "react";
 import {
   ActivityIndicator,
+  Alert,
   ScrollView,
   StyleSheet,
   Text,
@@ -17,9 +23,11 @@ import { palette } from "@/components/statistics/palette";
 import { describeGoal } from "@/config/goal-labels";
 import { habitCategoryLabels } from "@/config/habit-categories";
 import { theme } from "@/config/theme";
+import { useGroup } from "@/hooks/useGroup";
+import { useGroupHabit } from "@/hooks/useGroupHabit";
 import { useSession } from "@/hooks/useSession";
 import { getErrorMessage } from "@/services/api-errors";
-import { getGroupHabit, getGroupHabitStats } from "@/services/groups-api";
+import { finishGroupHabit, getGroupHabitStats } from "@/services/groups-api";
 
 export default function GroupHabitScreen() {
   const { id, habitId } = useLocalSearchParams<{
@@ -28,13 +36,12 @@ export default function GroupHabitScreen() {
   }>();
   const { user } = useSession();
 
+  const { data: group } = useGroup(id);
   const {
     data: habit,
     error,
     mutate: refreshHabit,
-  } = useSWR(`/groups/${id}/habits/${habitId}`, () =>
-    getGroupHabit(id, habitId),
-  );
+  } = useGroupHabit(id, habitId);
   const { data: stats, mutate: refreshStats } = useSWR(
     `/groups/${id}/habits/${habitId}/stats`,
     () => getGroupHabitStats(id, habitId),
@@ -46,6 +53,28 @@ export default function GroupHabitScreen() {
       refreshStats();
     }, [refreshHabit, refreshStats]),
   );
+
+  const finish = async () => {
+    try {
+      refreshHabit(await finishGroupHabit(id, habitId), { revalidate: false });
+    } catch (err: unknown) {
+      // 409 "Hábito já encerrado.": outro admin encerrou antes; recarrega
+      Alert.alert("Não foi possível encerrar", getErrorMessage(err));
+      refreshHabit();
+    }
+    refreshStats();
+  };
+
+  const handleFinish = () => {
+    Alert.alert(
+      "Encerrar hábito do grupo?",
+      "Ninguém mais faz check-in nele e o progresso de todos para nesta data.",
+      [
+        { text: "Cancelar", style: "cancel" },
+        { text: "Encerrar", style: "destructive", onPress: finish },
+      ],
+    );
+  };
 
   const renderContent = () => {
     if (!habit) {
@@ -65,6 +94,12 @@ export default function GroupHabitScreen() {
       );
     }
 
+    // Só admin mexe, e só com o grupo e o hábito ativos
+    const canManage =
+      group?.my_role === "admin" &&
+      group.status === "active" &&
+      habit.status === "active";
+
     return (
       <ScrollView contentContainerStyle={styles.scroll}>
         <View style={styles.titleRow}>
@@ -75,6 +110,28 @@ export default function GroupHabitScreen() {
         <Text style={styles.detail}>{habitCategoryLabels[habit.category]}</Text>
         {habit.description && (
           <Text style={styles.description}>{habit.description}</Text>
+        )}
+
+        {canManage && (
+          <View style={styles.actions}>
+            <Button
+              variant="secondary"
+              onPress={() =>
+                router.push(`/groups/${id}/habits/${habitId}/edit` as Href)
+              }
+              style={styles.action}
+            >
+              Editar hábito
+            </Button>
+            <Button
+              variant="secondary"
+              onPress={handleFinish}
+              style={styles.action}
+              textStyle={styles.finishText}
+            >
+              Encerrar hábito
+            </Button>
+          </View>
         )}
 
         <Text style={styles.sectionTitle}>Como cada um está</Text>
@@ -150,6 +207,17 @@ const styles = StyleSheet.create({
     fontSize: 16,
     lineHeight: 24,
     color: palette.ink,
+  },
+  actions: {
+    flexDirection: "row",
+    gap: 24,
+    marginTop: 8,
+  },
+  action: {
+    paddingHorizontal: 0,
+  },
+  finishText: {
+    color: palette.riskText,
   },
   sectionTitle: {
     marginTop: 24,
