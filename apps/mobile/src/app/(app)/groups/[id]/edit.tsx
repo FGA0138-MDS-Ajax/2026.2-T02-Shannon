@@ -4,15 +4,13 @@ import useSWR from "swr";
 import { GroupForm, type GroupFormValues } from "@/components/forms/group-form";
 import {
   ActionRow,
-  ErrorBanner,
   HeaderAction,
-  Loading,
+  QueryState,
   Screen,
   ScreenHeader,
 } from "@/components/ui";
 import { confirmAction, useAsyncAction } from "@/hooks/useAsyncAction";
 import { request } from "@/services/api";
-import { getErrorMessage } from "@/services/api-errors";
 import { groupKeys, updateGroup } from "@/services/groups-api";
 import type { GroupDetail, GroupUpdate } from "@/services/types/groups";
 import { startOfToday, toApiDate } from "@/utils/date";
@@ -78,17 +76,7 @@ export default function EditGroupScreen() {
       onConfirm: () => setEndsOn(null, "Não foi possível reabrir"),
     });
 
-  const renderContent = () => {
-    if (error && !group) {
-      return (
-        <ErrorBanner
-          message={getErrorMessage(error)}
-          onRetry={() => refreshGroup()}
-        />
-      );
-    }
-    if (!group) return <Loading fill />;
-
+  const renderContent = (group: GroupDetail) => {
     return (
       <>
         <GroupForm
@@ -129,7 +117,9 @@ export default function EditGroupScreen() {
         title="Editar grupo"
         action={<HeaderAction label="Cancelar" onPress={() => router.back()} />}
       />
-      {renderContent()}
+      <QueryState data={group} error={error} onRetry={() => refreshGroup()}>
+        {renderContent}
+      </QueryState>
     </Screen>
   );
 }

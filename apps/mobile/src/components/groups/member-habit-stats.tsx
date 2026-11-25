@@ -1,15 +1,8 @@
 import { StyleSheet, Text, View } from "react-native";
 import { Avatar, Card } from "@/components/ui";
-import { formatStreak } from "@/config/goal-labels";
+import { currentPeriodPhrases, formatStreak } from "@/config/goal-labels";
 import { theme } from "@/config/theme";
 import type { MemberHabitStats } from "@/services/types/groups";
-import type { GoalPeriod } from "@/services/types/habits";
-
-const periodPhrases: Record<GoalPeriod, string> = {
-  day: "hoje",
-  week: "na semana",
-  month: "no mês",
-};
 
 export interface MemberHabitStatsListProps {
   members: MemberHabitStats[];
@@ -61,7 +54,7 @@ function MemberRow({ member, isMe, isLast }: MemberRowProps) {
             {isMe ? "Você" : `@${member.user.username}`}
           </Text>
           <Text style={styles.count}>
-            {done}/{target} {periodPhrases[period]}
+            {done}/{target} {currentPeriodPhrases[period]}
           </Text>
         </View>
         <View style={styles.track}>

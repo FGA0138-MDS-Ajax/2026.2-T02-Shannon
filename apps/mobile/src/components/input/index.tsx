@@ -33,7 +33,7 @@ const Input = forwardRef<ComponentRef<typeof TextInput>, InputProps>(
         >
           <TextInput
             ref={ref}
-            placeholderTextColor="#8C8885"
+            placeholderTextColor={theme.colors.placeholder}
             multiline={multiline}
             style={[styles.input, multiline && styles.multiline, style]}
             secureTextEntry={isSecure}
@@ -70,16 +70,16 @@ const styles = StyleSheet.create({
   label: {
     fontFamily: theme.font.medium,
     fontSize: 14,
-    color: "#3D3835",
+    color: theme.colors.label,
     marginBottom: 6,
   },
   inputContainer: {
     width: "100%",
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#FFFFFF",
+    backgroundColor: theme.colors.surface,
     borderWidth: 1,
-    borderColor: "#D8D2CD",
+    borderColor: theme.colors.inputBorder,
     borderRadius: 12,
     paddingHorizontal: 14,
   },
@@ -87,14 +87,14 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.primary,
   },
   inputError: {
-    borderColor: "#DC2626",
+    borderColor: theme.colors.dangerStrong,
   },
   input: {
     flex: 1,
     height: 48,
     fontFamily: theme.font.regular,
     fontSize: 15,
-    color: "#1C1917",
+    color: theme.colors.text,
   },
   // Altura livre: com altura fixa a primeira linha ficava cortada
   multiline: {
@@ -116,7 +116,7 @@ const styles = StyleSheet.create({
   errorText: {
     fontFamily: theme.font.regular,
     fontSize: 12,
-    color: "#DC2626",
+    color: theme.colors.dangerStrong,
     marginTop: 4,
   },
 });

@@ -1,5 +1,3 @@
-import type { PressableStateCallbackType, StyleProp } from "react-native";
-
 export const theme = {
   colors: {
     // Fundos
@@ -20,6 +18,7 @@ export const theme = {
     label: "#3D3835",
     muted: "#6B6560",
     subtle: "#A8A29E",
+    placeholder: "#8C8885",
 
     // Bordas
     border: "#E7E2DE",
@@ -28,6 +27,8 @@ export const theme = {
     // Estados
     success: "#2F7D4F",
     successSoft: "#E3F1E8",
+    warning: "#C2410C",
+    warningSoft: "#FFEDD5",
     danger: "#B91C1C",
     dangerStrong: "#DC2626",
     dangerSoft: "#FEE2E2",
@@ -49,7 +50,3 @@ export const theme = {
     screen: 24,
   },
 };
-
-export type Css<T> =
-  | StyleProp<T>
-  | ((state: PressableStateCallbackType) => StyleProp<T>);

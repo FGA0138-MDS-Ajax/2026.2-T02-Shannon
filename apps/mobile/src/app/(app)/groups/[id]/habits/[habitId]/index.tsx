@@ -1,33 +1,23 @@
-import {
-  type Href,
-  router,
-  useFocusEffect,
-  useLocalSearchParams,
-} from "expo-router";
-import { useCallback } from "react";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { router, useLocalSearchParams } from "expo-router";
+import { ScrollView, StyleSheet, View } from "react-native";
 import useSWR from "swr";
 import Button from "@/components/button";
 import GoalProgress from "@/components/goal-progress";
 import MemberHabitStatsList from "@/components/groups/member-habit-stats";
+import HabitSummary from "@/components/habit-detail/habit-summary";
 import {
   ActionRow,
   BackButton,
-  Badge,
-  Card,
-  CenteredMessage,
   ErrorBanner,
-  InfoRow,
   Loading,
+  QueryState,
   Screen,
   Section,
 } from "@/components/ui";
-import { describeGoal } from "@/config/goal-labels";
-import { habitCategoryLabels } from "@/config/habit-categories";
-import { theme } from "@/config/theme";
 import { confirmAction, useAsyncAction } from "@/hooks/useAsyncAction";
+import { useRefreshOnFocus } from "@/hooks/useRefreshOnFocus";
 import { useSession } from "@/hooks/useSession";
-import { ApiError, request } from "@/services/api";
+import { request } from "@/services/api";
 import { getErrorMessage } from "@/services/api-errors";
 import { finishGroupHabit, groupKeys } from "@/services/groups-api";
 import type {
@@ -35,9 +25,6 @@ import type {
   GroupHabit,
   GroupHabitStatistics,
 } from "@/services/types/groups";
-import { formatDate, parseApiDate } from "@/utils/date";
-
-const formatApiDate = (value: string) => formatDate(parseApiDate(value));
 
 export default function GroupHabitDetailScreen() {
   const { id, habitId } = useLocalSearchParams<{
@@ -56,12 +43,8 @@ export default function GroupHabitDetailScreen() {
   const { mutate: refreshHabit } = habit;
   const { mutate: refreshStats } = stats;
 
-  useFocusEffect(
-    useCallback(() => {
-      refreshHabit();
-      refreshStats();
-    }, [refreshHabit, refreshStats]),
-  );
+  useRefreshOnFocus(refreshHabit);
+  useRefreshOnFocus(refreshStats);
 
   const handleFinish = () =>
     confirmAction({
@@ -108,21 +91,7 @@ export default function GroupHabitDetailScreen() {
     );
   };
 
-  const renderContent = () => {
-    if (habit.error instanceof ApiError && habit.error.status === 404) {
-      return <CenteredMessage message="Hábito não encontrado." />;
-    }
-    if (habit.error && !habit.data) {
-      return (
-        <ErrorBanner
-          message={getErrorMessage(habit.error)}
-          onRetry={() => refreshHabit()}
-        />
-      );
-    }
-    if (!habit.data) return <Loading testID="group-habit-loading" fill />;
-
-    const current = habit.data;
+  const renderContent = (current: GroupHabit) => {
     const isFinished = current.status === "finished";
     const isGroupActive = group?.status === "active";
     const canManage =
@@ -133,44 +102,7 @@ export default function GroupHabitDetailScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scroll}
       >
-        <View style={styles.titleRow}>
-          <Text style={styles.title}>{current.name}</Text>
-          <Badge
-            label={isFinished ? "Encerrado" : "Ativo"}
-            tone={isFinished ? "neutral" : "primary"}
-          />
-        </View>
-        <Text style={styles.details}>
-          {habitCategoryLabels[current.category]} · Grupo {current.group.name}
-        </Text>
-        {current.description && (
-          <Text style={styles.description}>{current.description}</Text>
-        )}
-
-        <Card style={styles.info}>
-          {current.goal && (
-            <InfoRow label="Meta" value={describeGoal(current.goal)} />
-          )}
-          <InfoRow
-            label="Criado em"
-            value={formatApiDate(current.created_at)}
-            last={!current.target_end_date && !current.finished_at}
-          />
-          {current.target_end_date && (
-            <InfoRow
-              label="Data final prevista"
-              value={formatApiDate(current.target_end_date)}
-              last={!current.finished_at}
-            />
-          )}
-          {current.finished_at && (
-            <InfoRow
-              label="Encerrado em"
-              value={formatApiDate(current.finished_at)}
-              last
-            />
-          )}
-        </Card>
+        <HabitSummary habit={current} showGoal />
 
         {!isFinished && isGroupActive && (
           <Button
@@ -181,7 +113,7 @@ export default function GroupHabitDetailScreen() {
               router.push({
                 pathname: "/check-ins/create",
                 params: { habitId: current.id, category: current.category },
-              } as Href)
+              })
             }
           >
             Fazer check-in
@@ -199,7 +131,7 @@ export default function GroupHabitDetailScreen() {
               description="Nome, categoria, descrição e data final"
               disabled={busy}
               onPress={() =>
-                router.push(`/groups/${id}/habits/${habitId}/edit` as Href)
+                router.push(`/groups/${id}/habits/${habitId}/edit`)
               }
             />
             <ActionRow
@@ -220,7 +152,15 @@ export default function GroupHabitDetailScreen() {
   return (
     <Screen>
       <BackButton />
-      {renderContent()}
+      <QueryState
+        data={habit.data}
+        error={habit.error}
+        onRetry={() => refreshHabit()}
+        notFoundMessage="Hábito não encontrado."
+        loadingTestID="group-habit-loading"
+      >
+        {renderContent}
+      </QueryState>
     </Screen>
   );
 }
@@ -228,35 +168,6 @@ export default function GroupHabitDetailScreen() {
 const styles = StyleSheet.create({
   scroll: {
     paddingBottom: 32,
-  },
-  titleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 12,
-    marginBottom: 4,
-  },
-  title: {
-    flex: 1,
-    fontFamily: theme.font.bold,
-    fontSize: 26,
-    color: theme.colors.text,
-  },
-  details: {
-    fontFamily: theme.font.regular,
-    fontSize: 15,
-    color: theme.colors.muted,
-  },
-  description: {
-    marginTop: 12,
-    fontFamily: theme.font.regular,
-    fontSize: 15,
-    color: theme.colors.label,
-    lineHeight: 22,
-  },
-  info: {
-    marginTop: 16,
-    paddingVertical: 4,
   },
   checkIn: {
     marginTop: 16,

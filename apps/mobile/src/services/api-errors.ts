@@ -110,3 +110,12 @@ export function getFormErrors(error: unknown): {
     return { fieldErrors, formError: null };
   return { fieldErrors, formError: getErrorMessage(error) };
 }
+
+/**
+ * Uma frase só para formulários sem erro por campo (login, cadastro): a
+ * primeira mensagem de validação ou a mensagem geral do erro.
+ */
+export function getSingleErrorMessage(error: unknown): string {
+  const { fieldErrors, formError } = getFormErrors(error);
+  return formError ?? Object.values(fieldErrors)[0] ?? getErrorMessage(error);
+}

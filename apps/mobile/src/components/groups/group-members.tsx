@@ -1,26 +1,19 @@
 import { router } from "expo-router";
-import { useState } from "react";
 import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
 import Button from "@/components/button";
-import Input from "@/components/input";
 import { Avatar, Badge, Card } from "@/components/ui";
 import { groupRoleLabels } from "@/config/group-labels";
 import { theme } from "@/config/theme";
 import { confirmAction, useAsyncAction } from "@/hooks/useAsyncAction";
 import { useSession } from "@/hooks/useSession";
-import { getErrorMessage } from "@/services/api-errors";
-import {
-  addMember,
-  leaveGroup,
-  promoteMember,
-  removeMember,
-} from "@/services/groups-api";
+import { leaveGroup, promoteMember, removeMember } from "@/services/groups-api";
 import {
   GROUP_MAX_MEMBERS,
   type GroupDetail,
   type GroupMember,
 } from "@/services/types/groups";
 import { formatDate } from "@/utils/date";
+import AddMemberForm from "./add-member-form";
 
 export interface GroupMembersProps {
   group: GroupDetail;
@@ -140,87 +133,9 @@ export default function GroupMembers({ group, onChanged }: GroupMembersProps) {
   );
 }
 
-interface AddMemberFormProps {
-  groupId: string;
-  isFull: boolean;
-  onAdded: () => void;
-}
-
-function AddMemberForm({ groupId, isFull, onAdded }: AddMemberFormProps) {
-  const [username, setUsername] = useState("");
-  const [error, setError] = useState<string>();
-  const [submitting, setSubmitting] = useState(false);
-
-  const handleAdd = async () => {
-    const trimmed = username.trim().replace(/^@/, "");
-    if (!trimmed) {
-      setError("Informe o nome de usuário.");
-      return;
-    }
-    setError(undefined);
-    setSubmitting(true);
-    try {
-      await addMember(groupId, trimmed);
-      setUsername("");
-      onAdded();
-    } catch (err: unknown) {
-      setError(getErrorMessage(err));
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  if (isFull) {
-    return (
-      <Text style={styles.hint}>
-        O grupo chegou ao limite de {GROUP_MAX_MEMBERS} integrantes.
-      </Text>
-    );
-  }
-
-  return (
-    <View style={styles.addRow}>
-      <View style={styles.addInput}>
-        <Input
-          testID="add-member-input"
-          label="Adicionar por nome de usuário"
-          placeholder="ex: ana_souza"
-          value={username}
-          onChangeText={setUsername}
-          autoCorrect={false}
-          error={error}
-          onSubmitEditing={handleAdd}
-        />
-      </View>
-      <Button
-        testID="add-member-button"
-        style={styles.addButton}
-        disabled={submitting}
-        onPress={handleAdd}
-      >
-        {submitting ? "..." : "Adicionar"}
-      </Button>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   container: {
     gap: 12,
-  },
-  addRow: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 8,
-  },
-  addInput: {
-    flex: 1,
-  },
-  addButton: {
-    // Alinha com a caixa do input, abaixo do rótulo
-    marginTop: 26,
-    height: 48,
-    paddingHorizontal: 16,
   },
   list: {
     paddingVertical: 4,

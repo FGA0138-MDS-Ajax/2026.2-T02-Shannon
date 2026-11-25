@@ -4,14 +4,9 @@ import {
   createGroup,
   createGroupHabit,
   finishGroupHabit,
-  getGroupHabitStatistics,
-  getGroupRanking,
-  getGroupStatistics,
+  groupKeys,
   joinGroup,
   leaveGroup,
-  listGroupFeed,
-  listGroupHabits,
-  listGroups,
   normalizeInviteCode,
   previewGroup,
   promoteMember,
@@ -61,9 +56,20 @@ describe("normalizeInviteCode", () => {
   });
 });
 
+describe("groupKeys", () => {
+  it("builds the GET routes used as SWR keys", () => {
+    expect(groupKeys.habits("g1", "finished")).toBe(
+      "/groups/g1/habits?status=finished",
+    );
+    expect(groupKeys.feed("g1", { limit: 20, before: "abc" })).toBe(
+      "/groups/g1/check-ins?limit=20&before=abc",
+    );
+    expect(groupKeys.habitStats("g1", "h1")).toBe("/groups/g1/habits/h1/stats");
+  });
+});
+
 describe("groups-api", () => {
   it.each([
-    ["listGroups", () => listGroups(), "GET", "/groups", undefined],
     [
       "createGroup",
       () => createGroup({ name: "Corrida", ranking_criterion: "check_ins" }),
@@ -121,13 +127,6 @@ describe("groups-api", () => {
       undefined,
     ],
     [
-      "listGroupHabits with status",
-      () => listGroupHabits("g1", "finished"),
-      "GET",
-      "/groups/g1/habits?status=finished",
-      undefined,
-    ],
-    [
       "createGroupHabit",
       () =>
         createGroupHabit("g1", {
@@ -151,34 +150,6 @@ describe("groups-api", () => {
       () => finishGroupHabit("g1", "h1"),
       "POST",
       "/groups/g1/habits/h1/finish",
-      undefined,
-    ],
-    [
-      "listGroupFeed with cursor",
-      () => listGroupFeed("g1", { limit: 20, before: "abc" }),
-      "GET",
-      "/groups/g1/check-ins?limit=20&before=abc",
-      undefined,
-    ],
-    [
-      "getGroupRanking",
-      () => getGroupRanking("g1"),
-      "GET",
-      "/groups/g1/ranking",
-      undefined,
-    ],
-    [
-      "getGroupStatistics",
-      () => getGroupStatistics("g1"),
-      "GET",
-      "/groups/g1/stats",
-      undefined,
-    ],
-    [
-      "getGroupHabitStatistics",
-      () => getGroupHabitStatistics("g1", "h1"),
-      "GET",
-      "/groups/g1/habits/h1/stats",
       undefined,
     ],
   ])("%s calls the right route", async (_name, call, method, url, body) => {

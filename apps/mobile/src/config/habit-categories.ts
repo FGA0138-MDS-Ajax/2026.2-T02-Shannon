@@ -19,3 +19,23 @@ export const habitCategoryLabels: Record<HabitCategory, string> = {
   arte: "Arte",
   outros: "Outros",
 };
+
+// Ícone Lucide de cada categoria
+export const habitCategoryIcons = {
+  musculacao: "dumbbell",
+  corrida: "footprints",
+  ciclismo: "bike",
+  natacao: "waves",
+  cardio: "heart-pulse",
+  esportes: "trophy",
+  alimentacao: "droplet",
+  sono: "moon",
+  estudos: "graduation-cap",
+  leitura: "book-open",
+  mente: "brain",
+  religiao: "church",
+  produtividade: "list-checks",
+  financas: "wallet",
+  arte: "palette",
+  outros: "sparkles",
+} as const satisfies Record<HabitCategory, string>;

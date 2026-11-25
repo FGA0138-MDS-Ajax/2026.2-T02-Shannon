@@ -1,28 +1,23 @@
 import { request, toQueryString } from "@/services/api";
 import type {
-  FeedPage,
   FeedParams,
   GroupCreate,
   GroupDetail,
   GroupHabit,
   GroupHabitCreate,
-  GroupHabitStatistics,
   GroupHabitUpdate,
-  GroupListItem,
   GroupMember,
   GroupPreview,
-  GroupStatistics,
   GroupUpdate,
   InviteCode,
   LeaveResult,
-  Ranking,
 } from "@/services/types/groups";
 import type { HabitStatus } from "@/services/types/habits";
 
 /**
- * Chaves do SWR das telas de grupo. Os GETs abaixo usam a própria rota como
- * chave, então `useSWR(groupKeys.detail(id), request)` e `getGroup(id)`
- * buscam a mesma coisa.
+ * Chaves do SWR das telas de grupo. Cada chave é a própria rota do GET, então
+ * as telas buscam com `useSWR(groupKeys.detail(id), request)`. As funções
+ * abaixo são só as que alteram dados.
  */
 export const groupKeys = {
   list: "/groups",
@@ -45,21 +40,12 @@ export function normalizeInviteCode(code: string): string {
 
 // Grupos ----------------------------------------------------------------------
 
-/** Grupos de que o usuário participa, ativos e encerrados. */
-export function listGroups(): Promise<GroupListItem[]> {
-  return request<GroupListItem[]>(groupKeys.list);
-}
-
 /** Quem cria vira o primeiro administrador. */
 export function createGroup(body: GroupCreate): Promise<GroupDetail> {
   return request<GroupDetail>(groupKeys.list, {
     method: "POST",
     body: JSON.stringify(body),
   });
-}
-
-export function getGroup(id: string): Promise<GroupDetail> {
-  return request<GroupDetail>(groupKeys.detail(id));
 }
 
 /** Só admin. Envie só os campos alterados; `ends_on: null` reabre o grupo. */
@@ -98,10 +84,6 @@ export function regenerateInviteCode(id: string): Promise<InviteCode> {
 
 // Integrantes -----------------------------------------------------------------
 
-export function listMembers(id: string): Promise<GroupMember[]> {
-  return request<GroupMember[]>(`/groups/${id}/members`);
-}
-
 /** Só admin. 409 se o grupo estiver cheio ou encerrado. */
 export function addMember(id: string, username: string): Promise<GroupMember> {
   return request<GroupMember>(`/groups/${id}/members`, {
@@ -136,13 +118,6 @@ export function leaveGroup(id: string): Promise<LeaveResult> {
 
 // Hábitos do grupo ------------------------------------------------------------
 
-export function listGroupHabits(
-  id: string,
-  status?: HabitStatus,
-): Promise<GroupHabit[]> {
-  return request<GroupHabit[]>(groupKeys.habits(id, status));
-}
-
 /** Só admin. A meta é obrigatória e não muda depois. */
 export function createGroupHabit(
   id: string,
@@ -152,13 +127,6 @@ export function createGroupHabit(
     method: "POST",
     body: JSON.stringify(body),
   });
-}
-
-export function getGroupHabit(
-  id: string,
-  habitId: string,
-): Promise<GroupHabit> {
-  return request<GroupHabit>(groupKeys.habit(id, habitId));
 }
 
 /** Só admin. Envie só os campos alterados. */
@@ -184,26 +152,3 @@ export function finishGroupHabit(
 }
 
 // Feed, ranking e estatísticas ------------------------------------------------
-
-/** Do mais novo ao mais antigo. Para rolar, passe o `next_cursor` em `before`. */
-export function listGroupFeed(
-  id: string,
-  params: FeedParams = {},
-): Promise<FeedPage> {
-  return request<FeedPage>(groupKeys.feed(id, params));
-}
-
-export function getGroupRanking(id: string): Promise<Ranking> {
-  return request<Ranking>(groupKeys.ranking(id));
-}
-
-export function getGroupStatistics(id: string): Promise<GroupStatistics> {
-  return request<GroupStatistics>(groupKeys.stats(id));
-}
-
-export function getGroupHabitStatistics(
-  id: string,
-  habitId: string,
-): Promise<GroupHabitStatistics> {
-  return request<GroupHabitStatistics>(groupKeys.habitStats(id, habitId));
-}

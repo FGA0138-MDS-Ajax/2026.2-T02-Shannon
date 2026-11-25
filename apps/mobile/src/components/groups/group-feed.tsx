@@ -1,5 +1,3 @@
-import { useFocusEffect } from "expo-router";
-import { useCallback } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import useSWRInfinite from "swr/infinite";
 import Button from "@/components/button";
@@ -12,6 +10,7 @@ import {
   Loading,
 } from "@/components/ui";
 import { theme } from "@/config/theme";
+import { useRefreshOnFocus } from "@/hooks/useRefreshOnFocus";
 import { useSession } from "@/hooks/useSession";
 import { request } from "@/services/api";
 import { getErrorMessage } from "@/services/api-errors";
@@ -38,11 +37,7 @@ export default function GroupFeed({ groupId }: { groupId: string }) {
       { revalidateFirstPage: true },
     );
 
-  useFocusEffect(
-    useCallback(() => {
-      mutate();
-    }, [mutate]),
-  );
+  useRefreshOnFocus(mutate);
 
   const items = data?.flatMap((page) => page.items) ?? [];
   const hasMore = data?.[data.length - 1]?.has_more ?? false;

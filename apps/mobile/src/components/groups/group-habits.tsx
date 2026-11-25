@@ -1,5 +1,5 @@
-import { type Href, router, useFocusEffect } from "expo-router";
-import { useCallback, useState } from "react";
+import { router } from "expo-router";
+import { useState } from "react";
 import { StyleSheet, View } from "react-native";
 import useSWR from "swr";
 import Button from "@/components/button";
@@ -11,6 +11,7 @@ import {
   FilterChips,
   Loading,
 } from "@/components/ui";
+import { useRefreshOnFocus } from "@/hooks/useRefreshOnFocus";
 import { request } from "@/services/api";
 import { getErrorMessage } from "@/services/api-errors";
 import { groupKeys } from "@/services/groups-api";
@@ -30,11 +31,7 @@ export default function GroupHabits({ group }: { group: GroupDetail }) {
     mutate: refreshHabits,
   } = useSWR<GroupHabit[]>(groupKeys.habits(group.id, filter), request);
 
-  useFocusEffect(
-    useCallback(() => {
-      refreshHabits();
-    }, [refreshHabits]),
-  );
+  useRefreshOnFocus(refreshHabits);
 
   const canCreate = group.my_role === "admin" && group.status === "active";
 
@@ -73,9 +70,7 @@ export default function GroupHabits({ group }: { group: GroupDetail }) {
         key={habit.id}
         habit={habit}
         hideGroupName
-        onPress={() =>
-          router.push(`/groups/${group.id}/habits/${habit.id}` as Href)
-        }
+        onPress={() => router.push(`/groups/${group.id}/habits/${habit.id}`)}
       />
     ));
   };
@@ -96,9 +91,7 @@ export default function GroupHabits({ group }: { group: GroupDetail }) {
           testID="create-group-habit-button"
           width="full"
           style={styles.create}
-          onPress={() =>
-            router.push(`/groups/${group.id}/habits/create` as Href)
-          }
+          onPress={() => router.push(`/groups/${group.id}/habits/create`)}
         >
           Novo hábito do grupo
         </Button>

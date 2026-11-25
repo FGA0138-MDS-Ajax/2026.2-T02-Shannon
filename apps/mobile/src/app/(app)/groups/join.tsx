@@ -1,4 +1,4 @@
-import { type Href, router, useLocalSearchParams } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import useSWR from "swr";
@@ -61,7 +61,7 @@ export default function JoinGroupScreen() {
   const handleJoin = () =>
     run(async () => {
       const group = await joinGroup(code);
-      router.replace(`/groups/${group.id}` as Href);
+      router.replace(`/groups/${group.id}`);
     });
 
   const handleCodeChange = (text: string) => {
@@ -113,7 +113,7 @@ export default function JoinGroupScreen() {
           <Button
             testID="open-group-button"
             width="full"
-            onPress={() => router.replace(`/groups/${preview.id}` as Href)}
+            onPress={() => router.replace(`/groups/${preview.id}`)}
           >
             Você já participa · Abrir grupo
           </Button>

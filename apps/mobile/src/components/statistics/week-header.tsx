@@ -1,34 +1,12 @@
 import { StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import { Card, ScreenHeader } from "@/components/ui";
 import { theme } from "@/config/theme";
-import { parseApiDate } from "@/utils/date";
+import { formatLongDate, parseApiDate } from "@/utils/date";
 import { type WeekDayProgress, weekDates } from "@/utils/habit-history";
 import DayRing from "./day-ring";
+import { greeting } from "./format";
 
 const WEEKDAYS = ["SEG", "TER", "QUA", "QUI", "SEX", "SÁB", "DOM"];
-const WEEKDAY_NAMES = [
-  "Domingo",
-  "Segunda",
-  "Terça",
-  "Quarta",
-  "Quinta",
-  "Sexta",
-  "Sábado",
-];
-const MONTHS = [
-  "janeiro",
-  "fevereiro",
-  "março",
-  "abril",
-  "maio",
-  "junho",
-  "julho",
-  "agosto",
-  "setembro",
-  "outubro",
-  "novembro",
-  "dezembro",
-];
 
 // Margem da tela + padding do card, dos dois lados
 const HORIZONTAL_SPACE = (theme.spacing.screen + 16) * 2;
@@ -54,7 +32,6 @@ export default function WeekHeader({
     MAX_RING,
     Math.floor((Math.min(width, 640) - HORIZONTAL_SPACE - DAY_GAP * 6) / 7),
   );
-  const firstName = userName?.trim().split(" ")[0];
   const today = parseApiDate(referenceDate);
   const days =
     week ??
@@ -68,8 +45,8 @@ export default function WeekHeader({
   return (
     <View>
       <ScreenHeader
-        title={firstName ? `Olá, ${firstName}!` : "Olá!"}
-        subtitle={`${WEEKDAY_NAMES[today.getDay()]}, ${today.getDate()} de ${MONTHS[today.getMonth()]}`}
+        title={greeting(userName)}
+        subtitle={formatLongDate(today)}
       />
 
       <Card testID="week-card" style={styles.card}>

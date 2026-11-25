@@ -1,5 +1,5 @@
-import { type Href, router, useFocusEffect } from "expo-router";
-import { useCallback, useState } from "react";
+import { router } from "expo-router";
+import { useState } from "react";
 import { FlatList, RefreshControl, StyleSheet, View } from "react-native";
 import useSWR from "swr";
 import Button from "@/components/button";
@@ -15,6 +15,7 @@ import {
   ScreenHeader,
 } from "@/components/ui";
 import { theme } from "@/config/theme";
+import { useRefreshOnFocus } from "@/hooks/useRefreshOnFocus";
 import { request } from "@/services/api";
 import { getErrorMessage } from "@/services/api-errors";
 import { groupKeys } from "@/services/groups-api";
@@ -35,11 +36,7 @@ export default function GroupsScreen() {
     mutate: refreshGroups,
   } = useSWR<GroupListItem[]>(groupKeys.list, request);
 
-  useFocusEffect(
-    useCallback(() => {
-      refreshGroups();
-    }, [refreshGroups]),
-  );
+  useRefreshOnFocus(refreshGroups);
 
   // A API devolve todos de uma vez: o filtro é só local
   const visible = groups?.filter((group) => group.status === filter) ?? [];
@@ -63,7 +60,7 @@ export default function GroupsScreen() {
         renderItem={({ item }) => (
           <GroupCard
             group={item}
-            onPress={() => router.push(`/groups/${item.id}` as Href)}
+            onPress={() => router.push(`/groups/${item.id}`)}
           />
         )}
         contentContainerStyle={styles.list}
@@ -113,14 +110,14 @@ export default function GroupsScreen() {
             testID="join-group-button"
             variant="outline"
             style={styles.action}
-            onPress={() => router.push("/groups/join" as Href)}
+            onPress={() => router.push("/groups/join")}
           >
             Usar código
           </Button>
           <Button
             testID="create-group-button"
             style={styles.action}
-            onPress={() => router.push("/groups/create" as Href)}
+            onPress={() => router.push("/groups/create")}
           >
             Novo grupo
           </Button>

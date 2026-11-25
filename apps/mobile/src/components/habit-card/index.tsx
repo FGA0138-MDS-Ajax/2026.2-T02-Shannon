@@ -1,8 +1,8 @@
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import { describeGoal } from "@/config/goal-labels";
+import { currentPeriodPhrases, describeGoal } from "@/config/goal-labels";
 import { habitCategoryLabels } from "@/config/habit-categories";
 import { theme } from "@/config/theme";
-import type { GoalPeriod, Habit, HabitProgress } from "@/services/types/habits";
+import type { Habit, HabitProgress } from "@/services/types/habits";
 
 export interface HabitCardProps {
   /** `progress` vem em GET /habits; os hábitos da tela do grupo não trazem */
@@ -70,12 +70,6 @@ export default function HabitCard({
   );
 }
 
-const periodPhrases: Record<GoalPeriod, string> = {
-  day: "hoje",
-  week: "nesta semana",
-  month: "neste mês",
-};
-
 function HabitProgressSummary({ progress }: { progress: HabitProgress }) {
   const { done, target_count } = progress.current_period;
   const { period } = progress.goal;
@@ -87,7 +81,7 @@ function HabitProgressSummary({ progress }: { progress: HabitProgress }) {
     <View testID="habit-progress" style={styles.progressSection}>
       <View style={styles.progressHeader}>
         <Text style={styles.progressCount}>
-          {done}/{target_count} {periodPhrases[period]}
+          {done}/{target_count} {currentPeriodPhrases[period]}
         </Text>
         <Text style={styles.goalRule}>{describeGoal(progress.goal)}</Text>
       </View>

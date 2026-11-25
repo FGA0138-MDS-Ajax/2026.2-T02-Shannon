@@ -14,6 +14,13 @@ export const goalPeriodLabels: Record<GoalPeriod, string> = {
   month: "Mensal",
 };
 
+// Completa "2 de 3 ..." com o período atual da meta
+export const currentPeriodPhrases: Record<GoalPeriod, string> = {
+  day: "hoje",
+  week: "nesta semana",
+  month: "neste mês",
+};
+
 // Mesma numeração da API: 1 = segunda ... 7 = domingo
 export const weekdayLabels: Record<number, string> = {
   1: "Segunda",

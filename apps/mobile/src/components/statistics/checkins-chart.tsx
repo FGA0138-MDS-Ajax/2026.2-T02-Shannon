@@ -2,7 +2,8 @@ import { StyleSheet, Text, View } from "react-native";
 import { Card } from "@/components/ui";
 import { theme } from "@/config/theme";
 import type { SeriesPoint } from "@/services/types/statistics";
-import { formatDayMonth, plural } from "./format";
+import { formatDayMonth } from "@/utils/date";
+import { plural } from "./format";
 
 export interface CheckInsChartProps {
   points: SeriesPoint[];

@@ -1,10 +1,5 @@
-import {
-  type Href,
-  router,
-  useFocusEffect,
-  useLocalSearchParams,
-} from "expo-router";
-import { useCallback, useState } from "react";
+import { router, useLocalSearchParams } from "expo-router";
+import { useState } from "react";
 import { RefreshControl, ScrollView, StyleSheet, View } from "react-native";
 import useSWR from "swr";
 import GroupFeed from "@/components/groups/group-feed";
@@ -14,17 +9,15 @@ import GroupOverview from "@/components/groups/group-overview";
 import GroupRanking from "@/components/groups/group-ranking";
 import {
   BackButton,
-  CenteredMessage,
   type ChipOption,
-  ErrorBanner,
   HeaderAction,
-  Loading,
+  QueryState,
   Screen,
   SegmentedTabs,
 } from "@/components/ui";
 import { theme } from "@/config/theme";
-import { ApiError, request } from "@/services/api";
-import { getErrorMessage } from "@/services/api-errors";
+import { useRefreshOnFocus } from "@/hooks/useRefreshOnFocus";
+import { request } from "@/services/api";
 import { groupKeys } from "@/services/groups-api";
 import type { GroupDetail } from "@/services/types/groups";
 
@@ -47,11 +40,7 @@ export default function GroupDetailScreen() {
     mutate: refreshGroup,
   } = useSWR<GroupDetail>(groupKeys.detail(id), request);
 
-  useFocusEffect(
-    useCallback(() => {
-      refreshGroup();
-    }, [refreshGroup]),
-  );
+  useRefreshOnFocus(refreshGroup);
 
   const onChanged = () => {
     refreshGroup();
@@ -70,21 +59,7 @@ export default function GroupDetailScreen() {
     }
   };
 
-  const renderContent = () => {
-    // 404: o grupo não existe ou a pessoa saiu dele
-    if (error instanceof ApiError && error.status === 404) {
-      return <CenteredMessage message="Grupo não encontrado." />;
-    }
-    if (error && !group) {
-      return (
-        <ErrorBanner
-          message={getErrorMessage(error)}
-          onRetry={() => refreshGroup()}
-        />
-      );
-    }
-    if (!group) return <Loading testID="group-loading" fill />;
-
+  const renderContent = (group: GroupDetail) => {
     return (
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -121,11 +96,19 @@ export default function GroupDetailScreen() {
           <HeaderAction
             testID="edit-group-button"
             label="Editar"
-            onPress={() => router.push(`/groups/${id}/edit` as Href)}
+            onPress={() => router.push(`/groups/${id}/edit`)}
           />
         )}
       </View>
-      {renderContent()}
+      <QueryState
+        data={group}
+        error={error}
+        onRetry={() => refreshGroup()}
+        notFoundMessage="Grupo não encontrado."
+        loadingTestID="group-loading"
+      >
+        {renderContent}
+      </QueryState>
     </Screen>
   );
 }

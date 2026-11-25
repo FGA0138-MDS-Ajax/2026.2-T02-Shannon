@@ -1,5 +1,5 @@
-import { type Href, router, useFocusEffect } from "expo-router";
-import { useCallback, useState } from "react";
+import { router } from "expo-router";
+import { useState } from "react";
 import { View } from "react-native";
 import {
   StatisticsContent,
@@ -9,6 +9,7 @@ import {
   StatisticsSkeleton,
 } from "@/components/statistics";
 import { useHabitsCheckIns } from "@/hooks/useHabitsCheckIns";
+import { useRefreshOnFocus } from "@/hooks/useRefreshOnFocus";
 import { useSession } from "@/hooks/useSession";
 import {
   isValidDays,
@@ -53,12 +54,8 @@ export default function StatisticsPanel() {
   } = useHabitsCheckIns(habitIds);
 
   // Check-ins e metas mudam em outras telas e a API não avisa: recarrega ao voltar
-  useFocusEffect(
-    useCallback(() => {
-      refetch();
-      refetchHistory();
-    }, [refetch, refetchHistory]),
-  );
+  useRefreshOnFocus(refetch);
+  useRefreshOnFocus(refetchHistory);
 
   const handleFiltersChange = (next: Filters) => {
     if (!isValidDays(next.days)) {
@@ -73,7 +70,7 @@ export default function StatisticsPanel() {
     router.push({
       pathname: "/check-ins/create",
       params: { habitId, category: categories?.[habitId] ?? "" },
-    } as Href);
+    });
   };
 
   const isEmpty = data?.habits.total === 0 && data.check_ins.total === 0;
@@ -124,7 +121,7 @@ export default function StatisticsPanel() {
           histories={histories}
           categories={categories}
           onCheckIn={openCheckIn}
-          onSeeAllHabits={() => router.push("/habits" as Href)}
+          onSeeAllHabits={() => router.push("/habits")}
         />
       )}
 

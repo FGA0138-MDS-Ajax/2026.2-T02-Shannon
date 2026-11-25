@@ -4,6 +4,7 @@ export { Badge, type BadgeTone } from "./badge";
 export { Card } from "./card";
 export { CenteredMessage, EmptyState, ErrorBanner, Loading } from "./feedback";
 export { type ChipOption, FilterChips } from "./filter-chips";
+export { QueryState } from "./query-state";
 export {
   BackButton,
   FloatingAction,

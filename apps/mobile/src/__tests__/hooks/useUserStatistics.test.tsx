@@ -7,6 +7,7 @@ import { getUserStatistics } from "@/services/statistics-api";
 import type { UserStatistics } from "@/services/types/statistics";
 
 jest.mock("@/services/statistics-api", () => ({
+  ...jest.requireActual("@/services/statistics-api"),
   getUserStatistics: jest.fn(),
 }));
 

@@ -9,6 +9,7 @@ jest.mock("expo-router", () => ({
 }));
 
 jest.mock("@/services/habits-api", () => ({
+  ...jest.requireActual("@/services/habits-api"),
   createHabit: jest.fn(),
 }));
 

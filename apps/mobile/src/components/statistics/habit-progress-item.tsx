@@ -1,12 +1,12 @@
 import { Lucide } from "@react-native-vector-icons/lucide";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Badge, Card } from "@/components/ui";
+import { currentPeriodPhrases } from "@/config/goal-labels";
+import { habitCategoryIcons } from "@/config/habit-categories";
 import { theme } from "@/config/theme";
 import type { HabitCategory } from "@/services/types/habits";
 import type { HabitStatisticsItem } from "@/services/types/statistics";
 import type { HabitHistoryDay } from "@/utils/habit-history";
-import { categoryIcons } from "./category-icons";
-import { periodPhrases } from "./format";
 
 export type { HabitHistoryDay };
 
@@ -38,7 +38,7 @@ export default function HabitProgressItem({
         <View style={styles.titleRow}>
           <View style={styles.icon}>
             <Lucide
-              name={category ? categoryIcons[category] : "sparkles"}
+              name={category ? habitCategoryIcons[category] : "sparkles"}
               size={16}
               color={theme.colors.primaryDark}
             />
@@ -49,7 +49,7 @@ export default function HabitProgressItem({
         </View>
 
         <Text style={styles.progress}>
-          {done} de {target_count} {periodPhrases[habit.goal.period]}
+          {done} de {target_count} {currentPeriodPhrases[habit.goal.period]}
         </Text>
 
         <View style={styles.status}>

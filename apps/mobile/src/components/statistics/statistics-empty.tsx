@@ -1,13 +1,12 @@
 import { StyleSheet, View } from "react-native";
 import { EmptyState, ScreenHeader, StatTile } from "@/components/ui";
+import { greeting } from "./format";
 
 // Usuário sem hábitos nem check-ins: números zerados e um convite para começar
 export default function StatisticsEmpty({ userName }: { userName?: string }) {
-  const firstName = userName?.trim().split(" ")[0];
-
   return (
     <View testID="statistics-empty">
-      <ScreenHeader title={firstName ? `Olá, ${firstName}!` : "Olá!"} />
+      <ScreenHeader title={greeting(userName)} />
       <EmptyState
         icon="sprout"
         title="Tudo pronto para começar"

@@ -38,7 +38,7 @@ export default function DateField({
           accessibilityRole="button"
           style={[styles.button, !!error && styles.buttonError]}
         >
-          <Text style={styles.buttonText}>
+          <Text style={[styles.buttonText, !value && styles.placeholder]}>
             {value ? formatDate(value) : placeholder}
           </Text>
         </Pressable>
@@ -90,7 +90,8 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.inputBorder,
     borderRadius: theme.radius.md,
     paddingVertical: 12,
-    paddingHorizontal: 14,
+    // Mesmo recuo do texto dos Inputs (padding da caixa + o do TextInput)
+    paddingHorizontal: 18,
   },
   buttonError: {
     borderColor: theme.colors.dangerStrong,
@@ -99,6 +100,9 @@ const styles = StyleSheet.create({
     fontFamily: theme.font.regular,
     fontSize: 15,
     color: theme.colors.text,
+  },
+  placeholder: {
+    color: theme.colors.placeholder,
   },
   remove: {
     fontFamily: theme.font.medium,

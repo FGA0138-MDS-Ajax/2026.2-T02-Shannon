@@ -2,14 +2,12 @@ import { router, useLocalSearchParams } from "expo-router";
 import useSWR from "swr";
 import { HabitForm, type HabitFormValues } from "@/components/forms/habit-form";
 import {
-  ErrorBanner,
   HeaderAction,
-  Loading,
+  QueryState,
   Screen,
   ScreenHeader,
 } from "@/components/ui";
 import { request } from "@/services/api";
-import { getErrorMessage } from "@/services/api-errors";
 import { groupKeys, updateGroupHabit } from "@/services/groups-api";
 import type { GroupHabit, GroupHabitUpdate } from "@/services/types/groups";
 import { parseApiDate } from "@/utils/date";
@@ -51,17 +49,7 @@ export default function EditGroupHabitScreen() {
     router.back();
   };
 
-  const renderContent = () => {
-    if (error && !habit) {
-      return (
-        <ErrorBanner
-          message={getErrorMessage(error)}
-          onRetry={() => refreshHabit()}
-        />
-      );
-    }
-    if (!habit) return <Loading fill />;
-
+  const renderContent = (habit: GroupHabit) => {
     return (
       <HabitForm
         withVisibility={false}
@@ -86,7 +74,9 @@ export default function EditGroupHabitScreen() {
         title="Editar hábito"
         action={<HeaderAction label="Cancelar" onPress={() => router.back()} />}
       />
-      {renderContent()}
+      <QueryState data={habit} error={error} onRetry={() => refreshHabit()}>
+        {renderContent}
+      </QueryState>
     </Screen>
   );
 }
