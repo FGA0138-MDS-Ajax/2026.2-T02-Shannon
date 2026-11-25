@@ -14,12 +14,14 @@ import useSWR from "swr";
 import Button from "@/components/button";
 import { CheckInEditForm } from "@/components/forms/checkin-edit-form";
 import { theme } from "@/config/theme";
+import { useSession } from "@/hooks/useSession";
 import { request } from "@/services/api";
 import { getErrorMessage } from "@/services/api-errors";
 import type { CheckIn } from "@/services/types/habits";
 
 export default function EditCheckInScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const { user } = useSession();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const {
@@ -63,6 +65,18 @@ export default function EditCheckInScreen() {
       return (
         <View style={styles.centered}>
           <ActivityIndicator size="large" color={theme.colors.primary} />
+        </View>
+      );
+    }
+
+    // Em hábito de grupo dá para abrir o check-in de outro membro, mas só o
+    // autor edita
+    if (checkIn.user_id !== user?.id) {
+      return (
+        <View style={styles.centered}>
+          <Text style={styles.emptyText}>
+            Só quem fez o check-in pode editar.
+          </Text>
         </View>
       );
     }
