@@ -70,6 +70,7 @@ export default function GroupsScreen() {
             onPress={() => router.push(`/groups/${item.id}` as Href)}
           />
         )}
+        style={styles.list}
         contentContainerStyle={[
           styles.listContent,
           groups?.length === 0 && styles.emptyContainer,
@@ -145,7 +146,12 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
   },
+  // Largura toda para a barra de rolagem não ficar por cima das linhas
+  list: {
+    marginHorizontal: -24,
+  },
   listContent: {
+    paddingHorizontal: 24,
     // Espaço para os dois botões fixos embaixo
     paddingBottom: 120,
   },

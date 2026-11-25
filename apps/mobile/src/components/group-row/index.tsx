@@ -3,9 +3,21 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { palette } from "@/components/statistics/palette";
 import { theme } from "@/config/theme";
 import type { GroupRole, GroupStatus } from "@/services/types/groups";
+import { membersLabel } from "@/utils/groups";
 
-export function membersLabel(count: number): string {
-  return count === 1 ? "1 membro" : `${count} membros`;
+/** Selo pequeno. `highlight` é o verde do "Admin"; o resto fica neutro. */
+export function Badge({
+  label,
+  highlight = false,
+}: {
+  label: string;
+  highlight?: boolean;
+}) {
+  return (
+    <Text style={[styles.badge, highlight && styles.badgeHighlight]}>
+      {label}
+    </Text>
+  );
 }
 
 interface GroupBadgesProps {
@@ -16,10 +28,8 @@ interface GroupBadgesProps {
 export function GroupBadges({ role, status }: GroupBadgesProps) {
   return (
     <>
-      {role === "admin" && (
-        <Text style={[styles.badge, styles.badgeAdmin]}>Admin</Text>
-      )}
-      {status === "ended" && <Text style={styles.badge}>Encerrado</Text>}
+      {role === "admin" && <Badge label="Admin" highlight />}
+      {status === "ended" && <Badge label="Encerrado" />}
     </>
   );
 }
@@ -108,7 +118,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     overflow: "hidden",
   },
-  badgeAdmin: {
+  badgeHighlight: {
     color: palette.ink,
     backgroundColor: palette.sage,
   },

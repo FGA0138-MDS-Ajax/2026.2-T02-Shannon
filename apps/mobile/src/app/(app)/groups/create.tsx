@@ -1,15 +1,8 @@
 import { type Href, router } from "expo-router";
-import {
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { KeyboardAvoidingView, Platform, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import FormHeader from "@/components/form-header";
 import { GroupForm, type GroupFormValues } from "@/components/forms/group-form";
-import { palette } from "@/components/statistics/palette";
 import { theme } from "@/config/theme";
 import { createGroup } from "@/services/groups-api";
 
@@ -26,12 +19,7 @@ export default function CreateGroupScreen() {
         style={styles.keyboardView}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
-        <View style={styles.header}>
-          <Text style={styles.title}>Novo grupo</Text>
-          <Pressable onPress={() => router.back()} style={styles.cancelButton}>
-            <Text style={styles.cancelText}>Cancelar</Text>
-          </Pressable>
-        </View>
+        <FormHeader title="Novo grupo" />
 
         <GroupForm
           submitLabel="Criar grupo"
@@ -52,26 +40,5 @@ const styles = StyleSheet.create({
   },
   keyboardView: {
     flex: 1,
-  },
-  header: {
-    marginTop: 16,
-    marginBottom: 16,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  title: {
-    fontFamily: theme.font.bold,
-    fontSize: 28,
-    color: palette.ink,
-  },
-  cancelButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 4,
-  },
-  cancelText: {
-    fontFamily: theme.font.medium,
-    fontSize: 14,
-    color: theme.colors.primaryDark,
   },
 });

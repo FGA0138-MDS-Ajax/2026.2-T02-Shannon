@@ -15,21 +15,14 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import useSWR from "swr";
+import BackButton from "@/components/back-button";
 import Button from "@/components/button";
-import { GroupBadges, membersLabel } from "@/components/group-row";
+import { GroupBadges } from "@/components/group-row";
 import { palette } from "@/components/statistics/palette";
 import { theme } from "@/config/theme";
-import { ApiError } from "@/services/api";
+import { useGroup } from "@/hooks/useGroup";
 import { getErrorMessage } from "@/services/api-errors";
-import { getGroup } from "@/services/groups-api";
-import type { GroupDetail } from "@/services/types/groups";
-import { formatDate, parseApiDate } from "@/utils/date";
-
-const CRITERION_LABELS: Record<GroupDetail["ranking_criterion"], string> = {
-  check_ins: "Ranking por dias com check-in",
-  goals: "Ranking por metas batidas",
-};
+import { criterionLabels, endsOnLabel, membersLabel } from "@/utils/groups";
 
 const SECTIONS: {
   path: string;
@@ -63,29 +56,21 @@ const SECTIONS: {
   },
 ];
 
-function periodLabel(group: GroupDetail): string {
-  if (!group.ends_on) return "Sem data de fim";
-  const end = formatDate(parseApiDate(group.ends_on));
-  return group.status === "ended" ? `Terminou em ${end}` : `Termina em ${end}`;
-}
-
 export default function GroupScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const {
     data: group,
     error,
     isLoading,
+    notFound,
     mutate: refreshGroup,
-  } = useSWR(`/groups/${id}`, () => getGroup(id));
+  } = useGroup(id);
 
   useFocusEffect(
     useCallback(() => {
       refreshGroup();
     }, [refreshGroup]),
   );
-
-  // 404: o grupo foi apagado ou a pessoa foi removida dele
-  const notFound = error instanceof ApiError && error.status === 404;
 
   const renderContent = () => {
     if (isLoading && !group) {
@@ -125,16 +110,19 @@ export default function GroupScreen() {
     }
 
     return (
-      <ScrollView contentContainerStyle={styles.scroll}>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scroll}
+      >
         <Text style={styles.name}>{group.name}</Text>
         <View style={styles.meta}>
           <Text style={styles.detail}>{membersLabel(group.members_count)}</Text>
           <GroupBadges role={group.my_role} status={group.status} />
         </View>
         <Text style={styles.detail}>
-          {CRITERION_LABELS[group.ranking_criterion]}
+          {criterionLabels[group.ranking_criterion]}
         </Text>
-        <Text style={styles.detail}>{periodLabel(group)}</Text>
+        <Text style={styles.detail}>{endsOnLabel(group)}</Text>
         {group.description && (
           <Text style={styles.description}>{group.description}</Text>
         )}
@@ -174,10 +162,7 @@ export default function GroupScreen() {
       edges={{ top: "additive", bottom: "off" }}
       style={styles.container}
     >
-      <Pressable onPress={() => router.back()} style={styles.backButton}>
-        <Lucide name="arrow-left" size={16} color={theme.colors.primaryDark} />
-        <Text style={styles.backButtonText}>Voltar</Text>
-      </Pressable>
+      <BackButton />
 
       {renderContent()}
     </SafeAreaView>
@@ -190,20 +175,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingTop: 16,
     backgroundColor: theme.colors.gray,
-  },
-  backButton: {
-    marginTop: 8,
-    marginBottom: 16,
-    alignSelf: "flex-start",
-    paddingVertical: 4,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  backButtonText: {
-    fontFamily: theme.font.medium,
-    fontSize: 14,
-    color: theme.colors.primaryDark,
   },
   centered: {
     flex: 1,
@@ -218,7 +189,13 @@ const styles = StyleSheet.create({
     color: palette.inkSoft,
     textAlign: "center",
   },
+  // A rolagem ocupa a largura toda: assim a barra fica na borda da tela, e
+  // não por cima do texto
+  scrollView: {
+    marginHorizontal: -24,
+  },
   scroll: {
+    paddingHorizontal: 24,
     paddingBottom: 32,
     gap: 4,
   },
