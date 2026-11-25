@@ -41,6 +41,8 @@ export interface HabitFormProps {
   initialValues?: Partial<HabitFormValues>;
   /** Mostra o campo de meta. Só na criação: a edição de hábito não muda a meta. */
   withGoal?: boolean;
+  /** Mostra o campo "Público". Hábito de grupo nunca é público. */
+  withVisibility?: boolean;
   /** Primeiro dia aceito no calendário. Padrão: hoje. */
   minimumDate?: Date;
   submitLabel: string;
@@ -60,6 +62,7 @@ type FieldErrors = {
 export function HabitForm({
   initialValues,
   withGoal = false,
+  withVisibility = true,
   minimumDate,
   submitLabel,
   submittingLabel,
@@ -201,22 +204,24 @@ export function HabitForm({
           error={fieldErrors.description}
         />
 
-        <View style={styles.switchRow}>
-          <View style={styles.switchLabels}>
-            <Text style={styles.label}>Público</Text>
-            <Text style={styles.hint}>
-              {isPublic
-                ? "Outras pessoas podem ver este hábito."
-                : "Só você vê este hábito."}
-            </Text>
+        {withVisibility && (
+          <View style={styles.switchRow}>
+            <View style={styles.switchLabels}>
+              <Text style={styles.label}>Público</Text>
+              <Text style={styles.hint}>
+                {isPublic
+                  ? "Outras pessoas podem ver este hábito."
+                  : "Só você vê este hábito."}
+              </Text>
+            </View>
+            <Switch
+              testID="habit-public-switch"
+              value={isPublic}
+              onValueChange={setIsPublic}
+              trackColor={{ true: theme.colors.primary }}
+            />
           </View>
-          <Switch
-            testID="habit-public-switch"
-            value={isPublic}
-            onValueChange={setIsPublic}
-            trackColor={{ true: theme.colors.primary }}
-          />
-        </View>
+        )}
 
         <View style={styles.dateField}>
           <Text style={styles.label}>Data final (opcional)</Text>
