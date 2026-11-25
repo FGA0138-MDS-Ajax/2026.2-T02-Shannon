@@ -24,10 +24,15 @@ import { theme } from "@/config/theme";
 import { useGroup } from "@/hooks/useGroup";
 import { useSession } from "@/hooks/useSession";
 import { getErrorMessage } from "@/services/api-errors";
-import { promoteMember, removeMember } from "@/services/groups-api";
-import type { MemberPublic } from "@/services/types/groups";
+import { leaveGroup, promoteMember, removeMember } from "@/services/groups-api";
+import type { GroupDetail, MemberPublic } from "@/services/types/groups";
 import { formatDate, parseApiDate } from "@/utils/date";
-import { criterionLabels, endsOnLabel } from "@/utils/groups";
+import {
+  criterionLabels,
+  endsOnLabel,
+  leavePlan,
+  leaveResultMessage,
+} from "@/utils/groups";
 
 export default function GroupAboutScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -75,6 +80,26 @@ export default function GroupAboutScreen() {
         },
       ],
     );
+  };
+
+  const handleLeave = (current: GroupDetail) => {
+    const plan = leavePlan(current, user?.id);
+    Alert.alert(`${plan.buttonLabel}?`, plan.warning, [
+      { text: "Cancelar", style: "cancel" },
+      {
+        text: plan.buttonLabel,
+        style: "destructive",
+        onPress: async () => {
+          try {
+            const result = await leaveGroup(id);
+            Alert.alert(leaveResultMessage(result, current.members));
+            router.dismissTo("/(app)/(tabs)/groups" as Href);
+          } catch (err: unknown) {
+            Alert.alert("Não foi possível sair", getErrorMessage(err));
+          }
+        },
+      },
+    ]);
   };
 
   const handleMemberPress = (member: MemberPublic) => {
@@ -177,6 +202,15 @@ export default function GroupAboutScreen() {
           onMemberPress={isAdmin ? handleMemberPress : undefined}
         />
         {isAdmin && <AddMember groupId={group.id} onAdded={refreshGroup} />}
+
+        <Button
+          variant="secondary"
+          onPress={() => handleLeave(group)}
+          style={styles.leaveButton}
+          textStyle={styles.leaveText}
+        >
+          {leavePlan(group, user?.id).buttonLabel}
+        </Button>
       </ScrollView>
     );
   };
@@ -255,6 +289,14 @@ const styles = StyleSheet.create({
   editButton: {
     alignSelf: "flex-start",
     paddingHorizontal: 0,
+  },
+  leaveButton: {
+    marginTop: 32,
+    alignSelf: "flex-start",
+    paddingHorizontal: 0,
+  },
+  leaveText: {
+    color: palette.riskText,
   },
   sectionTitle: {
     marginTop: 24,

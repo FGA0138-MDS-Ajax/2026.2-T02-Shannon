@@ -1,4 +1,5 @@
 import { fireEvent, render, waitFor } from "@testing-library/react-native";
+import { router } from "expo-router";
 import { Alert, type AlertButton } from "react-native";
 import { SWRConfig } from "swr";
 import GroupAboutScreen from "@/app/(app)/groups/[id]/about";
@@ -6,6 +7,7 @@ import { ApiError } from "@/services/api";
 import {
   addMember,
   getGroup,
+  leaveGroup,
   promoteMember,
   removeMember,
 } from "@/services/groups-api";
@@ -27,6 +29,7 @@ jest.mock("@/hooks/useSession", () => ({
 jest.mock("@/services/groups-api", () => ({
   getGroup: jest.fn(),
   addMember: jest.fn(),
+  leaveGroup: jest.fn(),
   promoteMember: jest.fn(),
   removeMember: jest.fn(),
 }));
@@ -117,6 +120,22 @@ describe("GroupAboutScreen", () => {
     await screen.findByText("Corrida da firma");
     expect(screen.queryByText("Editar grupo")).toBeNull();
     expect(screen.queryByTestId("add-member-input")).toBeNull();
+  });
+
+  it("leaves the group and goes back to the list", async () => {
+    (leaveGroup as jest.Mock).mockResolvedValueOnce({
+      group_deleted: false,
+      promoted_user_id: null,
+    });
+    pressInAlerts("Sair do grupo");
+    const screen = await renderScreen();
+
+    await fireEvent.press(await screen.findByText("Sair do grupo"));
+
+    await waitFor(() =>
+      expect(router.dismissTo).toHaveBeenCalledWith("/(app)/(tabs)/groups"),
+    );
+    expect(Alert.alert).toHaveBeenLastCalledWith("Você saiu do grupo.");
   });
 
   describe("as admin", () => {
