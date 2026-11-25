@@ -20,6 +20,10 @@ export default function AppLayout() {
       <Stack.Screen name="groups/[id]/index" />
       <Stack.Screen name="groups/[id]/about" />
       <Stack.Screen name="groups/[id]/edit" />
+      <Stack.Screen name="groups/[id]/habits/index" />
+      <Stack.Screen name="groups/[id]/habits/create" />
+      <Stack.Screen name="groups/[id]/habits/[habitId]/index" />
+      <Stack.Screen name="groups/[id]/habits/[habitId]/edit" />
     </Stack>
   );
 }
