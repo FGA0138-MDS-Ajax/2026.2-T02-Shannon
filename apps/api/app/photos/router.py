@@ -42,7 +42,7 @@ _MULTIPART_OVERHEAD_BYTES = 1024
 
 
 def _check_content_length(request: Request) -> None:
-  """Rejeita requisições acima de 5 MB + folga do multipart antes de ler o corpo."""
+  """Rejeita requisições acima de 4 MB + folga do multipart antes de ler o corpo."""
   raw_length = request.headers.get("content-length")
   if raw_length is None:
     return
@@ -64,7 +64,7 @@ def _check_content_length(request: Request) -> None:
   summary="Enviar ou substituir foto do check-in",
   description=(
     "Anexa ou substitui a foto de um check-in feito hoje pelo usuário logado."
-    " Aceita JPEG ou PNG de até 5 MB no campo `photo` (`multipart/form-data`)."
+    " Aceita JPEG ou PNG de até 4 MB no campo `photo` (`multipart/form-data`)."
   ),
   responses=RESPONSES_PHOTO_PUT,
 )
@@ -75,7 +75,7 @@ async def put_check_in_photo(
   request: Request,
   user: Annotated[User, Depends(get_current_user)],
 ) -> CheckInPhotoPublic:
-  """Recebe o upload limitado a 5 MB e processa/salva a foto fora do event loop."""
+  """Recebe o upload limitado a 4 MB e processa/salva a foto fora do event loop."""
   _check_content_length(request)
 
   data = await photo.read(PHOTO_MAX_BYTES + 1)

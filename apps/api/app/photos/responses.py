@@ -63,7 +63,7 @@ RESPONSES_PHOTO_PUT = {
   status.HTTP_404_NOT_FOUND: _RESPONSE_404,
   status.HTTP_409_CONFLICT: _RESPONSE_409,
   status.HTTP_413_REQUEST_ENTITY_TOO_LARGE: _error_response(
-    "Arquivo ultrapassa o limite de 5 MB.",
+    "Arquivo ultrapassa o limite de 4 MB.",
     MSG_PHOTO_TOO_LARGE,
   ),
   status.HTTP_415_UNSUPPORTED_MEDIA_TYPE: _error_response(
