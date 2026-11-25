@@ -1,4 +1,4 @@
-import { fireEvent, render } from "@testing-library/react-native";
+import { fireEvent, render, waitFor } from "@testing-library/react-native";
 import { router } from "expo-router";
 import { SWRConfig } from "swr";
 import GroupScreen from "@/app/(app)/groups/[id]/index";
@@ -21,13 +21,13 @@ const mockGetGroup = getGroup as jest.MockedFunction<typeof getGroup>;
 
 const group: GroupDetail = {
   id: "g1",
-  name: "Corrida da firma",
-  description: "Quem corre mais até o fim do ano",
-  starts_on: "2026-11-17",
-  ends_on: "2026-12-31",
+  name: "Movimento diário",
+  description: "Um dia de cada vez.",
+  starts_on: "2026-11-02",
+  ends_on: null,
   ranking_criterion: "check_ins",
   status: "active",
-  members_count: 3,
+  members_count: 4,
   my_role: "member",
   invite_code: null,
   members: [],
@@ -53,32 +53,150 @@ beforeEach(() => {
 });
 
 describe("GroupScreen", () => {
-  it("shows the group summary from the API", async () => {
+  it("shows the group name and the recent check-ins", async () => {
     const screen = await renderScreen();
 
-    expect(await screen.findByText("Corrida da firma")).toBeTruthy();
-    expect(screen.getByText("3 membros")).toBeTruthy();
-    expect(screen.getByText("Ranking por dias com check-in")).toBeTruthy();
-    expect(screen.getByText("Termina em 31/12/2026")).toBeTruthy();
-    expect(screen.queryByText("Admin")).toBeNull();
+    expect(await screen.findByText("Movimento diário")).toBeTruthy();
+    // O número de pessoas já aparece na roda, não no cabeçalho
+    expect(screen.queryByText(/pessoas/)).toBeNull();
+    expect(screen.getByText("Check-ins recentes")).toBeTruthy();
+    expect(screen.getAllByText("Caio fez check-in em")).toHaveLength(2);
+    expect(screen.getAllByText("Pedalar")).toHaveLength(2);
+    expect(screen.getByText("30 min de bicicleta pelo bairro.")).toBeTruthy();
+    expect(screen.getByText("Beber água e Ler 10 páginas")).toBeTruthy();
     expect(mockGetGroup).toHaveBeenCalledWith("g1");
   });
 
-  it("marks an ended group", async () => {
-    mockGetGroup.mockResolvedValue({
-      ...group,
-      status: "ended",
-      ends_on: "2026-10-31",
-    });
+  it("opens the check-in details without a new request and closes them", async () => {
+    const screen = await renderScreen();
+    const card = await screen.findByText("30 min de bicicleta pelo bairro.");
+    const callsBefore = mockGetGroup.mock.calls.length;
+
+    await fireEvent.press(card);
+
+    expect(screen.getByText("CHECK-IN DO GRUPO")).toBeTruthy();
+    expect(screen.getByText("Concluído")).toBeTruthy();
+    expect(screen.getByText("1 / 1 dia")).toBeTruthy();
+    expect(screen.getByText("Todo dia")).toBeTruthy();
+    expect(screen.getByText("Ciclismo")).toBeTruthy();
+    expect(
+      screen.getByText(
+        "Pedalei pelo bairro antes de começar o dia. Meta cumprida!",
+      ),
+    ).toBeTruthy();
+    expect(
+      screen.getByText("Registrado no grupo Movimento diário"),
+    ).toBeTruthy();
+    expect(mockGetGroup).toHaveBeenCalledTimes(callsBefore);
+
+    await fireEvent.press(screen.getByLabelText("Fechar"));
+
+    // Fecha depois da animação de descida
+    await waitFor(() =>
+      expect(screen.queryByText("CHECK-IN DO GRUPO")).toBeNull(),
+    );
+  });
+
+  it("closes the details when tapping outside the card", async () => {
     const screen = await renderScreen();
 
-    expect(await screen.findByText("Encerrado")).toBeTruthy();
-    expect(screen.getByText("Terminou em 31/10/2026")).toBeTruthy();
+    await fireEvent.press(
+      await screen.findByText("30 min de bicicleta pelo bairro."),
+    );
+    await fireEvent.press(screen.getByLabelText("Fechar detalhes"));
+
+    await waitFor(() =>
+      expect(screen.queryByText("CHECK-IN DO GRUPO")).toBeNull(),
+    );
+  });
+
+  it("names each habit when the check-in has more than one", async () => {
+    const screen = await renderScreen();
+
+    await fireEvent.press(
+      await screen.findByText("Água e leitura antes do trabalho."),
+    );
+
+    expect(screen.getByText("Beber água · Concluído")).toBeTruthy();
+    expect(screen.getByText("Ler 10 páginas · Concluído")).toBeTruthy();
+    expect(screen.getAllByText("Frequência")).toHaveLength(2);
+  });
+
+  it("shows how much of today's habits the group already did", async () => {
+    const screen = await renderScreen();
+
+    expect(await screen.findByText("67%")).toBeTruthy();
+    expect(
+      screen.getByText("8 de 12 hábitos concluídos no grupo"),
+    ).toBeTruthy();
+    expect(screen.getByLabelText("Caio, 3 de 3 hábitos")).toBeTruthy();
+    expect(screen.getByLabelText("Lu, 1 de 3 hábitos")).toBeTruthy();
+  });
+
+  it("shows the week with today and the day the whole group finished", async () => {
+    const screen = await renderScreen();
+
+    expect(await screen.findByText("NOVEMBRO 2026")).toBeTruthy();
+    expect(screen.getByLabelText("Dia 13, hoje")).toBeTruthy();
+    expect(screen.getByLabelText("Dia 9, meta coletiva completa")).toBeTruthy();
+    expect(screen.getByLabelText("Dia 15")).toBeTruthy();
+  });
+
+  it("switches to a member's habits and back to the feed", async () => {
+    const screen = await renderScreen();
+
+    await fireEvent.press(await screen.findByLabelText("Ana, 2 de 3 hábitos"));
+
+    expect(screen.getByText("Hábitos de Ana")).toBeTruthy();
+    expect(screen.getByText("2 concluídos · 1 a fazer hoje")).toBeTruthy();
+    expect(screen.getAllByText("Concluído hoje")).toHaveLength(2);
+    expect(screen.getByText("A fazer hoje")).toBeTruthy();
+    expect(screen.queryByText("Check-ins recentes")).toBeNull();
+
+    await fireEvent.press(screen.getByText("Ver todos"));
+
+    expect(screen.getByText("Check-ins recentes")).toBeTruthy();
+  });
+
+  it("opens the pending habit of a member", async () => {
+    const screen = await renderScreen();
+
+    await fireEvent.press(await screen.findByLabelText("Ana, 2 de 3 hábitos"));
+    await fireEvent.press(screen.getByText("Pedalar"));
+
+    expect(screen.getByText("HÁBITO DO GRUPO")).toBeTruthy();
+    expect(screen.getByText("Hábito de Ana")).toBeTruthy();
+    expect(screen.getAllByText("A fazer hoje")).toHaveLength(2);
+    expect(screen.getByText("0 / 1 dia")).toBeTruthy();
+    expect(screen.getByText("13 de novembro de 2026")).toBeTruthy();
+    expect(
+      screen.getByText("Compartilhado no grupo Movimento diário"),
+    ).toBeTruthy();
+  });
+
+  it("opens the check-in behind a habit the member already did", async () => {
+    const screen = await renderScreen();
+
+    await fireEvent.press(await screen.findByLabelText("Ana, 2 de 3 hábitos"));
+    await fireEvent.press(screen.getByText("Beber água"));
+
+    expect(screen.getByText("CHECK-IN DO GRUPO")).toBeTruthy();
+    expect(screen.getByText("Meta do dia: 2 litros de água.")).toBeTruthy();
+  });
+
+  it("hides the description block when the check-in has none", async () => {
+    const screen = await renderScreen();
+
+    await fireEvent.press(
+      await screen.findByText("Meta do dia: 2 litros de água."),
+    );
+
+    expect(screen.getByText("CHECK-IN DO GRUPO")).toBeTruthy();
+    expect(screen.queryByText("Sobre este check-in")).toBeNull();
   });
 
   it.each([
     ["Hábitos", "/groups/g1/habits"],
-    ["Feed", "/groups/g1/feed"],
     ["Ranking", "/groups/g1/ranking"],
     ["Sobre", "/groups/g1/about"],
   ])("opens %s", async (title, path) => {
