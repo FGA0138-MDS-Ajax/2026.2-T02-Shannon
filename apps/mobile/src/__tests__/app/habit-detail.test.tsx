@@ -1,5 +1,6 @@
 import { fireEvent, render, waitFor } from "@testing-library/react-native";
 import { SWRConfig } from "swr";
+import { router } from "expo-router";
 import HabitDetailScreen from "@/app/(app)/habits/[id]";
 import { ApiError, request } from "@/services/api";
 import type {
@@ -167,5 +168,43 @@ describe("HabitDetailScreen", () => {
     await fireEvent.press(screen.getByText("Tentar novamente"));
     expect(await screen.findByText("Correr")).toBeTruthy();
 
+  });
+});
+
+describe("HabitDetailScreen with a group habit", () => {
+  const groupHabit: Habit = {
+    ...makeHabit(),
+    author_user_id: null,
+    author_group_id: "g1",
+    group: { id: "g1", name: "Corrida da firma" },
+  };
+
+  beforeEach(() => {
+    mockRequest.mockImplementation(async (path: string) => {
+      if (path === "/habits/habit-1") return groupHabit;
+      if (path === "/habits/habit-1/check-ins") return [] as CheckIn[];
+      if (path === "/goals/habits/habit-1/progress") return makeProgress();
+      throw new Error(`Unexpected request: ${path}`);
+    });
+  });
+
+  it("names the group and links to it", async () => {
+    const screen = await renderScreen();
+
+    await fireEvent.press(
+      await screen.findByText("Hábito do grupo Corrida da firma"),
+    );
+
+    expect(router.push).toHaveBeenCalledWith("/groups/g1");
+  });
+
+  it("hides the personal actions", async () => {
+    const screen = await renderScreen();
+
+    await screen.findByText("Hábito do grupo Corrida da firma");
+    expect(screen.queryByText("Editar")).toBeNull();
+    expect(screen.queryByText("Finalizar")).toBeNull();
+    expect(screen.queryByText("Deletar")).toBeNull();
+    expect(screen.queryByText(/Privado/)).toBeNull();
   });
 });

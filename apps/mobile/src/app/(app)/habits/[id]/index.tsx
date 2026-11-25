@@ -252,7 +252,8 @@ export default function HabitDetailScreen() {
     }
 
     const isFinished = habit.status === "finished";
-    const isAuthor = habit.author_user_id === user?.id;
+    // Hábito de grupo só muda pelas rotas do grupo: as rotas pessoais dão 403
+    const isAuthor = habit.group === null && habit.author_user_id === user?.id;
     const canChangeGoal = isAuthor && !isFinished;
 
     return (
@@ -268,9 +269,28 @@ export default function HabitDetailScreen() {
           </View>
         </View>
         <Text style={styles.details}>
-          {habitCategoryLabels[habit.category]} ·{" "}
-          {habit.is_public ? "Público" : "Privado"}
+          {habitCategoryLabels[habit.category]}
+          {habit.group ? "" : ` · ${habit.is_public ? "Público" : "Privado"}`}
         </Text>
+
+        {habit.group && (
+          <Pressable
+            testID="habit-group-link"
+            accessibilityRole="link"
+            style={styles.groupLink}
+            onPress={() => router.push(`/groups/${habit.group?.id}` as Href)}
+          >
+            <Lucide name="users" size={16} color={theme.colors.primaryDark} />
+            <Text style={styles.groupLinkText}>
+              Hábito do grupo {habit.group.name}
+            </Text>
+            <Lucide
+              name="chevron-right"
+              size={16}
+              color={theme.colors.primaryDark}
+            />
+          </Pressable>
+        )}
 
         {habit.description && (
           <View style={styles.section}>
@@ -465,6 +485,18 @@ const styles = StyleSheet.create({
   },
   section: {
     marginTop: 24,
+  },
+  groupLink: {
+    marginTop: 12,
+    alignSelf: "flex-start",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  groupLinkText: {
+    fontFamily: theme.font.medium,
+    fontSize: 14,
+    color: theme.colors.primaryDark,
   },
   sectionTitle: {
     fontFamily: theme.font.semiBold,
