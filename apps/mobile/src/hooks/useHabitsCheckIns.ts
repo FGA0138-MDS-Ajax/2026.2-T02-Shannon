@@ -39,10 +39,10 @@ export function useHabitsCheckIns(habitIds: string[]) {
       ) as Record<string, HabitCategory>)
     : undefined;
 
-  const refetch = useCallback(() => {
-    mutateDates();
-    mutateHabits();
-  }, [mutateDates, mutateHabits]);
+  const refetch = useCallback(
+    () => Promise.all([mutateDates(), mutateHabits()]),
+    [mutateDates, mutateHabits],
+  );
 
   return { datesByHabit, categories, refetch };
 }

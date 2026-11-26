@@ -1,5 +1,5 @@
 import { StyleSheet, Text, View } from "react-native";
-import { Avatar, Card } from "@/components/ui";
+import { Avatar, Card, ProgressBar } from "@/components/ui";
 import { currentPeriodPhrases, formatStreak } from "@/config/goal-labels";
 import { theme } from "@/config/theme";
 import type { MemberHabitStats } from "@/services/types/groups";
@@ -7,12 +7,15 @@ import type { MemberHabitStats } from "@/services/types/groups";
 export interface MemberHabitStatsListProps {
   members: MemberHabitStats[];
   currentUserId?: string;
+  /** Cor de cada integrante no grupo (ver `memberColors`) */
+  colorOf: (userId: string) => string;
 }
 
 // Progresso de cada integrante num hábito do grupo, já ordenado pela API
 export default function MemberHabitStatsList({
   members,
   currentUserId,
+  colorOf,
 }: MemberHabitStatsListProps) {
   return (
     <Card style={styles.card}>
@@ -21,6 +24,7 @@ export default function MemberHabitStatsList({
           key={member.user.id}
           member={member}
           isMe={member.user.id === currentUserId}
+          color={colorOf(member.user.id)}
           isLast={index === members.length - 1}
         />
       ))}
@@ -31,15 +35,14 @@ export default function MemberHabitStatsList({
 interface MemberRowProps {
   member: MemberHabitStats;
   isMe: boolean;
+  color: string;
   isLast: boolean;
 }
 
-function MemberRow({ member, isMe, isLast }: MemberRowProps) {
+function MemberRow({ member, isMe, color, isLast }: MemberRowProps) {
   const { progress, check_in_days: checkInDays } = member;
   const { done, target_count: target } = progress.current_period;
   const period = progress.goal.period;
-  // A barra para em 100%, mesmo quando `done` passa da meta
-  const ratio = target > 0 ? Math.min(done / target, 1) : 0;
   const isCompleted = done >= target;
 
   return (
@@ -47,25 +50,25 @@ function MemberRow({ member, isMe, isLast }: MemberRowProps) {
       testID={`member-stats-${member.user.username}`}
       style={[styles.row, isLast && styles.rowLast]}
     >
-      <Avatar name={member.user.username} size={32} highlighted={isMe} />
+      <Avatar
+        name={member.user.username}
+        color={color}
+        size={32}
+        highlighted={isMe}
+      />
       <View style={styles.info}>
         <View style={styles.header}>
           <Text style={[styles.name, isMe && styles.nameMe]} numberOfLines={1}>
-            {isMe ? "Você" : `@${member.user.username}`}
+            {isMe ? "Você" : member.user.username}
           </Text>
           <Text style={styles.count}>
             {done}/{target} {currentPeriodPhrases[period]}
           </Text>
         </View>
-        <View style={styles.track}>
-          <View
-            style={[
-              styles.fill,
-              isCompleted && styles.fillCompleted,
-              { width: `${ratio * 100}%` },
-            ]}
-          />
-        </View>
+        <ProgressBar
+          ratio={target > 0 ? done / target : 0}
+          tone={isCompleted ? "success" : "primary"}
+        />
         <Text style={styles.meta}>
           Sequência de {formatStreak(progress.current_streak, period)} ·{" "}
           {checkInDays} {checkInDays === 1 ? "dia" : "dias"} com check-in
@@ -112,20 +115,6 @@ const styles = StyleSheet.create({
     fontFamily: theme.font.medium,
     fontSize: 13,
     color: theme.colors.text,
-  },
-  track: {
-    height: 6,
-    borderRadius: theme.radius.pill,
-    backgroundColor: theme.colors.gray100,
-    overflow: "hidden",
-  },
-  fill: {
-    height: "100%",
-    borderRadius: theme.radius.pill,
-    backgroundColor: theme.colors.primary,
-  },
-  fillCompleted: {
-    backgroundColor: theme.colors.success,
   },
   meta: {
     fontFamily: theme.font.regular,

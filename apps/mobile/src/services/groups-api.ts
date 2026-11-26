@@ -27,11 +27,22 @@ export const groupKeys = {
   habit: (id: string, habitId: string) => `/groups/${id}/habits/${habitId}`,
   habitStats: (id: string, habitId: string) =>
     `/groups/${id}/habits/${habitId}/stats`,
+  /** Estatísticas de vários hábitos de uma vez (a API só tem a de um por vez) */
+  allHabitsStats: (id: string, habitIds: string[]) => [
+    `/groups/${id}/habits/stats`,
+    ...habitIds,
+  ],
   feed: (id: string, params: FeedParams = {}) =>
     `/groups/${id}/check-ins${toQueryString(params)}`,
   ranking: (id: string) => `/groups/${id}/ranking`,
   stats: (id: string) => `/groups/${id}/stats`,
 };
+
+/** Chaves do SWR dos grupos: um check-in muda a roda, o feed e o ranking */
+export function isGroupDataKey(key: unknown): boolean {
+  const first = Array.isArray(key) ? key[0] : key;
+  return typeof first === "string" && first.startsWith("/groups/");
+}
 
 /** Tira espaços e hífens e põe em maiúsculas, como o back faz. */
 export function normalizeInviteCode(code: string): string {

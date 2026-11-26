@@ -11,6 +11,15 @@ type IconName = ComponentProps<typeof Lucide>["name"];
 // Destaques do grupo, um por linha: rótulo, quem e em qual hábito
 export default function GroupHighlights({ stats }: { stats: GroupStatistics }) {
   const { most_consistent: consistent, best_record: record } = stats;
+  // No começo do grupo o recorde costuma ser a própria sequência de agora:
+  // a mesma linha duas vezes não diz nada
+  const recordRepeats =
+    !!record &&
+    !!consistent &&
+    record.unit === "day" &&
+    record.user.id === consistent.user.id &&
+    record.habit.id === consistent.habit.id &&
+    record.best_streak === consistent.consistent_days;
 
   return (
     <Card testID="group-highlights" style={styles.listCard}>
@@ -25,25 +34,28 @@ export default function GroupHighlights({ stats }: { stats: GroupStatistics }) {
         testID="stat-most-consistent"
         icon="flame"
         label="Mais constante"
-        value={consistent ? `@${consistent.user.username}` : "—"}
+        value={consistent ? consistent.user.username : "—"}
         detail={
           consistent
             ? `${formatStreak(consistent.consistent_days, "day")} em ${consistent.habit.name}`
             : "Faça check-in para pontuar"
         }
+        last={recordRepeats}
       />
-      <HighlightRow
-        testID="stat-best-record"
-        icon="trophy"
-        label="Maior recorde"
-        value={record ? `@${record.user.username}` : "—"}
-        detail={
-          record
-            ? `${formatStreak(record.best_streak, record.unit)} em ${record.habit.name}`
-            : "Nenhuma sequência registrada"
-        }
-        last
-      />
+      {!recordRepeats && (
+        <HighlightRow
+          testID="stat-best-record"
+          icon="trophy"
+          label="Maior recorde"
+          value={record ? record.user.username : "—"}
+          detail={
+            record
+              ? `${formatStreak(record.best_streak, record.unit)} em ${record.habit.name}`
+              : "Nenhuma sequência registrada"
+          }
+          last
+        />
+      )}
     </Card>
   );
 }

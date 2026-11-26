@@ -12,9 +12,13 @@ export interface DayRingProps {
   isFuture: boolean;
 }
 
+// Cores sobre o cabeçalho escuro (HeroLayout)
+const TRACK = theme.colors.heroBorder;
+
 const STROKE = 3;
 
-// Anel de um dia da semana. Todos os hábitos feitos: preenchido com check.
+// Anel de um dia da semana, sobre o cabeçalho escuro. Todos os hábitos
+// feitos: preenchido com check.
 // Faltando algum: arco laranja proporcional ao que já foi feito.
 export default function DayRing({
   day,
@@ -58,8 +62,8 @@ export default function DayRing({
           cx={size / 2}
           cy={size / 2}
           r={radius}
-          stroke={isToday ? theme.colors.primary : theme.colors.gray200}
-          strokeOpacity={isToday && ratio === 0 ? 0.4 : 1}
+          stroke={isToday ? theme.colors.onHero : TRACK}
+          strokeOpacity={isFuture && !isToday ? 0.5 : 1}
           strokeWidth={STROKE}
           fill="none"
         />
@@ -106,14 +110,14 @@ const styles = StyleSheet.create({
   },
   number: {
     fontFamily: theme.font.regular,
-    fontSize: 13,
-    color: theme.colors.text,
+    fontSize: 14,
+    color: theme.colors.onHero,
   },
   numberFuture: {
-    color: theme.colors.subtle,
+    color: theme.colors.onHeroMuted,
+    opacity: 0.6,
   },
   numberToday: {
     fontFamily: theme.font.bold,
-    color: theme.colors.primaryDark,
   },
 });

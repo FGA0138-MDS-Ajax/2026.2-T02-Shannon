@@ -1,8 +1,7 @@
-import { StyleSheet, View } from "react-native";
-import { StatTile } from "@/components/ui";
-import { theme } from "@/config/theme";
+import { ProgressBar, StatTile } from "@/components/ui";
 import type { UserStatistics } from "@/services/types/statistics";
-import { formatPercent, NO_DATA_LABEL, plural } from "./format";
+import { plural } from "@/utils/text";
+import { formatPercent, NO_DATA_LABEL } from "./format";
 
 // Cartões da "Visão geral". Só exibem números calculados pela API.
 
@@ -34,32 +33,7 @@ export function GoalCompletionCard({ data }: { data: UserStatistics }) {
       compact={!hasData}
       footer={`${completed_periods} de ${plural(total_periods, "período", "períodos")}`}
     >
-      <View
-        style={styles.track}
-        accessibilityRole="progressbar"
-        accessibilityValue={{ min: 0, max: 100, now: hasData ? rate : 0 }}
-      >
-        <View
-          style={[
-            styles.fill,
-            { width: `${hasData ? Math.min(rate, 100) : 0}%` },
-          ]}
-        />
-      </View>
+      <ProgressBar ratio={hasData ? rate / 100 : 0} />
     </StatTile>
   );
 }
-
-const styles = StyleSheet.create({
-  track: {
-    height: 6,
-    borderRadius: theme.radius.pill,
-    backgroundColor: theme.colors.gray100,
-    overflow: "hidden",
-  },
-  fill: {
-    height: "100%",
-    borderRadius: theme.radius.pill,
-    backgroundColor: theme.colors.primary,
-  },
-});

@@ -74,7 +74,7 @@ export default function HabitProgressItem({
               disabled={!onCheckIn}
               accessibilityRole="button"
               accessibilityLabel={`Fazer check-in em ${habit.name}`}
-              hitSlop={6}
+              hitSlop={10}
               style={({ pressed }) => [
                 styles.checkInButton,
                 pressed && styles.pressed,

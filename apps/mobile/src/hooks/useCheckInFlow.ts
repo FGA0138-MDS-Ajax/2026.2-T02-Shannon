@@ -15,9 +15,9 @@ import {
 import {
   checkInKeys,
   createCheckIn,
+  isAffectedByCheckIn,
   listHabitOptions,
 } from "@/services/check-ins-api";
-import { isHomeDataKey } from "@/services/statistics-api";
 import type {
   CheckInCategoriesResponse,
   CheckInCreate,
@@ -49,9 +49,6 @@ export interface CheckInRejection {
 }
 
 export interface CheckInFlowParams {
-  /** Vindo do "Check-in" de um hábito: já abre a lista com ele marcado */
-  habitId?: string;
-  category?: HabitCategory;
   /** Abre o check-in criado quando não há progresso de meta para resumir */
   onOpenCheckIn: (id: string) => void;
 }
@@ -60,26 +57,15 @@ export interface CheckInFlowParams {
  * Estado do fluxo de check-in em três etapas: categoria → hábitos → detalhes.
  * Depois do envio, `created` traz o progresso de cada hábito com meta.
  */
-export function useCheckInFlow({
-  habitId,
-  category: initialCategory,
-  onOpenCheckIn,
-}: CheckInFlowParams) {
-  const startsWithHabit = !!(habitId && initialCategory);
+export function useCheckInFlow({ onOpenCheckIn }: CheckInFlowParams) {
   const { mutate: globalMutate } = useSWRConfig();
 
-  const [step, setStep] = useState<CheckInStep>(
-    startsWithHabit ? "habits" : "categories",
-  );
-  const [category, setCategory] = useState<HabitCategory | null>(
-    startsWithHabit ? (initialCategory ?? null) : null,
-  );
+  const [step, setStep] = useState<CheckInStep>("categories");
+  const [category, setCategory] = useState<HabitCategory | null>(null);
   // O `preselected` é a sugestão da API; `selected` é o que a pessoa decidiu
-  const [selected, setSelected] = useState<Set<string>>(
-    new Set(startsWithHabit && habitId ? [habitId] : []),
-  );
+  const [selected, setSelected] = useState<Set<string>>(new Set());
   const [extraPage, setExtraPage] = useState(0);
-  const [hasMoreExtra, setHasMoreExtra] = useState(startsWithHabit);
+  const [hasMoreExtra, setHasMoreExtra] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   // Aviso em cima da lista (limite, falha no "Ver mais", recusa)
   const [notice, setNotice] = useState<string | null>(null);
@@ -129,7 +115,6 @@ export function useCheckInFlow({
   if (rawItems && category && preselectedFor !== category) {
     setPreselectedFor(category);
     const suggested = rawItems.filter((habit) => habit.preselected);
-    // Vindo de um hábito específico, a seleção dele tem prioridade
     if (suggested.length > 0 && selected.size === 0) {
       setSelected(new Set(suggested.map((habit) => habit.id)));
     }
@@ -228,7 +213,7 @@ export function useCheckInFlow({
       setRejection(null);
       const checkIn = await createCheckIn(body);
       // A Home continua montada por baixo: recarrega o painel já agora
-      globalMutate(isHomeDataKey);
+      globalMutate(isAffectedByCheckIn);
 
       // Junta nome e progresso antes de zerar a categoria (e as opções)
       const chosen = (options ?? []).filter((habit) => selected.has(habit.id));

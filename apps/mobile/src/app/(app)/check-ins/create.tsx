@@ -1,5 +1,5 @@
 import { Lucide } from "@react-native-vector-icons/lucide";
-import { router, useLocalSearchParams } from "expo-router";
+import { router } from "expo-router";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import CategoryStep from "@/components/check-in-flow/category-step";
 import DetailsStep from "@/components/check-in-flow/details-step";
@@ -14,15 +14,10 @@ import {
 import { habitCategoryLabels } from "@/config/habit-categories";
 import { theme } from "@/config/theme";
 import { useCheckInFlow } from "@/hooks/useCheckInFlow";
-import type { HabitCategory } from "@/services/types/habits";
 
 export default function CreateCheckInScreen() {
-  const params = useLocalSearchParams<{
-    habitId?: string;
-    category?: HabitCategory;
-  }>();
   const openCheckIn = (id: string) => router.replace(`/check-ins/${id}`);
-  const flow = useCheckInFlow({ ...params, onOpenCheckIn: openCheckIn });
+  const flow = useCheckInFlow({ onOpenCheckIn: openCheckIn });
 
   const renderContent = () => {
     if (flow.created) {

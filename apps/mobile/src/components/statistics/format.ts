@@ -3,10 +3,6 @@ export function formatPercent(rate: number): string {
   return `${String(rate).replace(".", ",")}%`;
 }
 
-export function plural(count: number, singular: string, pluralForm: string) {
-  return `${count} ${count === 1 ? singular : pluralForm}`;
-}
-
 export const NO_DATA_LABEL = "Sem dados ainda";
 
 /** `"Breno Silva"` → `"Olá, Breno!"`; sem nome, só `"Olá!"` */

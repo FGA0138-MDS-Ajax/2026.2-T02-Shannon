@@ -1,7 +1,12 @@
 import { StyleSheet, Text, View } from "react-native";
 import { theme } from "@/config/theme";
 
-export type BadgeTone = "neutral" | "primary" | "success" | "danger";
+export type BadgeTone =
+  | "neutral"
+  | "primary"
+  | "success"
+  | "warning"
+  | "danger";
 
 export interface BadgeProps {
   label: string;
@@ -9,7 +14,11 @@ export interface BadgeProps {
   testID?: string;
 }
 
-const tones: Record<BadgeTone, { background: string; text: string }> = {
+/** Cores de cada tom, para outros quadros de status seguirem a mesma escala */
+export const badgeTones: Record<
+  BadgeTone,
+  { background: string; text: string }
+> = {
   neutral: {
     background: theme.colors.border,
     text: theme.colors.textSecondary,
@@ -19,12 +28,13 @@ const tones: Record<BadgeTone, { background: string; text: string }> = {
     text: theme.colors.primaryDark,
   },
   success: { background: theme.colors.successSoft, text: theme.colors.success },
+  warning: { background: theme.colors.warningSoft, text: theme.colors.warning },
   danger: { background: theme.colors.dangerSoft, text: theme.colors.danger },
 };
 
 // Etiqueta arredondada de status (ex.: "Ativo", "Encerrado", "Admin")
 export function Badge({ label, tone = "neutral", testID }: BadgeProps) {
-  const colors = tones[tone];
+  const colors = badgeTones[tone];
   return (
     <View
       testID={testID}

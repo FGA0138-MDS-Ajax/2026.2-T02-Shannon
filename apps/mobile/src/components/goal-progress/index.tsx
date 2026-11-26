@@ -1,4 +1,5 @@
 import { StyleSheet, Text, View } from "react-native";
+import { ProgressBar } from "@/components/ui";
 import {
   describeGoal,
   describeProgressStatus,
@@ -44,8 +45,6 @@ export default function GoalProgress({ progress }: GoalProgressProps) {
   const { goal, current_period: period } = progress;
   const statusColors = statusStyles[progress.status];
   const isDone = period.done >= period.target_count;
-  // A barra para em 100%, mesmo quando `done` passa da meta
-  const percent = Math.min(period.done / period.target_count, 1) * 100;
 
   const periodLabel =
     goal.period === "day"
@@ -61,20 +60,13 @@ export default function GoalProgress({ progress }: GoalProgressProps) {
         <Text style={styles.done}>
           {period.done} de {period.target_count}
         </Text>
-        <View style={styles.track}>
-          <View
-            testID="goal-progress-fill"
-            style={[
-              styles.fill,
-              {
-                width: `${percent}%`,
-                backgroundColor: isDone
-                  ? statusStyles.completed.color
-                  : theme.colors.primary,
-              },
-            ]}
-          />
-        </View>
+        <ProgressBar
+          testID="goal-progress-bar"
+          ratio={period.done / period.target_count}
+          tone={isDone ? "success" : "primary"}
+          height={8}
+          style={styles.bar}
+        />
       </View>
 
       <View
@@ -93,7 +85,7 @@ export default function GoalProgress({ progress }: GoalProgressProps) {
 
       <View style={styles.streakRow}>
         <Text style={styles.streak}>
-          Streak: {formatStreak(progress.current_streak, goal.period)}
+          Sequência: {formatStreak(progress.current_streak, goal.period)}
         </Text>
         <Text style={styles.best}>
           Recorde: {formatStreak(progress.best_streak, goal.period)}
@@ -143,17 +135,8 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: theme.colors.text,
   },
-  track: {
+  bar: {
     flex: 1,
-    height: 8,
-    borderRadius: 9999,
-    backgroundColor: theme.colors.border,
-    overflow: "hidden",
-  },
-  fill: {
-    height: "100%",
-    borderRadius: 9999,
-    backgroundColor: theme.colors.primary,
   },
   status: {
     borderRadius: 99999999,

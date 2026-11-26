@@ -1,4 +1,4 @@
-import { fireEvent, render } from "@testing-library/react-native";
+import { fireEvent, render, within } from "@testing-library/react-native";
 import { router } from "expo-router";
 import { SWRConfig } from "swr";
 import GroupsScreen from "@/app/(app)/(tabs)/groups";
@@ -9,11 +9,13 @@ import type {
   FeedPage,
   GroupDetail,
   GroupHabit,
+  GroupHabitStatistics,
   GroupListItem,
   GroupPreview,
   GroupStatistics,
   Ranking,
 } from "@/services/types/groups";
+import type { HabitProgress } from "@/services/types/habits";
 
 jest.mock("expo-router", () => {
   const { useEffect } = jest.requireActual("react");
@@ -205,52 +207,110 @@ describe("GroupsScreen", () => {
   });
 });
 
+function makeProgress(
+  status: HabitProgress["status"],
+  done: number,
+): HabitProgress {
+  return {
+    habit_id: "habit-1",
+    goal: groupHabit.goal as HabitProgress["goal"],
+    current_period: {
+      start: "2026-11-23",
+      end: "2026-11-29",
+      done,
+      target_count: 3,
+    },
+    status,
+    current_streak: 0,
+    best_streak: 0,
+    streak_started_on: null,
+    consistent_days: 0,
+  };
+}
+
+const habitStats: GroupHabitStatistics = {
+  as_of: "2026-11-25",
+  habit_id: "habit-1",
+  name: "Correr 5 km",
+  habit_status: "active",
+  members: [
+    {
+      user: { id: "user-2", username: "ana" },
+      progress: makeProgress("completed", 3),
+      check_in_days: 3,
+    },
+    {
+      user: { id: "user-1", username: "pedro" },
+      progress: makeProgress("in_progress", 1),
+      check_in_days: 1,
+    },
+  ],
+};
+
 describe("GroupDetailScreen", () => {
   const routes = {
     "/groups/group-1": makeGroup(),
     "/groups/group-1/habits?status=active": [groupHabit],
+    "/groups/group-1/habits/habit-1/stats": habitStats,
     "/groups/group-1/ranking": ranking,
     "/groups/group-1/stats": stats,
     "/groups/group-1/check-ins?limit=20": feed,
   };
 
-  it("shows the invite code and the group habits to admins", async () => {
+  it("shows the members circle and the recent check-ins", async () => {
     mockRoutes(routes);
     const screen = await render(withSWR(<GroupDetailScreen />));
 
-    expect(await screen.findByText("K7P4-M9X2")).toBeTruthy();
-    expect(await screen.findByText("Correr 5 km")).toBeTruthy();
-    expect(screen.getByTestId("create-group-habit-button")).toBeTruthy();
-    expect(screen.getByTestId("edit-group-button")).toBeTruthy();
+    expect(await screen.findByTestId("members-circle")).toBeTruthy();
+    // 1 de 2 metas cumpridas: metade do grupo
+    expect(screen.getByText("50%")).toBeTruthy();
+    expect(screen.getByText("1 de 2 metas cumpridas no grupo")).toBeTruthy();
+    expect(await screen.findByText("“Treino no parque”")).toBeTruthy();
+    // Legenda da roda: o próprio usuário aparece como "Você"
+    expect(
+      within(screen.getByTestId("circle-legend-user-1")).getByText("Você"),
+    ).toBeTruthy();
   });
 
-  it("hides admin actions from members", async () => {
+  it("opens the check-in details from the feed", async () => {
+    mockRoutes(routes);
+    const screen = await render(withSWR(<GroupDetailScreen />));
+
+    await fireEvent.press(await screen.findByTestId("feed-item-check-in-1"));
+
+    const sheet = within(screen.getByTestId("check-in-sheet"));
+    expect(sheet.getByText("ana fez check-in em")).toBeTruthy();
+    expect(sheet.getByText("3 de 3 nesta semana")).toBeTruthy();
+  });
+
+  it("shows a member's habits and checks in on your own", async () => {
+    mockRoutes(routes);
+    const screen = await render(withSWR(<GroupDetailScreen />));
+
+    await fireEvent.press(await screen.findByTestId("circle-slice-user-1"));
+    expect(screen.getByText("Seus hábitos")).toBeTruthy();
+    expect(screen.getByText("0 cumpridas · 1 pendente")).toBeTruthy();
+
+    await fireEvent.press(screen.getByTestId("member-habit-habit-1"));
+    expect(screen.getByText("Seu hábito")).toBeTruthy();
+    expect(screen.getByTestId("member-habit-check-in")).toBeTruthy();
+  });
+
+  it("does not offer a check-in on someone else's habit", async () => {
     mockRoutes({
       ...routes,
-      "/groups/group-1": makeGroup({ my_role: "member", invite_code: null }),
+      "/groups/group-1/check-ins?limit=20": { ...feed, items: [] },
     });
     const screen = await render(withSWR(<GroupDetailScreen />));
 
-    expect(await screen.findByText("Correr 5 km")).toBeTruthy();
-    expect(screen.queryByTestId("invite-card")).toBeNull();
-    expect(screen.queryByTestId("create-group-habit-button")).toBeNull();
-    expect(screen.queryByTestId("edit-group-button")).toBeNull();
+    await fireEvent.press(await screen.findByTestId("circle-slice-user-2"));
+    await fireEvent.press(screen.getByTestId("member-habit-habit-1"));
+
+    expect(screen.getByText("Hábito de ana")).toBeTruthy();
+    expect(screen.queryByTestId("member-habit-check-in")).toBeNull();
   });
 
-  it("shows the ranking with the group statistics", async () => {
-    mockRoutes(routes);
-    const screen = await render(withSWR(<GroupDetailScreen />));
-
-    await fireEvent.press(await screen.findByTestId("group-tab-ranking"));
-
-    expect(await screen.findByText("Você está em 2º com 3 dias")).toBeTruthy();
-    expect(screen.getByText("8")).toBeTruthy();
-    expect(screen.getByText("4 dias em Correr 5 km")).toBeTruthy();
-    // Ninguém tem recorde ainda: a API manda null
-    expect(screen.getByText("Nenhuma sequência registrada")).toBeTruthy();
-  });
-
-  it("shows the feed and loads the next page with the cursor", async () => {
+  it("loads the next feed page with the cursor", async () => {
     mockRoutes({
       ...routes,
       "/groups/group-1/check-ins?limit=20&before=c1": {
@@ -261,26 +321,91 @@ describe("GroupDetailScreen", () => {
     });
     const screen = await render(withSWR(<GroupDetailScreen />));
 
-    await fireEvent.press(await screen.findByTestId("group-tab-feed"));
-    expect(await screen.findByText("Treino no parque")).toBeTruthy();
-
-    await fireEvent.press(screen.getByTestId("feed-load-more"));
+    await fireEvent.press(await screen.findByTestId("feed-load-more"));
 
     expect(mockRequest).toHaveBeenCalledWith(
       "/groups/group-1/check-ins?limit=20&before=c1",
     );
   });
 
-  it("lists the members with their roles", async () => {
+  it("shows how many members met each habit goal", async () => {
     mockRoutes(routes);
     const screen = await render(withSWR(<GroupDetailScreen />));
 
-    await fireEvent.press(await screen.findByTestId("group-tab-members"));
+    await fireEvent.press(await screen.findByTestId("group-tab-habits"));
 
-    expect(screen.getByText("@ana")).toBeTruthy();
+    expect(await screen.findByTestId("group-habit-habit-1")).toBeTruthy();
+    expect(screen.getByText("1 de 2 integrantes cumpriu a meta")).toBeTruthy();
+    expect(screen.getByTestId("create-group-habit-button")).toBeTruthy();
+    expect(screen.getByTestId("edit-group-button")).toBeTruthy();
+  });
+
+  it("shows the podium, your position and the highlights", async () => {
+    mockRoutes(routes);
+    const screen = await render(withSWR(<GroupDetailScreen />));
+
+    await fireEvent.press(await screen.findByTestId("group-tab-ranking"));
+
+    expect(await screen.findByTestId("podium-1-user-2")).toBeTruthy();
+    // O próprio usuário aparece como "Você", no pódio ou na classificação
+    expect(
+      within(screen.getByTestId("podium-2-user-1")).getByText("Você"),
+    ).toBeTruthy();
+    expect(screen.getByText("4 dias em Correr 5 km")).toBeTruthy();
+    // Ninguém tem recorde ainda: a API manda null
+    expect(screen.getByText("Nenhuma sequência registrada")).toBeTruthy();
+  });
+
+  it("opens a member from the ranking on the overview", async () => {
+    mockRoutes(routes);
+    const screen = await render(withSWR(<GroupDetailScreen />));
+
+    await fireEvent.press(await screen.findByTestId("group-tab-ranking"));
+    await fireEvent.press(await screen.findByTestId("podium-1-user-2"));
+
+    expect(await screen.findByText("Hábitos de ana")).toBeTruthy();
+  });
+
+  it("shows the invite code and the members to admins", async () => {
+    mockRoutes(routes);
+    const screen = await render(withSWR(<GroupDetailScreen />));
+
+    await fireEvent.press(await screen.findByTestId("group-tab-about"));
+
+    expect(screen.getByText("K7P4-M9X2")).toBeTruthy();
+    expect(screen.getByText("ana")).toBeTruthy();
     expect(screen.getByText("Você")).toBeTruthy();
     expect(screen.getByTestId("add-member-input")).toBeTruthy();
     expect(screen.getByTestId("leave-group-button")).toBeTruthy();
+  });
+
+  it("hides admin actions from members", async () => {
+    mockRoutes({
+      ...routes,
+      "/groups/group-1": makeGroup({ my_role: "member", invite_code: null }),
+    });
+    const screen = await render(withSWR(<GroupDetailScreen />));
+
+    await fireEvent.press(await screen.findByTestId("group-tab-about"));
+    expect(screen.queryByTestId("invite-card")).toBeNull();
+    expect(screen.queryByTestId("add-member-input")).toBeNull();
+
+    await fireEvent.press(screen.getByTestId("group-tab-habits"));
+    expect(await screen.findByTestId("group-habit-habit-1")).toBeTruthy();
+    expect(screen.queryByTestId("create-group-habit-button")).toBeNull();
+    expect(screen.queryByTestId("edit-group-button")).toBeNull();
+  });
+
+  it("shows the error in the sheet and a message in the header", async () => {
+    mockRoutes({
+      ...routes,
+      "/groups/group-1/habits?status=active": new Error("Sem conexão"),
+    });
+    const screen = await render(withSWR(<GroupDetailScreen />));
+
+    expect(await screen.findByText("Não foi possível carregar")).toBeTruthy();
+    expect(screen.getByText("Tentar novamente")).toBeTruthy();
+    expect(screen.queryByTestId("members-circle")).toBeNull();
   });
 
   it("shows a message when the group does not exist", async () => {
@@ -288,6 +413,7 @@ describe("GroupDetailScreen", () => {
       "/groups/group-1": new ApiError("Não encontrado", 404, {
         detail: "Grupo inexistente ou usuário não é membro.",
       }),
+      "/groups/group-1/habits?status=active": [],
     });
     const screen = await render(withSWR(<GroupDetailScreen />));
 

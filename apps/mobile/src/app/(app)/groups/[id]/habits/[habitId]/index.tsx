@@ -1,10 +1,12 @@
 import { router, useLocalSearchParams } from "expo-router";
+import { useState } from "react";
 import { ScrollView, StyleSheet, View } from "react-native";
 import useSWR from "swr";
 import Button from "@/components/button";
 import GoalProgress from "@/components/goal-progress";
 import MemberHabitStatsList from "@/components/groups/member-habit-stats";
 import HabitSummary from "@/components/habit-detail/habit-summary";
+import QuickCheckInSheet from "@/components/quick-check-in";
 import {
   ActionRow,
   BackButton,
@@ -25,6 +27,7 @@ import type {
   GroupHabit,
   GroupHabitStatistics,
 } from "@/services/types/groups";
+import { memberColors } from "@/utils/group-period";
 
 export default function GroupHabitDetailScreen() {
   const { id, habitId } = useLocalSearchParams<{
@@ -33,6 +36,7 @@ export default function GroupHabitDetailScreen() {
   }>();
   const { user } = useSession();
   const { busy, run } = useAsyncAction();
+  const [checkingIn, setCheckingIn] = useState(false);
 
   const habit = useSWR<GroupHabit>(groupKeys.habit(id, habitId), request);
   const stats = useSWR<GroupHabitStatistics>(
@@ -85,6 +89,7 @@ export default function GroupHabitDetailScreen() {
           <MemberHabitStatsList
             members={stats.data.members}
             currentUserId={user?.id}
+            colorOf={memberColors(group?.members ?? [])}
           />
         </Section>
       </>
@@ -109,12 +114,7 @@ export default function GroupHabitDetailScreen() {
             testID="group-habit-check-in"
             width="full"
             style={styles.checkIn}
-            onPress={() =>
-              router.push({
-                pathname: "/check-ins/create",
-                params: { habitId: current.id, category: current.category },
-              })
-            }
+            onPress={() => setCheckingIn(true)}
           >
             Fazer check-in
           </Button>
@@ -161,6 +161,11 @@ export default function GroupHabitDetailScreen() {
       >
         {renderContent}
       </QueryState>
+      <QuickCheckInSheet
+        habit={checkingIn ? (habit.data ?? null) : null}
+        userId={user?.id}
+        onClose={() => setCheckingIn(false)}
+      />
     </Screen>
   );
 }

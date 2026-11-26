@@ -1,6 +1,8 @@
 import { router } from "expo-router";
 import { useState } from "react";
-import { View } from "react-native";
+import QuickCheckInSheet, {
+  type QuickCheckInHabit,
+} from "@/components/quick-check-in";
 import {
   StatisticsContent,
   StatisticsEmpty,
@@ -8,7 +10,10 @@ import {
   StatisticsFilters,
   StatisticsSkeleton,
 } from "@/components/statistics";
+import HomeHero from "@/components/statistics/home-hero";
+import { HeroLayout } from "@/components/ui";
 import { useHabitsCheckIns } from "@/hooks/useHabitsCheckIns";
+import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { useRefreshOnFocus } from "@/hooks/useRefreshOnFocus";
 import { useSession } from "@/hooks/useSession";
 import {
@@ -18,6 +23,7 @@ import {
   useUserStatistics,
 } from "@/hooks/useUserStatistics";
 import type { StatisticsMode } from "@/services/types/statistics";
+import { startOfToday, toApiDate } from "@/utils/date";
 import { buildHabitHistory, buildWeekProgress } from "@/utils/habit-history";
 
 type Filters = { mode: StatisticsMode; days: number };
@@ -43,6 +49,8 @@ export default function StatisticsPanel() {
     days: 30,
   });
   const [daysError, setDaysError] = useState<string>();
+  // O "+" de um hábito abre o check-in rápido, sem sair da Home
+  const [quickHabit, setQuickHabit] = useState<QuickCheckInHabit | null>(null);
   const { data, status, error, fieldErrors, refetch } =
     useUserStatistics(filters);
 
@@ -57,6 +65,10 @@ export default function StatisticsPanel() {
   useRefreshOnFocus(refetch);
   useRefreshOnFocus(refetchHistory);
 
+  const pull = usePullToRefresh(() =>
+    Promise.all([refetch(), refetchHistory()]),
+  );
+
   const handleFiltersChange = (next: Filters) => {
     if (!isValidDays(next.days)) {
       setDaysError(`Escolha entre ${MIN_DAYS} e ${MAX_DAYS} dias.`);
@@ -67,10 +79,8 @@ export default function StatisticsPanel() {
   };
 
   const openCheckIn = (habitId: string) => {
-    router.push({
-      pathname: "/check-ins/create",
-      params: { habitId, category: categories?.[habitId] ?? "" },
-    });
+    const habit = data?.habit_progress.find((h) => h.habit_id === habitId);
+    if (habit) setQuickHabit({ id: habit.habit_id, name: habit.name });
   };
 
   const isEmpty = data?.habits.total === 0 && data.check_ins.total === 0;
@@ -105,19 +115,29 @@ export default function StatisticsPanel() {
       : undefined;
 
   return (
-    <View>
+    <HeroLayout
+      testID="statistics-panel"
+      // Espaço para o botão flutuante "Novo check-in"
+      bottomSpace={104}
+      hero={
+        <HomeHero
+          // Enquanto as estatísticas chegam, a semana aparece vazia
+          referenceDate={data?.reference_date ?? toApiDate(startOfToday())}
+          week={week}
+          userName={user?.name}
+        />
+      }
+      refreshing={pull.refreshing}
+      onRefresh={pull.onRefresh}
+    >
       {status === "loading" && <StatisticsSkeleton />}
       {status === "error" && (
         <StatisticsError message={error ?? undefined} onRetry={refetch} />
       )}
-      {status === "success" && data && isEmpty && (
-        <StatisticsEmpty userName={user?.name} />
-      )}
+      {status === "success" && data && isEmpty && <StatisticsEmpty />}
       {status === "success" && data && !isEmpty && (
         <StatisticsContent
           data={data}
-          userName={user?.name}
-          week={week}
           histories={histories}
           categories={categories}
           onCheckIn={openCheckIn}
@@ -132,6 +152,12 @@ export default function StatisticsPanel() {
         errors={{ mode: fieldErrors.mode, days: daysError ?? fieldErrors.days }}
         onChange={handleFiltersChange}
       />
-    </View>
+
+      <QuickCheckInSheet
+        habit={quickHabit}
+        userId={user?.id}
+        onClose={() => setQuickHabit(null)}
+      />
+    </HeroLayout>
   );
 }

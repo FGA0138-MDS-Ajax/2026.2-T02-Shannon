@@ -100,7 +100,7 @@ describe("HabitDetailScreen", () => {
     const screen = await renderScreen();
 
     expect(await screen.findByText("2 de 3")).toBeTruthy();
-    expect(screen.getByText("Streak: 1 semana")).toBeTruthy();
+    expect(screen.getByText("Sequência: 1 semana")).toBeTruthy();
     expect(screen.getByText("Recorde: 2 semanas")).toBeTruthy();
   });
 

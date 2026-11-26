@@ -1,12 +1,11 @@
 import { StyleSheet, View } from "react-native";
-import { EmptyState, ScreenHeader, StatTile } from "@/components/ui";
-import { greeting } from "./format";
+import { EmptyState, StatTile } from "@/components/ui";
 
 // Usuário sem hábitos nem check-ins: números zerados e um convite para começar
-export default function StatisticsEmpty({ userName }: { userName?: string }) {
+// (a saudação fica no cabeçalho escuro da Home)
+export default function StatisticsEmpty() {
   return (
     <View testID="statistics-empty">
-      <ScreenHeader title={greeting(userName)} />
       <EmptyState
         icon="sprout"
         title="Tudo pronto para começar"

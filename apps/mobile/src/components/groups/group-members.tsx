@@ -17,10 +17,15 @@ import AddMemberForm from "./add-member-form";
 
 export interface GroupMembersProps {
   group: GroupDetail;
+  colorOf: (userId: string) => string;
   onChanged: () => void;
 }
 
-export default function GroupMembers({ group, onChanged }: GroupMembersProps) {
+export default function GroupMembers({
+  group,
+  colorOf,
+  onChanged,
+}: GroupMembersProps) {
   const { user } = useSession();
   const { busy, run } = useAsyncAction();
   const isAdmin = group.my_role === "admin";
@@ -44,7 +49,7 @@ export default function GroupMembers({ group, onChanged }: GroupMembersProps) {
           onChanged();
         }),
     };
-    Alert.alert(`@${member.username}`, undefined, [
+    Alert.alert(member.username, undefined, [
       ...(member.role === "member" ? [promote] : []),
       remove,
       { text: "Cancelar", style: "cancel" },
@@ -97,10 +102,10 @@ export default function GroupMembers({ group, onChanged }: GroupMembersProps) {
                 index === group.members.length - 1 && styles.memberLast,
               ]}
             >
-              <Avatar name={member.username} highlighted={isMe} />
+              <Avatar name={member.username} color={colorOf(member.user_id)} />
               <View style={styles.memberInfo}>
                 <Text style={styles.username} numberOfLines={1}>
-                  {isMe ? "Você" : `@${member.username}`}
+                  {isMe ? "Você" : member.username}
                 </Text>
                 <Text style={styles.joined}>
                   Desde {formatDate(new Date(member.joined_at))}

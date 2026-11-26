@@ -11,6 +11,8 @@ export interface StatTileProps {
   children?: ReactNode;
   /** Valor em texto longo (ex.: "Sem dados ainda"): fonte menor */
   compact?: boolean;
+  /** Sobre o cabeçalho escuro (HeroLayout) */
+  onHero?: boolean;
   testID?: string;
 }
 
@@ -21,22 +23,33 @@ export function StatTile({
   footer,
   children,
   compact = false,
+  onHero = false,
   testID,
 }: StatTileProps) {
   return (
-    <View testID={testID} style={styles.tile}>
-      <Text style={styles.label} numberOfLines={2}>
+    <View testID={testID} style={[styles.tile, onHero && styles.tileOnHero]}>
+      <Text
+        style={[styles.label, onHero && styles.mutedOnHero]}
+        numberOfLines={2}
+      >
         {label}
       </Text>
       <Text
-        style={[styles.value, compact && styles.valueCompact]}
+        style={[
+          styles.value,
+          compact && styles.valueCompact,
+          onHero && styles.valueOnHero,
+        ]}
         numberOfLines={2}
       >
         {value}
       </Text>
       {children}
       {footer && (
-        <Text style={styles.footer} numberOfLines={2}>
+        <Text
+          style={[styles.footer, onHero && styles.mutedOnHero]}
+          numberOfLines={2}
+        >
           {footer}
         </Text>
       )}
@@ -55,6 +68,17 @@ const styles = StyleSheet.create({
     padding: 14,
     gap: 6,
     justifyContent: "space-between",
+  },
+  tileOnHero: {
+    minHeight: 0,
+    backgroundColor: theme.colors.heroRaised,
+    borderColor: theme.colors.heroRaised,
+  },
+  valueOnHero: {
+    color: theme.colors.onHero,
+  },
+  mutedOnHero: {
+    color: theme.colors.onHeroMuted,
   },
   label: {
     fontFamily: theme.font.medium,

@@ -77,7 +77,7 @@ const progressStatusLabels: Record<
   completed: "Meta do período cumprida",
   at_risk: "Não pode faltar nenhum dia",
   failed: "Este período não fecha mais; recomece no próximo",
-  ended: "Streak final",
+  ended: "Sequência final",
 };
 
 /** Texto da situação do período atual, ex.: `"Faltam 2"` ou `"Não pode faltar nenhum dia"` */

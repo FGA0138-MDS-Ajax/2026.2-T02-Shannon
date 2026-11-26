@@ -9,7 +9,7 @@ import { formatDate, parseApiDate } from "@/utils/date";
 // Textos de exibição dos grupos. Os números vêm sempre da API.
 
 export const rankingCriterionLabels: Record<RankingCriterion, string> = {
-  check_ins: "Check-ins",
+  check_ins: "Dias com check-in",
   goals: "Metas cumpridas",
 };
 
