@@ -1,4 +1,6 @@
 import { request, toQueryString } from "@/services/api";
+import { isGroupDataKey } from "@/services/groups-api";
+import { isHomeDataKey } from "@/services/statistics-api";
 import type {
   CheckIn,
   CheckInCategoriesResponse,
@@ -20,6 +22,18 @@ export const checkInKeys = {
     `/check-ins/habit-options${toQueryString(params)}`,
   detail: (id: string) => `/check-ins/${id}`,
 };
+
+/**
+ * Chaves que um check-in novo muda: a Home, os hábitos (progresso da meta e
+ * lista de check-ins de cada um) e as telas de grupo (roda, feed e ranking). Depois de
+ * criar, use `mutate(isAffectedByCheckIn)`.
+ */
+export function isAffectedByCheckIn(key: unknown): boolean {
+  const isHabitKey =
+    typeof key === "string" &&
+    (key.startsWith("/habits/") || key.startsWith("/goals/habits/"));
+  return isHomeDataKey(key) || isGroupDataKey(key) || isHabitKey;
+}
 
 /**
  * Lista os check-ins do usuário logado agrupados por dia, do mais recente ao

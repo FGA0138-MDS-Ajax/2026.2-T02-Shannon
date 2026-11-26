@@ -70,11 +70,18 @@ export function ScreenHeader({ title, subtitle, action }: ScreenHeaderProps) {
 export interface HeaderActionProps {
   label: string;
   onPress: () => void;
+  /** Sobre o cabeçalho escuro (HeroLayout): laranja claro */
+  onHero?: boolean;
   testID?: string;
 }
 
 // Link de texto do cabeçalho, no tom escuro do laranja
-export function HeaderAction({ label, onPress, testID }: HeaderActionProps) {
+export function HeaderAction({
+  label,
+  onPress,
+  onHero = false,
+  testID,
+}: HeaderActionProps) {
   return (
     <Pressable
       testID={testID}
@@ -83,21 +90,38 @@ export function HeaderAction({ label, onPress, testID }: HeaderActionProps) {
       accessibilityRole="button"
       style={styles.headerAction}
     >
-      <Text style={styles.headerActionText}>{label}</Text>
+      <Text style={[styles.headerActionText, onHero && styles.onHeroAction]}>
+        {label}
+      </Text>
     </Pressable>
   );
 }
 
-export function BackButton({ label = "Voltar" }: { label?: string }) {
+export interface BackButtonProps {
+  /** Lido pelo leitor de tela; a seta não tem texto */
+  label?: string;
+  /** Sobre o cabeçalho escuro: seta clara */
+  onHero?: boolean;
+}
+
+export function BackButton({
+  label = "Voltar",
+  onHero = false,
+}: BackButtonProps) {
   return (
     <Pressable
       testID="back-button"
       onPress={() => router.back()}
       accessibilityRole="button"
-      style={styles.backButton}
+      accessibilityLabel={label}
+      hitSlop={12}
+      style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}
     >
-      <Lucide name="arrow-left" size={16} color={theme.colors.primaryDark} />
-      <Text style={styles.headerActionText}>{label}</Text>
+      <Lucide
+        name="chevron-left"
+        size={26}
+        color={onHero ? theme.colors.onHero : theme.colors.text}
+      />
     </Pressable>
   );
 }
@@ -148,14 +172,16 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: theme.colors.primaryDark,
   },
+  onHeroAction: {
+    fontSize: 15,
+    color: theme.colors.primary,
+  },
+  pressed: {
+    opacity: 0.6,
+  },
   backButton: {
-    marginTop: 8,
-    marginBottom: 8,
     alignSelf: "flex-start",
     paddingVertical: 4,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
   },
   floating: {
     zIndex: 1,

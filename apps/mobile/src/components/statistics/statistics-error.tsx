@@ -1,5 +1,5 @@
 import { View } from "react-native";
-import { ErrorBanner, ScreenHeader } from "@/components/ui";
+import { ErrorBanner } from "@/components/ui";
 
 export interface StatisticsErrorProps {
   message?: string;
@@ -12,10 +12,6 @@ export default function StatisticsError({
 }: StatisticsErrorProps) {
   return (
     <View testID="statistics-error">
-      <ScreenHeader
-        title="Painel"
-        subtitle="Não foi possível carregar o painel."
-      />
       <ErrorBanner
         message={message ?? "Verifique sua conexão e tente de novo."}
         onRetry={onRetry}

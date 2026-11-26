@@ -1,4 +1,5 @@
 import Input from "@/components/input";
+import { CHECK_IN_TITLE_MAX } from "@/utils/check-in-title";
 import { minutesToIsoDuration } from "@/utils/duration";
 
 export interface CheckInFieldValues {
@@ -34,7 +35,8 @@ export function validateCheckInFields(
   const errors: CheckInFieldErrors = {};
 
   if (!title) errors.title = "Informe o título do check-in.";
-  else if (title.length > 150) errors.title = "Use no máximo 150 caracteres.";
+  else if (title.length > CHECK_IN_TITLE_MAX)
+    errors.title = `Use no máximo ${CHECK_IN_TITLE_MAX} caracteres.`;
 
   if (description.length > 500)
     errors.description = "Use no máximo 500 caracteres.";
@@ -79,7 +81,7 @@ export function CheckInFields({
         value={values.title}
         onChangeText={set("title")}
         autoCapitalize="sentences"
-        maxLength={150}
+        maxLength={CHECK_IN_TITLE_MAX}
         error={errors.title}
       />
 

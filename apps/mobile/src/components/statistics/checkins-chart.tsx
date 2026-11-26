@@ -3,7 +3,7 @@ import { Card } from "@/components/ui";
 import { theme } from "@/config/theme";
 import type { SeriesPoint } from "@/services/types/statistics";
 import { formatDayMonth } from "@/utils/date";
-import { plural } from "./format";
+import { plural } from "@/utils/text";
 
 export interface CheckInsChartProps {
   points: SeriesPoint[];

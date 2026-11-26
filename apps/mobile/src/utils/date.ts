@@ -72,3 +72,20 @@ export function formatDayMonth(value: string): string {
 export function formatLongDate(date: Date): string {
   return `${WEEKDAY_NAMES[date.getDay()]}, ${date.getDate()} de ${MONTH_NAMES[date.getMonth()].toLowerCase()}`;
 }
+
+/**
+ * Data e hora curtas para listas que atravessam dias (ex.: feed do grupo):
+ * `"Hoje, 07:30"`, `"Ontem, 21:10"` ou `"23/11, 07:30"`, no fuso do aparelho.
+ */
+export function formatRelativeDateTime(
+  isoDateTime: string,
+  now: Date = new Date(),
+): string {
+  const date = new Date(isoDateTime);
+  const time = formatTime(isoDateTime);
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+  if (toApiDate(date) === toApiDate(now)) return `Hoje, ${time}`;
+  if (toApiDate(date) === toApiDate(yesterday)) return `Ontem, ${time}`;
+  return `${formatDate(date).slice(0, 5)}, ${time}`;
+}

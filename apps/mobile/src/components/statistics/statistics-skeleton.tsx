@@ -1,7 +1,8 @@
 import { StyleSheet, Text, View, type ViewStyle } from "react-native";
 import { theme } from "@/config/theme";
 
-// Mesma estrutura do StatisticsContent, com blocos cinza no lugar dos dados
+// Mesma estrutura da folha do StatisticsContent, com blocos cinza no lugar
+// dos dados (a saudação e a semana já aparecem no cabeçalho escuro)
 export default function StatisticsSkeleton() {
   return (
     <View
@@ -10,9 +11,7 @@ export default function StatisticsSkeleton() {
       accessibilityLabel="Carregando estatísticas"
       style={styles.container}
     >
-      <Block style={styles.title} />
       <Text style={styles.loading}>Carregando estatísticas...</Text>
-      <Block style={styles.week} />
       <Block style={styles.sectionTitle} />
       <Block style={styles.habit} />
       <Block style={styles.habit} />
@@ -31,7 +30,6 @@ function Block({ style }: { style: ViewStyle }) {
 
 const styles = StyleSheet.create({
   container: {
-    marginTop: 16,
     gap: 12,
   },
   block: {
@@ -42,14 +40,6 @@ const styles = StyleSheet.create({
     fontFamily: theme.font.regular,
     fontSize: 13,
     color: theme.colors.muted,
-  },
-  title: {
-    width: "55%",
-    height: 32,
-    borderRadius: theme.radius.sm,
-  },
-  week: {
-    height: 104,
   },
   sectionTitle: {
     width: "40%",

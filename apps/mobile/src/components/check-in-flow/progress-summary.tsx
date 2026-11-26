@@ -44,7 +44,7 @@ export default function ProgressSummary({
                 {describeProgressStatus(progress)}
               </Text>
               <Text style={styles.detail}>
-                Streak: {formatStreak(progress.current_streak, period)}
+                Sequência: {formatStreak(progress.current_streak, period)}
               </Text>
             </Card>
           );

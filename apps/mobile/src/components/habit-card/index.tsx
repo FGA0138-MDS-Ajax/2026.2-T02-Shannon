@@ -5,27 +5,21 @@ import { theme } from "@/config/theme";
 import type { Habit, HabitProgress } from "@/services/types/habits";
 
 export interface HabitCardProps {
-  /** `progress` vem em GET /habits; os hábitos da tela do grupo não trazem */
+  /** `progress` vem em GET /habits; sem meta, fica `null` */
   habit: Habit & { progress?: HabitProgress | null };
   onPress?: () => void;
-  /** Dentro da tela do grupo o nome dele é redundante */
-  hideGroupName?: boolean;
 }
 
 // Hábito de grupo mostra o grupo; o pessoal, se é público ou privado
-function describeOwner(habit: Habit, hideGroupName: boolean): string | null {
-  if (habit.group) return hideGroupName ? null : `Grupo ${habit.group.name}`;
+function describeOwner(habit: Habit): string {
+  if (habit.group) return `Grupo ${habit.group.name}`;
   return habit.is_public ? "Público" : "Privado";
 }
 
-export default function HabitCard({
-  habit,
-  onPress,
-  hideGroupName = false,
-}: HabitCardProps) {
+export default function HabitCard({ habit, onPress }: HabitCardProps) {
   const isFinished = habit.status === "finished";
   const isAtRisk = habit.progress?.status === "at_risk";
-  const owner = describeOwner(habit, hideGroupName);
+  const owner = describeOwner(habit);
 
   return (
     <Pressable
@@ -49,9 +43,7 @@ export default function HabitCard({
         )}
       </View>
       <Text style={styles.details}>
-        {[habitCategoryLabels[habit.category], owner]
-          .filter(Boolean)
-          .join(" · ")}
+        {habitCategoryLabels[habit.category]} · {owner}
       </Text>
 
       {habit.progress ? (

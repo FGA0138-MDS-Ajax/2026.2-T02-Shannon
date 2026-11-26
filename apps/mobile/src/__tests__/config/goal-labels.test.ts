@@ -96,7 +96,7 @@ describe("describeProgressStatus", () => {
   it.each([
     ["completed", "Meta do período cumprida"],
     ["failed", "Este período não fecha mais; recomece no próximo"],
-    ["ended", "Streak final"],
+    ["ended", "Sequência final"],
   ] as const)("describes the %s status", (status, expected) => {
     const progress = makeProgress({ status });
     const message = describeProgressStatus(progress);

@@ -1,19 +1,15 @@
 import { StyleSheet, View } from "react-native";
-import { Section } from "@/components/ui";
+import { FadeIn, Section } from "@/components/ui";
 import type { HabitCategory } from "@/services/types/habits";
 import type { UserStatistics } from "@/services/types/statistics";
-import type { HabitHistoryDay, WeekDayProgress } from "@/utils/habit-history";
+import type { HabitHistoryDay } from "@/utils/habit-history";
 import CheckInsChart from "./checkins-chart";
 import HabitProgressItem from "./habit-progress-item";
 import { CheckInsCard, GoalCompletionCard } from "./summary-cards";
-import WeekHeader from "./week-header";
 
 export interface StatisticsContentProps {
   data: UserStatistics;
   // As props abaixo são opcionais: sem elas o painel funciona só com `data`
-  userName?: string;
-  /** Progresso de cada dia da semana atual (anéis do topo) */
-  week?: WeekDayProgress[];
   /** Grade de 28 dias de cada hábito, por `habit_id` */
   histories?: Record<string, HabitHistoryDay[]>;
   /** Categoria de cada hábito, por `habit_id` (define o ícone) */
@@ -25,8 +21,6 @@ export interface StatisticsContentProps {
 // Só monta a tela com o que recebe: não chama a API
 export default function StatisticsContent({
   data,
-  userName,
-  week,
   histories,
   categories,
   onCheckIn,
@@ -40,26 +34,24 @@ export default function StatisticsContent({
 
   return (
     <View testID="statistics-content">
-      <WeekHeader
-        referenceDate={data.reference_date}
-        week={week}
-        userName={userName}
-      />
-
       <Section
+        style={styles.first}
         title="Seus hábitos"
         count={`${doneToday}/${data.habit_progress.length} hoje`}
         actionLabel="Ver todos"
         onAction={onSeeAllHabits}
       >
-        {habits.map((habit) => (
-          <HabitProgressItem
-            key={habit.habit_id}
-            habit={habit}
-            history={histories?.[habit.habit_id]}
-            category={categories?.[habit.habit_id]}
-            onCheckIn={onCheckIn ? () => onCheckIn(habit.habit_id) : undefined}
-          />
+        {habits.map((habit, index) => (
+          <FadeIn key={habit.habit_id} index={index}>
+            <HabitProgressItem
+              habit={habit}
+              history={histories?.[habit.habit_id]}
+              category={categories?.[habit.habit_id]}
+              onCheckIn={
+                onCheckIn ? () => onCheckIn(habit.habit_id) : undefined
+              }
+            />
+          </FadeIn>
         ))}
       </Section>
 
@@ -79,6 +71,10 @@ export default function StatisticsContent({
 }
 
 const styles = StyleSheet.create({
+  // A folha já tem margem em cima
+  first: {
+    marginTop: 0,
+  },
   row: {
     flexDirection: "row",
     gap: 12,

@@ -1,5 +1,12 @@
 import type { ReactNode } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import {
+  Pressable,
+  type StyleProp,
+  StyleSheet,
+  Text,
+  View,
+  type ViewStyle,
+} from "react-native";
 import { theme } from "@/config/theme";
 
 export interface SectionHeaderProps {
@@ -40,10 +47,14 @@ export function SectionHeader({
 
 export function Section({
   children,
+  style,
   ...header
-}: SectionHeaderProps & { children: ReactNode }) {
+}: SectionHeaderProps & {
+  children: ReactNode;
+  style?: StyleProp<ViewStyle>;
+}) {
   return (
-    <View style={styles.section}>
+    <View style={[styles.section, style]}>
       <SectionHeader {...header} />
       <View style={styles.body}>{children}</View>
     </View>
