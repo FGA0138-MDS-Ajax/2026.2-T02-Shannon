@@ -59,22 +59,31 @@ beforeEach(() => {
 });
 
 describe("GroupsScreen", () => {
-  it("lists the groups with members, role and status", async () => {
+  it("lists the groups as cards with members, role and status", async () => {
     const screen = await renderScreen();
 
     expect(await screen.findByText("Pedal de domingo")).toBeTruthy();
     expect(screen.getByText("4 membros")).toBeTruthy();
     expect(screen.getByText("Admin")).toBeTruthy();
-    expect(screen.getByText("1 membro")).toBeTruthy();
-    expect(screen.getByText("Encerrado")).toBeTruthy();
+    expect(screen.getByText("Encerrado · 1 membro")).toBeTruthy();
   });
 
-  it("opens the group when a row is pressed", async () => {
+  it("opens the group when a card is pressed", async () => {
     const screen = await renderScreen();
 
     await fireEvent.press(await screen.findByText("Leitura de outubro"));
 
     expect(router.push).toHaveBeenCalledWith("/groups/g2");
+  });
+
+  it("ends the grid with the create and join cards", async () => {
+    const screen = await renderScreen();
+
+    await fireEvent.press(await screen.findByText("Criar grupo"));
+    expect(router.push).toHaveBeenCalledWith("/(app)/groups/create");
+
+    await fireEvent.press(screen.getByText("Entrar com código"));
+    expect(router.push).toHaveBeenCalledWith("/(app)/groups/join");
   });
 
   it("invites to create or join when there are no groups", async () => {

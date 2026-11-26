@@ -1,4 +1,3 @@
-import { Lucide } from "@react-native-vector-icons/lucide";
 import { type Href, router, useFocusEffect } from "expo-router";
 import { useCallback } from "react";
 import {
@@ -12,11 +11,21 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import useSWR from "swr";
 import Button from "@/components/button";
-import GroupRow from "@/components/group-row";
+import GroupCard, { GroupActionCard } from "@/components/group-card";
 import { palette } from "@/components/statistics/palette";
 import { theme } from "@/config/theme";
 import { getErrorMessage } from "@/services/api-errors";
 import { listGroups } from "@/services/groups-api";
+import type { GroupListItem } from "@/services/types/groups";
+
+// Cada célula da grade: um grupo ou um dos dois cards de ação do fim
+type Cell =
+  | { kind: "group"; group: GroupListItem; index: number }
+  | { kind: "create" }
+  | { kind: "join" }
+  | { kind: "spacer" };
+
+const COLUMNS = 2;
 
 export default function GroupsScreen() {
   const {
@@ -31,6 +40,33 @@ export default function GroupsScreen() {
     useCallback(() => {
       refreshGroups();
     }, [refreshGroups]),
+  );
+
+  const renderCell = ({ item }: { item: Cell }) => (
+    <View style={styles.cell}>
+      {item.kind === "group" ? (
+        <GroupCard
+          name={item.group.name}
+          membersCount={item.group.members_count}
+          role={item.group.my_role}
+          status={item.group.status}
+          index={item.index}
+          onPress={() => router.push(`/groups/${item.group.id}` as Href)}
+        />
+      ) : item.kind === "spacer" ? null : item.kind === "create" ? (
+        <GroupActionCard
+          icon="plus"
+          label="Criar grupo"
+          onPress={() => router.push("/(app)/groups/create" as Href)}
+        />
+      ) : (
+        <GroupActionCard
+          icon="hash"
+          label="Entrar com código"
+          onPress={() => router.push("/(app)/groups/join" as Href)}
+        />
+      )}
+    </View>
   );
 
   const renderContent = () => {
@@ -57,35 +93,37 @@ export default function GroupsScreen() {
       );
     }
 
+    const cells: Cell[] = [
+      ...(groups ?? []).map(
+        (group, index) => ({ kind: "group", group, index }) as const,
+      ),
+      { kind: "create" },
+      { kind: "join" },
+    ];
+    // Linha incompleta no fim: um espaço vazio mantém os cards do mesmo tamanho
+    if (cells.length % COLUMNS !== 0) cells.push({ kind: "spacer" });
+
     return (
       <FlatList
-        data={groups}
-        keyExtractor={(group) => group.id}
-        renderItem={({ item }) => (
-          <GroupRow
-            name={item.name}
-            membersCount={item.members_count}
-            role={item.my_role}
-            status={item.status}
-            onPress={() => router.push(`/groups/${item.id}` as Href)}
-          />
-        )}
+        data={cells}
+        numColumns={COLUMNS}
+        keyExtractor={(cell) =>
+          cell.kind === "group" ? cell.group.id : cell.kind
+        }
+        renderItem={renderCell}
+        columnWrapperStyle={styles.row}
         style={styles.list}
-        contentContainerStyle={[
-          styles.listContent,
-          groups?.length === 0 && styles.emptyContainer,
-        ]}
-        ListEmptyComponent={
-          <View style={styles.empty}>
-            <View style={styles.emptyIcon}>
-              <Lucide name="users" size={28} color={theme.colors.primary} />
+        contentContainerStyle={styles.listContent}
+        ListHeaderComponent={
+          groups?.length === 0 ? (
+            <View style={styles.empty}>
+              <Text style={styles.emptyTitle}>Nenhum grupo por aqui</Text>
+              <Text style={styles.message}>
+                Crie um grupo para competir com os amigos ou entre com o código
+                que alguém te mandou.
+              </Text>
             </View>
-            <Text style={styles.emptyTitle}>Nenhum grupo por aqui</Text>
-            <Text style={styles.message}>
-              Crie um grupo para competir com os amigos ou entre com o código
-              que alguém te mandou.
-            </Text>
-          </View>
+          ) : undefined
         }
         refreshControl={
           <RefreshControl
@@ -107,24 +145,9 @@ export default function GroupsScreen() {
       style={styles.container}
     >
       <Text style={styles.title}>Grupos</Text>
+      <Text style={styles.subtitle}>Constância é melhor com companhia.</Text>
 
       <View style={styles.content}>{renderContent()}</View>
-
-      <View style={styles.actions}>
-        <Button
-          width="full"
-          onPress={() => router.push("/(app)/groups/create" as Href)}
-        >
-          Criar grupo
-        </Button>
-        <Button
-          variant="secondary"
-          width="full"
-          onPress={() => router.push("/(app)/groups/join" as Href)}
-        >
-          Entrar com código
-        </Button>
-      </View>
     </SafeAreaView>
   );
 }
@@ -132,28 +155,41 @@ export default function GroupsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingHorizontal: 24,
+    paddingHorizontal: 22,
     paddingTop: 16,
-    backgroundColor: theme.colors.gray,
+    backgroundColor: palette.background,
   },
   title: {
     marginTop: 16,
-    marginBottom: 8,
-    fontFamily: theme.font.bold,
+    fontFamily: theme.font.medium,
     fontSize: 28,
     color: palette.ink,
+  },
+  subtitle: {
+    marginTop: 6,
+    marginBottom: 18,
+    fontFamily: theme.font.regular,
+    fontSize: 12,
+    color: palette.inkSoft,
   },
   content: {
     flex: 1,
   },
-  // Largura toda para a barra de rolagem não ficar por cima das linhas
+  // Largura toda para a barra de rolagem não ficar por cima dos cards
   list: {
-    marginHorizontal: -24,
+    marginHorizontal: -22,
   },
   listContent: {
-    paddingHorizontal: 24,
-    // Espaço para os dois botões fixos embaixo
-    paddingBottom: 120,
+    paddingHorizontal: 22,
+    paddingBottom: 32,
+    gap: 12,
+  },
+  row: {
+    gap: 12,
+  },
+  // Cada célula divide a linha por igual
+  cell: {
+    flex: 1,
   },
   centered: {
     flex: 1,
@@ -166,36 +202,14 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 22,
     color: palette.inkSoft,
-    textAlign: "center",
-  },
-  emptyContainer: {
-    flexGrow: 1,
-    justifyContent: "center",
   },
   empty: {
-    alignItems: "center",
-    gap: 8,
-    paddingHorizontal: 16,
-  },
-  emptyIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: 18,
-    backgroundColor: theme.colors.gray200,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 4,
+    gap: 6,
+    marginBottom: 6,
   },
   emptyTitle: {
-    fontFamily: theme.font.semiBold,
+    fontFamily: theme.font.medium,
     fontSize: 20,
     color: palette.ink,
-  },
-  actions: {
-    position: "absolute",
-    bottom: 16,
-    left: 24,
-    right: 24,
-    gap: 4,
   },
 });
