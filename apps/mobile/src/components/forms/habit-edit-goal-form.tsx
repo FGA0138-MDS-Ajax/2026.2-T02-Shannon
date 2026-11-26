@@ -1,12 +1,13 @@
 import { router } from "expo-router";
 import { useState } from "react";
 import { Alert, ScrollView, StyleSheet, Text, View } from "react-native";
+import Button from "@/components/button";
+import GoalPicker from "@/components/goal-picker";
+import { ErrorBanner } from "@/components/ui";
 import { theme } from "@/config/theme";
 import { getErrorMessage, getFieldErrors } from "@/services/api-errors";
 import { setHabitGoal } from "@/services/goals-api";
 import type { GoalInput, GoalPublic, Habit } from "@/services/types/habits";
-import Button from "../button";
-import GoalPicker from "../goal-picker";
 
 function isSameGoal(current: GoalPublic, next: GoalInput): boolean {
   return (
@@ -77,11 +78,7 @@ export function GoalEditForm({ habit }: { habit: Habit }) {
 
   return (
     <View style={styles.form}>
-      {errorMessage && (
-        <View style={styles.errorBanner}>
-          <Text style={styles.errorBannerText}>{errorMessage}</Text>
-        </View>
-      )}
+      {errorMessage && <ErrorBanner message={errorMessage} />}
 
       <ScrollView style={styles.fields}>
         {habit.goal && (
@@ -112,23 +109,6 @@ export function GoalEditForm({ habit }: { habit: Habit }) {
 }
 
 const styles = StyleSheet.create({
-  errorBanner: {
-    backgroundColor: "#FEE2E2",
-    borderWidth: 1,
-    borderColor: "#FCA5A5",
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    alignItems: "center",
-    gap: 8,
-    marginBottom: 16,
-  },
-  errorBannerText: {
-    fontFamily: theme.font.medium,
-    fontSize: 14,
-    color: "#B91C1C",
-    textAlign: "center",
-  },
   form: {
     flex: 1,
   },
@@ -138,7 +118,7 @@ const styles = StyleSheet.create({
   hint: {
     fontFamily: theme.font.regular,
     fontSize: 14,
-    color: "#6B6560",
+    color: theme.colors.muted,
     marginBottom: 16,
   },
 });

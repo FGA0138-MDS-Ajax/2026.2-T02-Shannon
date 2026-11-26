@@ -15,7 +15,7 @@ export interface InputProps extends TextInputProps {
 }
 
 const Input = forwardRef<ComponentRef<typeof TextInput>, InputProps>(
-  ({ label, error, secureTextEntry, style, ...props }, ref) => {
+  ({ label, error, secureTextEntry, multiline, style, ...props }, ref) => {
     const [isPasswordVisible, setIsPasswordVisible] = useState(false);
     const [isFocused, setIsFocused] = useState(false);
 
@@ -33,8 +33,9 @@ const Input = forwardRef<ComponentRef<typeof TextInput>, InputProps>(
         >
           <TextInput
             ref={ref}
-            placeholderTextColor="#8C8885"
-            style={[styles.input, style]}
+            placeholderTextColor={theme.colors.placeholder}
+            multiline={multiline}
+            style={[styles.input, multiline && styles.multiline, style]}
             secureTextEntry={isSecure}
             onFocus={() => setIsFocused(true)}
             onBlur={() => setIsFocused(false)}
@@ -69,16 +70,16 @@ const styles = StyleSheet.create({
   label: {
     fontFamily: theme.font.medium,
     fontSize: 14,
-    color: "#3D3835",
+    color: theme.colors.label,
     marginBottom: 6,
   },
   inputContainer: {
     width: "100%",
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#FFFFFF",
+    backgroundColor: theme.colors.surface,
     borderWidth: 1,
-    borderColor: "#D8D2CD",
+    borderColor: theme.colors.inputBorder,
     borderRadius: 12,
     paddingHorizontal: 14,
   },
@@ -86,14 +87,22 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.primary,
   },
   inputError: {
-    borderColor: "#DC2626",
+    borderColor: theme.colors.dangerStrong,
   },
   input: {
     flex: 1,
     height: 48,
     fontFamily: theme.font.regular,
     fontSize: 15,
-    color: "#1C1917",
+    color: theme.colors.text,
+  },
+  // Altura livre: com altura fixa a primeira linha ficava cortada
+  multiline: {
+    height: undefined,
+    minHeight: 96,
+    paddingTop: 12,
+    paddingBottom: 12,
+    textAlignVertical: "top",
   },
   eyeButton: {
     paddingLeft: 8,
@@ -107,7 +116,7 @@ const styles = StyleSheet.create({
   errorText: {
     fontFamily: theme.font.regular,
     fontSize: 12,
-    color: "#DC2626",
+    color: theme.colors.dangerStrong,
     marginTop: 4,
   },
 });

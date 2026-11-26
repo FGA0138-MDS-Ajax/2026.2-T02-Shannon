@@ -5,9 +5,7 @@ import {
 } from "@/config/goal-labels";
 import type { HabitProgress } from "@/services/types/habits";
 
-function makeProgress(
-  overrides: Partial<HabitProgress> = {},
-): HabitProgress {
+function makeProgress(overrides: Partial<HabitProgress> = {}): HabitProgress {
   return {
     habit_id: "habit-1",
     goal: {
@@ -98,7 +96,7 @@ describe("describeProgressStatus", () => {
   it.each([
     ["completed", "Meta do período cumprida"],
     ["failed", "Este período não fecha mais; recomece no próximo"],
-    ["ended", "Streak final"],
+    ["ended", "Sequência final"],
   ] as const)("describes the %s status", (status, expected) => {
     const progress = makeProgress({ status });
     const message = describeProgressStatus(progress);

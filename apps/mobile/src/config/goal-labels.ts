@@ -14,6 +14,13 @@ export const goalPeriodLabels: Record<GoalPeriod, string> = {
   month: "Mensal",
 };
 
+// Completa "2 de 3 ..." com o período atual da meta
+export const currentPeriodPhrases: Record<GoalPeriod, string> = {
+  day: "hoje",
+  week: "nesta semana",
+  month: "neste mês",
+};
+
 // Mesma numeração da API: 1 = segunda ... 7 = domingo
 export const weekdayLabels: Record<number, string> = {
   1: "Segunda",
@@ -70,7 +77,7 @@ const progressStatusLabels: Record<
   completed: "Meta do período cumprida",
   at_risk: "Não pode faltar nenhum dia",
   failed: "Este período não fecha mais; recomece no próximo",
-  ended: "Streak final",
+  ended: "Sequência final",
 };
 
 /** Texto da situação do período atual, ex.: `"Faltam 2"` ou `"Não pode faltar nenhum dia"` */

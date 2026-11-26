@@ -9,6 +9,7 @@ jest.mock("expo-router", () => ({
 }));
 
 jest.mock("@/services/habits-api", () => ({
+  ...jest.requireActual("@/services/habits-api"),
   createHabit: jest.fn(),
 }));
 
@@ -97,25 +98,25 @@ describe("CreateHabitScreen", () => {
   });
 
   it("submits a weekly goal with a custom count and closing day", async () => {
-  mockCreateHabit.mockResolvedValueOnce(makeHabit());
-  const screen = await renderScreen();
+    mockCreateHabit.mockResolvedValueOnce(makeHabit());
+    const screen = await renderScreen();
 
-  await fillRequiredFields(screen);
-  await fireEvent.press(screen.getByTestId("goal-period-week"));
-  await fireEvent.press(screen.getByTestId("goal-count-increase"));
-  await fireEvent.press(screen.getByTestId("goal-weekday-4"));
-  await fireEvent.press(screen.getByText("Criar hábito"));
+    await fillRequiredFields(screen);
+    await fireEvent.press(screen.getByTestId("goal-period-week"));
+    await fireEvent.press(screen.getByTestId("goal-count-increase"));
+    await fireEvent.press(screen.getByTestId("goal-weekday-4"));
+    await fireEvent.press(screen.getByText("Criar hábito"));
 
-  await waitFor(() => {
-    expect(mockCreateHabit).toHaveBeenCalledWith(
-      expect.objectContaining({
-        goal: {
-          period: "week",
-          target_count: 4,
-          period_end_weekday: 4,
-        },
-      }),
-     );
+    await waitFor(() => {
+      expect(mockCreateHabit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          goal: {
+            period: "week",
+            target_count: 4,
+            period_end_weekday: 4,
+          },
+        }),
+      );
     });
   });
 

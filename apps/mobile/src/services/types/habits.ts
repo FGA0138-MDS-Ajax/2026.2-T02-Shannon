@@ -84,7 +84,11 @@ export interface Habit {
   category: HabitCategory;
   is_public: boolean;
   status: HabitStatus;
-  author_user_id: string;
+  // Hábito pessoal: `author_user_id` preenchido. Hábito de grupo:
+  // `author_user_id` nulo, `author_group_id` e `group` preenchidos.
+  author_user_id: string | null;
+  author_group_id?: string | null;
+  group?: GroupSummary | null;
   created_at: string;
   target_end_date: string | null;
   finished_at: string | null;

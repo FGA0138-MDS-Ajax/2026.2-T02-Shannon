@@ -14,14 +14,14 @@ import {
   noPeriodsStatistics,
 } from "@/components/statistics/__fixtures__/statistics";
 import HabitProgressItem from "@/components/statistics/habit-progress-item";
+import HomeHero from "@/components/statistics/home-hero";
 
 describe("StatisticsContent", () => {
   it("shows the summaries with complete data", async () => {
     const screen = await render(
-      <StatisticsContent data={completeStatistics} userName="Breno Silva" />,
+      <StatisticsContent data={completeStatistics} />,
     );
 
-    expect(screen.getByText("Olá, Breno!")).toBeTruthy();
     expect(screen.getByText("Check-ins no mês")).toBeTruthy();
     expect(screen.getByText("4 nesta semana")).toBeTruthy();
     expect(screen.getByText("70%")).toBeTruthy();
@@ -111,8 +111,14 @@ describe("StatisticsContent", () => {
 
   it("fills only the days where every habit was done", async () => {
     const screen = await render(
-      <StatisticsContent data={completeStatistics} week={fixtureWeek} />,
+      <HomeHero
+        referenceDate={completeStatistics.reference_date}
+        week={fixtureWeek}
+        userName="Breno Silva"
+      />,
     );
+
+    expect(screen.getByText("Olá, Breno!")).toBeTruthy();
 
     // 9/11 teve 2 de 2: bolinha cheia. 10/11 teve 1 de 2: anel parcial
     expect(screen.getByTestId("day-ring-9-complete")).toBeTruthy();
