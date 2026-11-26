@@ -106,6 +106,47 @@ RESPONSES_STATISTICS = {
   },
 }
 
+EXAMPLE_PROFILE = {
+  "id": "3f2a9c4e-7b1d-4e8a-9f6c-5d4b3a2e1f00",
+  "name": "Maria Souza",
+  "username": "maria_souza",
+  "activity_streak": {"current": 3, "best": 9},
+  "check_ins_total": 42,
+}
+
+EXAMPLE_PROFILE_EMPTY = {
+  "id": "3f2a9c4e-7b1d-4e8a-9f6c-5d4b3a2e1f00",
+  "name": "Maria Souza",
+  "username": "maria_souza",
+  "activity_streak": {"current": 0, "best": 0},
+  "check_ins_total": 0,
+}
+
+RESPONSES_PROFILE = {
+  status.HTTP_200_OK: {
+    "description": (
+      "Resumo da trajetória do usuário logado. `activity_streak` e"
+      " `check_ins_total` são os mesmos números de `activity_streak` e"
+      " `check_ins.total` em `GET /user/statistics`."
+    ),
+    "content": {
+      "application/json": {
+        "examples": {
+          "com_check_ins": {
+            "summary": "Usuário com check-ins",
+            "value": EXAMPLE_PROFILE,
+          },
+          "sem_check_ins": {
+            "summary": "Usuário sem check-ins: números zerados",
+            "value": EXAMPLE_PROFILE_EMPTY,
+          },
+        }
+      }
+    },
+  },
+  status.HTTP_401_UNAUTHORIZED: RESPONSES_STATISTICS[status.HTTP_401_UNAUTHORIZED],
+}
+
 EXAMPLE_CALENDAR = {
   "habit_id": "8b6f1c52-3a4e-4d7b-9c1a-2f5e6d7c8b90",
   "month": "2026-10",

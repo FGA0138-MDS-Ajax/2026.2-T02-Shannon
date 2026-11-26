@@ -41,6 +41,7 @@ from app.statistics.schemas import (
   Series,
   StatisticsMode,
   StatisticsQuery,
+  UserProfile,
   UserStatistics,
 )
 
@@ -76,6 +77,24 @@ def get_user_statistics(
     at_risk=build_at_risk_block(habit_progress),
     habit_progress=habit_progress,
     series=build_series_block(db, user.id, window_start, window_end),
+  )
+
+
+def get_user_profile(db: Session, user: User) -> UserProfile:
+  """Resumo da trajetória do usuário logado para a tela de perfil.
+
+  Reaproveita os blocos do painel, para os números serem iguais aos de
+  `GET /user/statistics`. Faz 2 consultas: nome e username vêm do `user`.
+  """
+  today = habits_service.today()
+  check_ins = build_check_ins_block(db, user.id, today, StatisticsMode.CALENDAR)
+
+  return UserProfile(
+    id=user.id,
+    name=user.name,
+    username=user.username,
+    activity_streak=build_activity_streak_block(db, user.id, today),
+    check_ins_total=check_ins.total,
   )
 
 
