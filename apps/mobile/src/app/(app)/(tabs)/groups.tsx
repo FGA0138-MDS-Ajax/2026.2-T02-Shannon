@@ -1,5 +1,5 @@
 import { type Href, router, useFocusEffect } from "expo-router";
-import { useCallback } from "react";
+import { useCallback, useRef } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -11,6 +11,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import useSWR from "swr";
 import Button from "@/components/button";
+import FadeIn from "@/components/fade-in";
 import GroupCard, { GroupActionCard } from "@/components/group-card";
 import { palette } from "@/components/statistics/palette";
 import { theme } from "@/config/theme";
@@ -42,8 +43,12 @@ export default function GroupsScreen() {
     }, [refreshGroups]),
   );
 
-  const renderCell = ({ item }: { item: Cell }) => (
-    <View style={styles.cell}>
+  // Quando os grupos chegaram: os cards entram subindo, um depois do outro
+  const loadedAt = useRef<number | null>(null);
+  if (groups && loadedAt.current === null) loadedAt.current = Date.now();
+
+  const renderCell = ({ item, index }: { item: Cell; index: number }) => (
+    <FadeIn since={loadedAt.current ?? 0} index={index} style={styles.cell}>
       {item.kind === "group" ? (
         <GroupCard
           name={item.group.name}
@@ -66,7 +71,7 @@ export default function GroupsScreen() {
           onPress={() => router.push("/(app)/groups/join" as Href)}
         />
       )}
-    </View>
+    </FadeIn>
   );
 
   const renderContent = () => {
