@@ -1,10 +1,20 @@
-import { fireEvent, render } from "@testing-library/react-native";
+import { fireEvent, render, waitFor } from "@testing-library/react-native";
 import { router } from "expo-router";
 import { completeStatistics } from "@/components/statistics/__fixtures__/statistics";
 import StatisticsPanel from "@/components/statistics-panel";
 import { useHabitsCheckIns } from "@/hooks/useHabitsCheckIns";
 import { useUserStatistics } from "@/hooks/useUserStatistics";
+import { listHabitCheckIns } from "@/services/habits-api";
 import type { HabitWithProgress } from "@/services/types/habits";
+
+// O check-in rápido busca quantos check-ins o hábito já tem
+jest.mock("@/services/habits-api", () => ({
+  listHabitCheckIns: jest.fn().mockResolvedValue([]),
+}));
+
+const mockListHabitCheckIns = listHabitCheckIns as jest.MockedFunction<
+  typeof listHabitCheckIns
+>;
 
 jest.mock("expo-router", () => ({
   router: { push: jest.fn() },
@@ -168,10 +178,14 @@ describe("StatisticsPanel", () => {
       screen.getByLabelText("Fazer check-in em Pedalar juntos"),
     );
 
-    expect(router.push).toHaveBeenCalledWith({
-      pathname: "/check-ins/create",
-      params: { habitId: "group-habit", category: "ciclismo" },
-    });
+    // Abre o check-in rápido ali mesmo, sem ir para outra tela
+    expect(router.push).not.toHaveBeenCalled();
+    await waitFor(() =>
+      expect(screen.getByTestId("quick-check-in-title").props.value).toBe(
+        "Pedalar juntos #1",
+      ),
+    );
+    expect(mockListHabitCheckIns).toHaveBeenCalledWith("group-habit");
   });
 
   it("shows group habits even without personal ones", async () => {

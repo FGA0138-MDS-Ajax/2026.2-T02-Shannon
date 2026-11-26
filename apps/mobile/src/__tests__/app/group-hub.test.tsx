@@ -38,6 +38,11 @@ jest.mock("@/services/groups-api", () => ({
   getGroupStats: jest.fn(),
 }));
 
+// O check-in rápido busca quantos check-ins o hábito já tem
+jest.mock("@/services/habits-api", () => ({
+  listHabitCheckIns: jest.fn().mockResolvedValue([]),
+}));
+
 // Quem usa o app é o Breno, como no ranking dos dados falsos
 jest.mock("@/hooks/useSession", () => ({
   useSession: () => ({ user: { id: "u3", username: "Breno" } }),
@@ -307,10 +312,13 @@ describe("GroupScreen", () => {
     await fireEvent.press(screen.getByText("Pedalar"));
     await fireEvent.press(screen.getByText("Fazer check-in"));
 
-    expect(router.push).toHaveBeenCalledWith({
-      pathname: "/check-ins/create",
-      params: { habitId: "h1", category: "ciclismo" },
-    });
+    // O check-in rápido abre por cima do grupo, sem trocar de tela
+    await waitFor(() =>
+      expect(screen.getByTestId("quick-check-in-title").props.value).toBe(
+        "Pedalar #1",
+      ),
+    );
+    expect(router.push).not.toHaveBeenCalled();
   });
 
   it("opens the check-in behind a habit the member already did", async () => {

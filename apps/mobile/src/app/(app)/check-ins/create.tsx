@@ -1,9 +1,4 @@
-import {
-  type Href,
-  router,
-  useFocusEffect,
-  useLocalSearchParams,
-} from "expo-router";
+import { type Href, router, useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
 import {
   ActivityIndicator,
@@ -67,32 +62,22 @@ const currentPeriodLabels: Record<GoalPeriod, string> = {
 
 // TODO: refazer o flow de criação do checkin
 
+// Check-in de um hábito só (o "+" da Home e do grupo) é a folha de check-in
+// rápido (components/quick-check-in); esta tela é para marcar vários.
 export default function CreateCheckInScreen() {
-  // Vindo do "+" de um hábito na Home: já abre a lista com ele marcado
-  const params = useLocalSearchParams<{
-    habitId?: string;
-    category?: HabitCategory;
-  }>();
-  const startsWithHabit = !!(params.habitId && params.category);
   const { mutate: globalMutate } = useSWRConfig();
 
   // Em qual tela do fluxo a pessoa está
-  const [step, setStep] = useState<Step>(
-    startsWithHabit ? "habits" : "categories",
-  );
-  const [category, setCategory] = useState<HabitCategory | null>(
-    startsWithHabit ? (params.category ?? null) : null,
-  );
+  const [step, setStep] = useState<Step>("categories");
+  const [category, setCategory] = useState<HabitCategory | null>(null);
 
   // Ids marcados. Fica separado de options: o preselected é a sugestão da
   // API, o selected é o que a pessoa decidiu
-  const [selected, setSelected] = useState<Set<string>>(
-    new Set(startsWithHabit && params.habitId ? [params.habitId] : []),
-  );
+  const [selected, setSelected] = useState<Set<string>>(new Set());
 
   // "Ver mais": hábitos das outras categorias, de 3 em 3
   const [extraPage, setExtraPage] = useState(0);
-  const [hasMoreExtra, setHasMoreExtra] = useState(startsWithHabit);
+  const [hasMoreExtra, setHasMoreExtra] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
 
   // Aviso em cima da lista de hábitos (limite, falha no "Ver mais", recusa)

@@ -1,6 +1,9 @@
 import { type Href, router, useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
 import { View } from "react-native";
+import QuickCheckInSheet, {
+  type QuickCheckInHabit,
+} from "@/components/quick-check-in";
 import {
   StatisticsContent,
   StatisticsEmpty,
@@ -71,18 +74,25 @@ export default function StatisticsPanel() {
     setFilters(next);
   };
 
-  const openCheckIn = (habitId: string) => {
-    router.push({
-      pathname: "/check-ins/create",
-      params: { habitId, category: categories?.[habitId] ?? "" },
-    } as Href);
-  };
-
   // Hábitos de grupo: as estatísticas não trazem, então vêm da lista de hábitos
   const groupHabits =
     data && habits
       ? groupHomeHabits(habits, datesByHabit, data.reference_date)
       : [];
+
+  // O "+" de um hábito abre o check-in rápido, sem sair da Home
+  const [quickHabit, setQuickHabit] = useState<QuickCheckInHabit | null>(null);
+  const openCheckIn = (habitId: string) => {
+    const habit = [...(data?.habit_progress ?? []), ...groupHabits].find(
+      (item) => item.habit_id === habitId,
+    );
+    if (!habit) return;
+    setQuickHabit({
+      id: habit.habit_id,
+      name: habit.name,
+      group: "group" in habit ? habit.group : null,
+    });
+  };
 
   const isEmpty =
     data?.habits.total === 0 &&
@@ -146,6 +156,12 @@ export default function StatisticsPanel() {
         days={filters.days}
         errors={{ mode: fieldErrors.mode, days: daysError ?? fieldErrors.days }}
         onChange={handleFiltersChange}
+      />
+
+      <QuickCheckInSheet
+        habit={quickHabit}
+        userId={user?.id}
+        onClose={() => setQuickHabit(null)}
       />
     </View>
   );

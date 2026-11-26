@@ -39,6 +39,9 @@ import {
 import MembersCircle from "@/components/members-circle";
 import { memberColor } from "@/components/members-circle/colors";
 import PressableScale from "@/components/pressable-scale";
+import QuickCheckInSheet, {
+  type QuickCheckInHabit,
+} from "@/components/quick-check-in";
 import { palette } from "@/components/statistics/palette";
 import { describeGoal } from "@/config/goal-labels";
 import { theme } from "@/config/theme";
@@ -65,6 +68,9 @@ import {
 const HERO_FADE_DISTANCE = 260;
 const HERO_MIN_OPACITY = 0.35;
 const HERO_MIN_SCALE = 0.92;
+
+// Espera entre fechar o modal do hábito e abrir o check-in rápido
+const MODAL_SWAP_DELAY = 300;
 
 // Uma linha da lista de baixo na Visão geral: check-in do feed ou hábito da
 // pessoa escolhida. As outras abas não têm linhas: tudo fica no cabeçalho.
@@ -95,6 +101,8 @@ export default function GroupScreen() {
   const [switchedAt, setSwitchedAt] = useState(() => Date.now());
   const [openCheckIn, setOpenCheckIn] = useState<FeedItem | null>(null);
   const [openHabit, setOpenHabit] = useState<MemberHabitDetail | null>(null);
+  // "Fazer check-in" no próprio hábito: check-in rápido sem sair do grupo
+  const [quickHabit, setQuickHabit] = useState<QuickCheckInHabit | null>(null);
 
   const selectMember = useCallback((userId: string | null) => {
     setSelectedMemberId(userId);
@@ -495,13 +503,24 @@ export default function GroupScreen() {
             ? () => {
                 const { habit } = openHabit;
                 setOpenHabit(null);
-                router.push({
-                  pathname: "/check-ins/create",
-                  params: { habitId: habit.id, category: habit.category },
-                } as Href);
+                // No iOS um modal não abre enquanto o outro ainda está saindo
+                setTimeout(
+                  () =>
+                    setQuickHabit({
+                      id: habit.id,
+                      name: habit.name,
+                      group: habit.group,
+                    }),
+                  MODAL_SWAP_DELAY,
+                );
               }
             : undefined
         }
+      />
+      <QuickCheckInSheet
+        habit={quickHabit}
+        userId={me?.id}
+        onClose={() => setQuickHabit(null)}
       />
     </SafeAreaView>
   );
