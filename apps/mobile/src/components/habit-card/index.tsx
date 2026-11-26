@@ -1,4 +1,5 @@
 import { Pressable, StyleSheet, Text, View } from "react-native";
+import GroupTag from "@/components/group-tag";
 import { describeGoal } from "@/config/goal-labels";
 import { habitCategoryLabels } from "@/config/habit-categories";
 import { theme } from "@/config/theme";
@@ -6,7 +7,9 @@ import type {
   GoalPeriod,
   HabitProgress,
   HabitWithProgress,
+  ProgressStatus,
 } from "@/services/types/habits";
+import { progressStatus } from "@/utils/group-habit";
 
 export interface HabitCardProps {
   habit: HabitWithProgress;
@@ -15,7 +18,10 @@ export interface HabitCardProps {
 
 export default function HabitCard({ habit, onPress }: HabitCardProps) {
   const isFinished = habit.status === "finished";
-  const isAtRisk = habit.progress?.status === "at_risk";
+  const status = habit.progress
+    ? progressStatus(habit, habit.progress)
+    : undefined;
+  const isAtRisk = status === "at_risk";
 
   return (
     <Pressable
@@ -38,14 +44,24 @@ export default function HabitCard({ habit, onPress }: HabitCardProps) {
           </View>
         )}
       </View>
-      <Text style={styles.details}>
-        {habitCategoryLabels[habit.category]} ·{" "}
-        {habit.is_public ? "Público" : "Privado"}
-      </Text>
+      {habit.group ? (
+        // Hábito de grupo não é público nem privado: é de quem está no grupo
+        <View style={styles.groupRow}>
+          <Text style={styles.details}>
+            {habitCategoryLabels[habit.category]} ·
+          </Text>
+          <GroupTag name={habit.group.name} />
+        </View>
+      ) : (
+        <Text style={styles.details}>
+          {habitCategoryLabels[habit.category]} ·{" "}
+          {habit.is_public ? "Público" : "Privado"}
+        </Text>
+      )}
 
       {/* Hábito criado antes das metas: a API manda progress null */}
-      {habit.progress ? (
-        <HabitProgressSummary progress={habit.progress} />
+      {habit.progress && status ? (
+        <HabitProgressSummary progress={habit.progress} status={status} />
       ) : (
         <View style={styles.progressSection}>
           <Text style={styles.noGoal}>Sem meta · toque para definir</Text>
@@ -61,10 +77,17 @@ const periodPhrases: Record<GoalPeriod, string> = {
   month: "neste mês",
 };
 
-function HabitProgressSummary({ progress }: { progress: HabitProgress }) {
+function HabitProgressSummary({
+  progress,
+  status,
+}: {
+  progress: HabitProgress;
+  // Já corrigida em hábito de grupo (ver progressStatus)
+  status: ProgressStatus;
+}) {
   const { done, target_count } = progress.current_period;
   const { period } = progress.goal;
-  const isCompleted = progress.status === "completed";
+  const isCompleted = status === "completed";
   // `done` pode passar da meta; a barra para em 100%
   const ratio = target_count > 0 ? Math.min(done / target_count, 1) : 0;
 
@@ -145,6 +168,11 @@ const styles = StyleSheet.create({
     fontFamily: theme.font.regular,
     fontSize: 14,
     color: colors.muted,
+  },
+  groupRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
   },
   progressSection: {
     marginTop: 12,

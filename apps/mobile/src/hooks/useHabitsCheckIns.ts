@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import useSWR from "swr";
 import { listHabitCheckIns, listHabits } from "@/services/habits-api";
 import type { HabitCategory } from "@/services/types/habits";
@@ -18,26 +18,42 @@ export function isHomeDataKey(key: unknown): boolean {
 
 /**
  * Dias com check-in de cada hábito e a categoria de cada um, para a grade de
- * 28 dias, a faixa da semana e o ícone dos cards da Home.
+ * 28 dias, a faixa da semana e o ícone dos cards da Home. Também devolve a
+ * lista de hábitos, que traz os de grupo (as estatísticas só têm os pessoais).
  * A API não tem um endpoint com tudo junto: é uma chamada por hábito.
  */
-export function useHabitsCheckIns(habitIds: string[]) {
+export function useHabitsCheckIns(habitIds: string[], userId?: string) {
+  const { data: habits, mutate: mutateHabits } = useSWR("/habits", () =>
+    listHabits(),
+  );
+
+  // Os pessoais das estatísticas e os de grupo ativos da lista
+  const historyIds = useMemo(() => {
+    const groupIds = (habits ?? [])
+      .filter((habit) => habit.group && habit.status === "active")
+      .map((habit) => habit.id);
+    return [...new Set([...habitIds, ...groupIds])];
+  }, [habitIds, habits]);
+
   const { data: datesByHabit, mutate: mutateDates } = useSWR(
-    habitIds.length > 0 ? ["/habits/check-ins", ...habitIds] : null,
+    historyIds.length > 0 ? ["/habits/check-ins", userId, ...historyIds] : null,
     async () => {
       const lists = await Promise.all(
-        habitIds.map((id) => listHabitCheckIns(id)),
+        historyIds.map((id) => listHabitCheckIns(id)),
       );
       return Object.fromEntries(
-        habitIds.map((id, index) => [id, checkInDates(lists[index])]),
+        historyIds.map((id, index) => [
+          id,
+          // Em hábito de grupo vêm os check-ins de todo mundo: só os seus contam
+          checkInDates(
+            userId
+              ? lists[index].filter((checkIn) => checkIn.user_id === userId)
+              : lists[index],
+          ),
+        ]),
       ) as Record<string, Set<string>>;
     },
     { keepPreviousData: true },
-  );
-
-  const { data: habits, mutate: mutateHabits } = useSWR(
-    habitIds.length > 0 ? "/habits" : null,
-    () => listHabits(),
   );
 
   const categories = habits
@@ -51,5 +67,5 @@ export function useHabitsCheckIns(habitIds: string[]) {
     mutateHabits();
   }, [mutateDates, mutateHabits]);
 
-  return { datesByHabit, categories, refetch };
+  return { habits, datesByHabit, categories, refetch };
 }

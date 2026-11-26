@@ -73,6 +73,26 @@ describe("HabitCard", () => {
     });
   });
 
+  it("tags a group habit with the group name instead of public/private", async () => {
+    const habit: HabitWithProgress = {
+      ...makeHabit(makeProgress(1, "ended")),
+      author_user_id: null,
+      author_group_id: "g1",
+      group: { id: "g1", name: "Movimento diário" },
+    };
+
+    const { getByText, getByLabelText, queryByText } = await render(
+      <HabitCard habit={habit} />,
+    );
+
+    expect(getByText("Movimento diário")).toBeTruthy();
+    expect(getByLabelText("Hábito do grupo Movimento diário")).toBeTruthy();
+    expect(queryByText(/Público/)).toBeNull();
+    // O "ended" errado da API (bug L1) não marca o hábito ativo como encerrado
+    expect(queryByText("Encerrado")).toBeNull();
+    expect(getByText("1/4 nesta semana")).toBeTruthy();
+  });
+
   it("renders an old habit without goal and still opens it", async () => {
     const onPress = jest.fn();
     const { getByText, queryByTestId, getByTestId } = await render(

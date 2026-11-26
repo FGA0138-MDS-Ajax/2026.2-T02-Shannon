@@ -6,6 +6,7 @@ import { formatLongDate, parseApiDate } from "@/utils/date";
 import { periodProgressLabel } from "@/utils/group-feed";
 import DetailsModal, {
   DetailsAbout,
+  DetailsAction,
   DetailsColumns,
   DetailsField,
   DetailsFooter,
@@ -26,6 +27,8 @@ export interface GroupHabitModalProps {
   detail: MemberHabitDetail | null;
   groupName?: string;
   onClose: () => void;
+  // Só no hábito da própria pessoa: abre o check-in com ele já marcado
+  onCheckIn?: () => void;
 }
 
 /**
@@ -36,6 +39,7 @@ export default function GroupHabitModal({
   detail,
   groupName,
   onClose,
+  onCheckIn,
 }: GroupHabitModalProps) {
   const done = detail?.progress.status === "completed";
 
@@ -75,6 +79,13 @@ export default function GroupHabitModal({
             <DetailsAbout
               label="Sobre este hábito"
               text="Este hábito ainda está na lista de hoje. O progresso aparece no círculo ao concluir a meta."
+            />
+          )}
+          {!done && onCheckIn && (
+            <DetailsAction
+              icon="plus"
+              label="Fazer check-in"
+              onPress={onCheckIn}
             />
           )}
           {groupName && (

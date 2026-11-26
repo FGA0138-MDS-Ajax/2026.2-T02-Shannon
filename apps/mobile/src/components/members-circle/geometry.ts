@@ -63,6 +63,29 @@ export function slicePath({
   ].join(" ");
 }
 
+/**
+ * Anel fechado, para quando há uma pessoa só: uma fatia de 360° teria a folga
+ * e os cantos arredondados e viraria um "C". O furo é o círculo de dentro
+ * desenhado no sentido contrário (assim o preenchimento não entra nele).
+ */
+export function ringPath({
+  cx,
+  cy,
+  inner,
+  outer,
+}: Pick<SliceShape, "cx" | "cy" | "inner" | "outer">): string {
+  return [
+    `M ${cx} ${cy - outer}`,
+    `A ${outer} ${outer} 0 1 1 ${cx} ${cy + outer}`,
+    `A ${outer} ${outer} 0 1 1 ${cx} ${cy - outer}`,
+    "Z",
+    `M ${cx} ${cy - inner}`,
+    `A ${inner} ${inner} 0 1 0 ${cx} ${cy + inner}`,
+    `A ${inner} ${inner} 0 1 0 ${cx} ${cy - inner}`,
+    "Z",
+  ].join(" ");
+}
+
 interface Point {
   x: number;
   y: number;

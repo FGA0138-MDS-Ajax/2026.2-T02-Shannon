@@ -2,6 +2,7 @@ import { feedHabitStats } from "@/components/group-feed/__fixtures__/feed";
 import {
   angleAround,
   angleDelta,
+  ringPath,
   sliceAngles,
   slicePath,
 } from "@/components/members-circle/geometry";
@@ -90,6 +91,16 @@ describe("circle geometry", () => {
   it("splits the circle into equal slices with a gap", () => {
     expect(sliceAngles(0, 4)).toEqual({ start: 4, end: 86 });
     expect(sliceAngles(3, 4)).toEqual({ start: 274, end: 356 });
+  });
+
+  it("draws a closed ring with a hole for a single person", () => {
+    const path = ringPath({ cx: 100, cy: 100, inner: 48, outer: 126 });
+
+    // Dois contornos: o de fora e o furo, cada um fechado
+    expect(path.match(/M /g)).toHaveLength(2);
+    expect(path.match(/Z/g)).toHaveLength(2);
+    expect(path).toContain("M 100 -26");
+    expect(path).toContain("M 100 52");
   });
 
   it("uses a smaller gap when there are many people", () => {

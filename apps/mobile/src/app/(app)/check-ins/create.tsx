@@ -18,6 +18,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import useSWR, { useSWRConfig } from "swr";
 import Button from "@/components/button";
+import GroupTag from "@/components/group-tag";
 import Input from "@/components/input";
 import { describeProgressStatus, formatStreak } from "@/config/goal-labels";
 import { habitCategoryLabels } from "@/config/habit-categories";
@@ -413,9 +414,7 @@ export default function CreateCheckInScreen() {
               {habitCategoryLabels[habit.category]}
             </Text>
           )}
-          {habit.group && (
-            <Text style={styles.cardDetail}>{habit.group.name}</Text>
-          )}
+          {habit.group && <GroupTag name={habit.group.name} />}
           {isRejected && rejection && (
             <Text style={styles.rejectedText}>{rejection.reason}</Text>
           )}

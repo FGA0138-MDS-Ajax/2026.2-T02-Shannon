@@ -2,6 +2,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { theme } from "@/config/theme";
 import type { HabitCategory } from "@/services/types/habits";
 import type { UserStatistics } from "@/services/types/statistics";
+import type { HomeHabit } from "@/utils/group-habit";
 import type { HabitHistoryDay, WeekDayProgress } from "@/utils/habit-history";
 import CheckInsChart from "./checkins-chart";
 import { plural } from "./format";
@@ -20,6 +21,11 @@ export interface StatisticsContentProps {
   histories?: Record<string, HabitHistoryDay[]>;
   /** Categoria de cada hábito, por `habit_id` (define o ícone) */
   categories?: Record<string, HabitCategory>;
+  /**
+   * Hábitos de grupo, que as estatísticas não trazem. Entram só na lista de
+   * hábitos; os números do resumo continuam só com os pessoais.
+   */
+  groupHabits?: HomeHabit[];
   onCheckIn?: (habitId: string) => void;
   onSeeAllHabits?: () => void;
 }
@@ -31,13 +37,15 @@ export default function StatisticsContent({
   week,
   histories,
   categories,
+  groupHabits = [],
   onCheckIn,
   onSeeAllHabits,
 }: StatisticsContentProps) {
-  const doneToday = data.habit_progress.filter((h) => h.checked_today).length;
+  const listed: HomeHabit[] = [...data.habit_progress, ...groupHabits];
+  const doneToday = listed.filter((h) => h.checked_today).length;
   // Os que ainda faltam hoje vêm primeiro; os já feitos descem.
   // A cor do ícone segue a posição original para não trocar ao reordenar.
-  const habits = data.habit_progress
+  const habits = listed
     .map(
       (habit, index) =>
         ({ habit, tone: index % 2 === 0 ? "peach" : "sage" }) as const,
@@ -67,7 +75,7 @@ export default function StatisticsContent({
               <View style={styles.sectionAside}>
                 <View style={styles.pill}>
                   <Text style={styles.pillText}>
-                    {doneToday}/{data.habit_progress.length} hoje
+                    {doneToday}/{listed.length} hoje
                   </Text>
                 </View>
                 {onSeeAllHabits && (

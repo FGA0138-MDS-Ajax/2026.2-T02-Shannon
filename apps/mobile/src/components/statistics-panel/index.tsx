@@ -17,6 +17,7 @@ import {
   useUserStatistics,
 } from "@/hooks/useUserStatistics";
 import type { StatisticsMode } from "@/services/types/statistics";
+import { groupHomeHabits } from "@/utils/group-habit";
 import { buildHabitHistory, buildWeekProgress } from "@/utils/habit-history";
 
 type Filters = { mode: StatisticsMode; days: number };
@@ -47,10 +48,11 @@ export default function StatisticsPanel() {
 
   const habitIds = data?.habit_progress.map((habit) => habit.habit_id) ?? [];
   const {
+    habits,
     datesByHabit,
     categories,
     refetch: refetchHistory,
-  } = useHabitsCheckIns(habitIds);
+  } = useHabitsCheckIns(habitIds, user?.id);
 
   // Check-ins e metas mudam em outras telas e a API não avisa: recarrega ao voltar
   useFocusEffect(
@@ -76,7 +78,16 @@ export default function StatisticsPanel() {
     } as Href);
   };
 
-  const isEmpty = data?.habits.total === 0 && data.check_ins.total === 0;
+  // Hábitos de grupo: as estatísticas não trazem, então vêm da lista de hábitos
+  const groupHabits =
+    data && habits
+      ? groupHomeHabits(habits, datesByHabit, data.reference_date)
+      : [];
+
+  const isEmpty =
+    data?.habits.total === 0 &&
+    data.check_ins.total === 0 &&
+    groupHabits.length === 0;
 
   // O "hoje" vem também do `checked_today` das estatísticas: assim a bolinha
   // e a grade de hoje ficam certas mesmo se o histórico ainda estiver chegando
@@ -89,10 +100,12 @@ export default function StatisticsPanel() {
   const histories =
     data && dates
       ? Object.fromEntries(
-          habitIds.map((id) => [
-            id,
-            buildHabitHistory(dates[id] ?? new Set(), data.reference_date),
-          ]),
+          [...habitIds, ...groupHabits.map((habit) => habit.habit_id)].map(
+            (id) => [
+              id,
+              buildHabitHistory(dates[id] ?? new Set(), data.reference_date),
+            ],
+          ),
         )
       : undefined;
   const week =
@@ -121,6 +134,7 @@ export default function StatisticsPanel() {
           week={week}
           histories={histories}
           categories={categories}
+          groupHabits={groupHabits}
           onCheckIn={openCheckIn}
           onSeeAllHabits={() => router.push("/habits" as Href)}
         />

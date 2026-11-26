@@ -294,6 +294,23 @@ describe("GroupScreen", () => {
     expect(
       screen.getByText("Compartilhado no grupo Movimento diário"),
     ).toBeTruthy();
+    // O hábito é da Ana: quem usa o app não faz check-in por ela
+    expect(screen.queryByText("Fazer check-in")).toBeNull();
+  });
+
+  it("opens the check-in from your own pending habit", async () => {
+    const screen = await renderScreen();
+
+    await fireEvent.press(
+      await screen.findByLabelText("Breno, 2 de 3 hábitos"),
+    );
+    await fireEvent.press(screen.getByText("Pedalar"));
+    await fireEvent.press(screen.getByText("Fazer check-in"));
+
+    expect(router.push).toHaveBeenCalledWith({
+      pathname: "/check-ins/create",
+      params: { habitId: "h1", category: "ciclismo" },
+    });
   });
 
   it("opens the check-in behind a habit the member already did", async () => {

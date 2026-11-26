@@ -17,7 +17,13 @@ import {
   memberRatio,
 } from "@/utils/group-circle";
 import { memberColor } from "./colors";
-import { angleAround, angleDelta, sliceAngles, slicePath } from "./geometry";
+import {
+  angleAround,
+  angleDelta,
+  ringPath,
+  sliceAngles,
+  slicePath,
+} from "./geometry";
 
 const TRACK = "#34382C";
 
@@ -202,12 +208,20 @@ export default function MembersCircle({
     ]).start();
   }, [selectedId, members, layers, selection]);
 
+  // Uma pessoa só: anel fechado, que não anda para fora ao ser escolhido
+  const alone = members.length === 1;
+
   const slices = members.map((member, index) => {
     const { start, end } = sliceAngles(index, members.length);
     const shape = { cx: CENTER, cy: CENTER, inner: INNER, start, end };
     const ratio = memberRatio(member);
+    const path = (outer: number) =>
+      alone
+        ? ringPath({ cx: CENTER, cy: CENTER, inner: INNER, outer })
+        : slicePath({ ...shape, outer, corner: CORNER });
     // Direção "para fora": o meio da fatia
     const middle = (((start + end) / 2) * Math.PI) / 180;
+    const lift = alone ? 0 : LIFT;
     const layer = layers.get(member.user.id) ?? {
       dim: new Animated.Value(0),
       lift: new Animated.Value(0),
@@ -215,23 +229,16 @@ export default function MembersCircle({
     return {
       member,
       color: memberColor(index),
-      track: slicePath({ ...shape, outer: OUTER, corner: CORNER }),
-      fill:
-        ratio > 0
-          ? slicePath({
-              ...shape,
-              outer: INNER + (OUTER - INNER) * ratio,
-              corner: CORNER,
-            })
-          : null,
+      track: path(OUTER),
+      fill: ratio > 0 ? path(INNER + (OUTER - INNER) * ratio) : null,
       layer,
       liftX: layer.lift.interpolate({
         inputRange: [0, 1],
-        outputRange: [0, Math.sin(middle) * LIFT],
+        outputRange: [0, Math.sin(middle) * lift],
       }),
       liftY: layer.lift.interpolate({
         inputRange: [0, 1],
-        outputRange: [0, -Math.cos(middle) * LIFT],
+        outputRange: [0, -Math.cos(middle) * lift],
       }),
     };
   });
@@ -334,8 +341,11 @@ export default function MembersCircle({
           >
             {group.percent}%
           </Animated.Text>
+          {/* Nome grande diminui a letra até caber no buraco da roda */}
           <Animated.Text
             numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.5}
             style={[styles.name, { opacity: selection }]}
           >
             {shownName}
@@ -398,9 +408,11 @@ const styles = StyleSheet.create({
     fontSize: 28,
     color: palette.cream,
   },
+  // Largura fixa: o `adjustsFontSizeToFit` precisa dela para saber o limite
   name: {
     position: "absolute",
-    maxWidth: 84,
+    width: 84,
+    textAlign: "center",
     fontFamily: theme.font.medium,
     fontSize: 19,
     color: palette.cream,

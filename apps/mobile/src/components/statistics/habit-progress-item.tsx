@@ -1,8 +1,9 @@
 import { Lucide } from "@react-native-vector-icons/lucide";
 import { Pressable, StyleSheet, Text, View } from "react-native";
+import GroupTag from "@/components/group-tag";
 import { theme } from "@/config/theme";
 import type { HabitCategory } from "@/services/types/habits";
-import type { HabitStatisticsItem } from "@/services/types/statistics";
+import type { HomeHabit } from "@/utils/group-habit";
 import type { HabitHistoryDay } from "@/utils/habit-history";
 import { categoryIcons } from "./category-icons";
 import { periodPhrases } from "./format";
@@ -11,7 +12,8 @@ import { palette } from "./palette";
 export type { HabitHistoryDay };
 
 export interface HabitProgressItemProps {
-  habit: HabitStatisticsItem;
+  // Pessoal (das estatísticas) ou de grupo (com `group`)
+  habit: HomeHabit;
   /** Últimos 28 dias, do mais antigo ao de hoje. Enquanto não chega, a grade fica vazia. */
   history?: HabitHistoryDay[];
   category?: HabitCategory;
@@ -55,6 +57,11 @@ export default function HabitProgressItem({
             {habit.name}
           </Text>
         </View>
+        {habit.group && (
+          <View style={styles.groupTag}>
+            <GroupTag name={habit.group.name} />
+          </View>
+        )}
 
         <Text style={styles.progress}>
           {done} de {target_count} {periodPhrases[habit.goal.period]}
@@ -179,6 +186,9 @@ const styles = StyleSheet.create({
     fontFamily: theme.font.medium,
     fontSize: 16,
     color: palette.ink,
+  },
+  groupTag: {
+    marginTop: 8,
   },
   progress: {
     fontFamily: theme.font.regular,

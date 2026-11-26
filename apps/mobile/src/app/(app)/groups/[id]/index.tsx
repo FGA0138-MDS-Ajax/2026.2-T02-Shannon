@@ -490,6 +490,18 @@ export default function GroupScreen() {
         detail={openHabit}
         groupName={group?.name}
         onClose={() => setOpenHabit(null)}
+        onCheckIn={
+          openHabit && openHabit.member.id === me?.id
+            ? () => {
+                const { habit } = openHabit;
+                setOpenHabit(null);
+                router.push({
+                  pathname: "/check-ins/create",
+                  params: { habitId: habit.id, category: habit.category },
+                } as Href);
+              }
+            : undefined
+        }
       />
     </SafeAreaView>
   );

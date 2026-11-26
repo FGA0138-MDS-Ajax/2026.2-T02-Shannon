@@ -206,6 +206,28 @@ export function DetailsAbout({ label, text }: { label: string; text: string }) {
   );
 }
 
+/** Botão escuro do fim do card, como o "+ Check-in" da Home */
+export function DetailsAction({
+  icon,
+  label,
+  onPress,
+}: {
+  icon: "plus";
+  label: string;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      style={({ pressed }) => [styles.action, pressed && styles.pressed]}
+    >
+      <Lucide name={icon} size={18} color={palette.cream} />
+      <Text style={styles.actionText}>{label}</Text>
+    </Pressable>
+  );
+}
+
 export function DetailsFooter({ text }: { text: string }) {
   return <Text style={styles.footer}>{text}</Text>;
 }
@@ -337,6 +359,21 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 19.5,
     color: palette.ink,
+  },
+  action: {
+    marginTop: 24,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 14,
+    borderRadius: 18,
+    backgroundColor: palette.ink,
+  },
+  actionText: {
+    fontFamily: theme.font.medium,
+    fontSize: 14,
+    color: palette.cream,
   },
   footer: {
     marginTop: 40,

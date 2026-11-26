@@ -1,21 +1,78 @@
 import { fireEvent, render } from "@testing-library/react-native";
+import { router } from "expo-router";
 import { completeStatistics } from "@/components/statistics/__fixtures__/statistics";
 import StatisticsPanel from "@/components/statistics-panel";
+import { useHabitsCheckIns } from "@/hooks/useHabitsCheckIns";
 import { useUserStatistics } from "@/hooks/useUserStatistics";
+import type { HabitWithProgress } from "@/services/types/habits";
 
 jest.mock("expo-router", () => ({
   router: { push: jest.fn() },
   useFocusEffect: jest.fn(),
 }));
 
+jest.mock("@/hooks/useSession", () => ({
+  useSession: () => ({ user: { id: "u1", name: "Breno" } }),
+}));
+
 // O histórico dos cards tem a própria busca; aqui só interessa o painel
 jest.mock("@/hooks/useHabitsCheckIns", () => ({
-  useHabitsCheckIns: () => ({
+  useHabitsCheckIns: jest.fn(),
+}));
+
+const mockUseHabitsCheckIns = useHabitsCheckIns as jest.MockedFunction<
+  typeof useHabitsCheckIns
+>;
+
+function mockHistory(
+  overrides: Partial<ReturnType<typeof useHabitsCheckIns>> = {},
+) {
+  mockUseHabitsCheckIns.mockReturnValue({
+    habits: undefined,
     datesByHabit: undefined,
     categories: undefined,
     refetch: jest.fn(),
-  }),
-}));
+    ...overrides,
+  });
+}
+
+// Hábito de grupo como vem do GET /habits, ainda por fazer hoje
+const groupHabit: HabitWithProgress = {
+  id: "group-habit",
+  name: "Pedalar juntos",
+  description: null,
+  category: "ciclismo",
+  is_public: false,
+  status: "active",
+  author_user_id: null,
+  author_group_id: "g1",
+  created_at: "2026-11-02",
+  target_end_date: null,
+  finished_at: null,
+  goal: null,
+  group: { id: "g1", name: "Movimento diário" },
+  progress: {
+    habit_id: "group-habit",
+    goal: {
+      schedule_type: "frequency",
+      period: "day",
+      target_count: 1,
+      period_end_weekday: null,
+      starts_on: "2026-11-02",
+    },
+    current_period: {
+      start: completeStatistics.reference_date,
+      end: completeStatistics.reference_date,
+      done: 0,
+      target_count: 1,
+    },
+    status: "ended",
+    current_streak: 0,
+    best_streak: 0,
+    streak_started_on: null,
+    consistent_days: 0,
+  },
+};
 
 jest.mock("@/hooks/useUserStatistics", () => ({
   ...jest.requireActual("@/hooks/useUserStatistics"),
@@ -43,6 +100,7 @@ function mockHook(overrides: Partial<ReturnType<typeof useUserStatistics>>) {
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockHistory();
 });
 
 describe("StatisticsPanel", () => {
@@ -89,6 +147,50 @@ describe("StatisticsPanel", () => {
     const screen = await render(<StatisticsPanel />);
 
     expect(screen.getByTestId("statistics-content")).toBeTruthy();
+  });
+
+  it("lists group habits with the group tag and opens their check-in", async () => {
+    mockHook({ status: "success", data: statistics });
+    mockHistory({
+      habits: [groupHabit],
+      categories: { "group-habit": "ciclismo" },
+    });
+
+    const screen = await render(<StatisticsPanel />);
+
+    expect(screen.getByText("Pedalar juntos")).toBeTruthy();
+    expect(
+      screen.getByLabelText("Hábito do grupo Movimento diário"),
+    ).toBeTruthy();
+    expect(mockUseHabitsCheckIns).toHaveBeenCalledWith(expect.any(Array), "u1");
+
+    await fireEvent.press(
+      screen.getByLabelText("Fazer check-in em Pedalar juntos"),
+    );
+
+    expect(router.push).toHaveBeenCalledWith({
+      pathname: "/check-ins/create",
+      params: { habitId: "group-habit", category: "ciclismo" },
+    });
+  });
+
+  it("shows group habits even without personal ones", async () => {
+    mockHook({
+      status: "success",
+      data: {
+        ...statistics,
+        habits: { total: 0, active: 0, finished: 0 },
+        check_ins: { total: 0, today: 0, week: 0, month: 0 },
+        habit_progress: [],
+      },
+    });
+    mockHistory({ habits: [groupHabit] });
+
+    const screen = await render(<StatisticsPanel />);
+
+    expect(screen.getByTestId("statistics-content")).toBeTruthy();
+    expect(screen.getByText("Pedalar juntos")).toBeTruthy();
+    expect(screen.getByText("0/1 hoje")).toBeTruthy();
   });
 
   it("does not apply days outside 1 to 365", async () => {
