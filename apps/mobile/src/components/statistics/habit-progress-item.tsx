@@ -1,12 +1,12 @@
 import { Lucide } from "@react-native-vector-icons/lucide";
 import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Badge, Card } from "@/components/ui";
+import { currentPeriodPhrases } from "@/config/goal-labels";
+import { habitCategoryIcons } from "@/config/habit-categories";
 import { theme } from "@/config/theme";
 import type { HabitCategory } from "@/services/types/habits";
 import type { HabitStatisticsItem } from "@/services/types/statistics";
 import type { HabitHistoryDay } from "@/utils/habit-history";
-import { categoryIcons } from "./category-icons";
-import { periodPhrases } from "./format";
-import { palette } from "./palette";
 
 export type { HabitHistoryDay };
 
@@ -15,8 +15,6 @@ export interface HabitProgressItemProps {
   /** Últimos 28 dias, do mais antigo ao de hoje. Enquanto não chega, a grade fica vazia. */
   history?: HabitHistoryDay[];
   category?: HabitCategory;
-  /** Cor do quadradinho do ícone (o protótipo alterna laranja e verde) */
-  tone?: "peach" | "sage";
   /** Abre a tela de check-in com este hábito já marcado */
   onCheckIn?: () => void;
 }
@@ -27,74 +25,70 @@ export default function HabitProgressItem({
   habit,
   history,
   category,
-  tone = "peach",
   onCheckIn,
 }: HabitProgressItemProps) {
   const { done, target_count } = habit.current_period;
   // `ended` = hábito encerrado: não aceita mais check-in
   const isFinished = habit.status === "ended";
   const isDoneToday = habit.checked_today;
-  // Borda laranja = ainda falta fazer hoje
-  const isPending = !isFinished && !isDoneToday;
 
   return (
-    <View
-      testID={`habit-progress-${habit.habit_id}`}
-      style={[styles.card, isPending && styles.cardPending]}
-    >
+    <Card testID={`habit-progress-${habit.habit_id}`} style={styles.card}>
       <View style={styles.main}>
         <View style={styles.titleRow}>
-          <View style={[styles.icon, tone === "sage" && styles.iconSage]}>
+          <View style={styles.icon}>
             <Lucide
-              name={category ? categoryIcons[category] : "sparkles"}
-              size={18}
-              color={palette.ink}
+              name={category ? habitCategoryIcons[category] : "sparkles"}
+              size={16}
+              color={theme.colors.primaryDark}
             />
           </View>
-          <Text style={styles.name} numberOfLines={1}>
+          <Text style={styles.name} numberOfLines={2}>
             {habit.name}
           </Text>
         </View>
 
         <Text style={styles.progress}>
-          {done} de {target_count} {periodPhrases[habit.goal.period]}
+          {done} de {target_count} {currentPeriodPhrases[habit.goal.period]}
         </Text>
 
-        {isFinished ? (
-          <Text style={styles.finished}>Encerrado</Text>
-        ) : isDoneToday ? (
-          <View
-            testID={`habit-done-${habit.habit_id}`}
-            accessibilityLabel={`${habit.name}: feito hoje`}
-            style={styles.checkInButton}
-          >
-            <View style={[styles.checkInCircle, styles.doneCircle]}>
-              <Lucide name="check" size={20} color={palette.cream} />
+        <View style={styles.status}>
+          {isFinished ? (
+            <Badge label="Encerrado" />
+          ) : isDoneToday ? (
+            <View
+              testID={`habit-done-${habit.habit_id}`}
+              accessibilityLabel={`${habit.name}: feito hoje`}
+              style={styles.done}
+            >
+              <Lucide
+                name="circle-check"
+                size={16}
+                color={theme.colors.success}
+              />
+              <Text style={styles.doneText}>Feito hoje</Text>
             </View>
-            <Text style={styles.checkInText}>Feito hoje</Text>
-          </View>
-        ) : (
-          <Pressable
-            onPress={onCheckIn}
-            disabled={!onCheckIn}
-            accessibilityRole="button"
-            accessibilityLabel={`Fazer check-in em ${habit.name}`}
-            hitSlop={6}
-            style={({ pressed }) => [
-              styles.checkInButton,
-              pressed && styles.pressed,
-            ]}
-          >
-            <View style={styles.checkInCircle}>
-              <Lucide name="plus" size={20} color={palette.cream} />
-            </View>
-            <Text style={styles.checkInText}>Check-in</Text>
-          </Pressable>
-        )}
+          ) : (
+            <Pressable
+              onPress={onCheckIn}
+              disabled={!onCheckIn}
+              accessibilityRole="button"
+              accessibilityLabel={`Fazer check-in em ${habit.name}`}
+              hitSlop={6}
+              style={({ pressed }) => [
+                styles.checkInButton,
+                pressed && styles.pressed,
+              ]}
+            >
+              <Lucide name="plus" size={14} color={theme.colors.surface} />
+              <Text style={styles.checkInText}>Check-in</Text>
+            </Pressable>
+          )}
+        </View>
       </View>
 
       <HistoryGrid history={history} checkedToday={habit.checked_today} />
-    </View>
+    </Card>
   );
 }
 
@@ -117,7 +111,6 @@ function HistoryGrid({
 
   return (
     <View style={styles.history}>
-      <Text style={styles.historyLabel}>últimos 28 dias</Text>
       <View style={styles.grid}>
         {cells.map((day, index) => (
           <View
@@ -131,103 +124,93 @@ function HistoryGrid({
           />
         ))}
       </View>
+      <Text style={styles.historyLabel}>últimos 28 dias</Text>
     </View>
   );
 }
 
-const CELL = 11;
+const CELL = 10;
 const CELL_GAP = 4;
 
 const styles = StyleSheet.create({
   card: {
     flexDirection: "row",
     alignItems: "stretch",
-    minHeight: 134,
-    backgroundColor: palette.card,
-    borderWidth: 1,
-    borderColor: palette.ink,
-    borderRadius: 22,
-    padding: 15,
-  },
-  cardPending: {
-    borderColor: palette.primary,
-    borderWidth: 2,
+    gap: 12,
   },
   main: {
     flex: 1,
-    justifyContent: "space-between",
-    paddingRight: 8,
+    gap: 6,
   },
   titleRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 9,
+    gap: 10,
   },
   icon: {
     width: 28,
     height: 28,
-    borderRadius: 9,
-    backgroundColor: palette.riskBackground,
+    borderRadius: 8,
+    backgroundColor: theme.colors.primarySoft,
     alignItems: "center",
     justifyContent: "center",
   },
-  iconSage: {
-    backgroundColor: palette.sage,
-  },
   name: {
     flex: 1,
-    fontFamily: theme.font.medium,
-    fontSize: 16,
-    color: palette.ink,
+    fontFamily: theme.font.semiBold,
+    fontSize: 15,
+    color: theme.colors.text,
   },
   progress: {
     fontFamily: theme.font.regular,
     fontSize: 13,
-    color: palette.inkSoft,
-    marginTop: 10,
+    color: theme.colors.muted,
+  },
+  status: {
+    alignItems: "flex-start",
+    marginTop: "auto",
+    paddingTop: 4,
   },
   checkInButton: {
     flexDirection: "row",
     alignItems: "center",
     alignSelf: "flex-start",
-    gap: 9,
-    marginTop: 12,
+    gap: 4,
+    backgroundColor: theme.colors.primary,
+    borderWidth: 1,
+    borderColor: theme.colors.primaryDark,
+    borderRadius: theme.radius.pill,
+    paddingVertical: 5,
+    paddingHorizontal: 12,
   },
   pressed: {
-    opacity: 0.7,
-  },
-  doneCircle: {
-    backgroundColor: palette.primary,
-  },
-  checkInCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: palette.ink,
-    alignItems: "center",
-    justifyContent: "center",
+    opacity: 0.8,
   },
   checkInText: {
     fontFamily: theme.font.medium,
-    fontSize: 12,
-    color: palette.ink,
+    fontSize: 13,
+    color: theme.colors.surface,
   },
-  finished: {
+  done: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingVertical: 5,
+  },
+  doneText: {
     fontFamily: theme.font.medium,
-    fontSize: 12,
-    color: palette.inkSoft,
-    marginTop: 12,
+    fontSize: 13,
+    color: theme.colors.success,
   },
-  // Rótulo + grade centralizados na altura do card
   history: {
     alignItems: "center",
     justifyContent: "center",
-    gap: 8,
+    gap: 6,
   },
   historyLabel: {
     fontFamily: theme.font.regular,
-    fontSize: 9,
-    color: palette.inkSoft,
+    fontSize: 10,
+    color: theme.colors.muted,
   },
   grid: {
     width: CELL * 7 + CELL_GAP * 6,
@@ -239,13 +222,13 @@ const styles = StyleSheet.create({
     width: CELL,
     height: CELL,
     borderRadius: 3,
-    backgroundColor: palette.cell,
+    backgroundColor: theme.colors.gray200,
   },
   cellChecked: {
-    backgroundColor: palette.primary,
+    backgroundColor: theme.colors.primary,
   },
   cellToday: {
     borderWidth: 1,
-    borderColor: palette.inkSoft,
+    borderColor: theme.colors.primary,
   },
 });

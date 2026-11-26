@@ -6,27 +6,37 @@ import {
 } from "@/config/goal-labels";
 import { theme } from "@/config/theme";
 import type { HabitProgress, ProgressStatus } from "@/services/types/habits";
-import { formatDate, parseApiDate } from "@/utils/date";
+import { formatDayMonth } from "@/utils/date";
 
 export interface GoalProgressProps {
   progress: HabitProgress;
-}
-
-// `"2026-10-26"` → `"26/10"`
-function formatDayMonth(value: string): string {
-  return formatDate(parseApiDate(value)).slice(0, 5);
 }
 
 const statusStyles: Record<
   ProgressStatus,
   { backgroundColor: string; color: string }
 > = {
-  completed: { backgroundColor: "#DCFCE7", color: "#15803D" },
-  in_progress: { backgroundColor: "#F5F2EF", color: "#3D3835" },
+  completed: {
+    backgroundColor: theme.colors.successSoft,
+    color: theme.colors.success,
+  },
+  in_progress: {
+    backgroundColor: theme.colors.gray100,
+    color: theme.colors.label,
+  },
   // Destaque: é o aviso mais útil para não perder o streak
-  at_risk: { backgroundColor: "#FFEDD5", color: "#C2410C" },
-  failed: { backgroundColor: "#FEE2E2", color: "#B91C1C" },
-  ended: { backgroundColor: "#E7E2DE", color: "#57534E" },
+  at_risk: {
+    backgroundColor: theme.colors.warningSoft,
+    color: theme.colors.warning,
+  },
+  failed: {
+    backgroundColor: theme.colors.dangerSoft,
+    color: theme.colors.danger,
+  },
+  ended: {
+    backgroundColor: theme.colors.border,
+    color: theme.colors.textSecondary,
+  },
 };
 
 // Só exibe o que a API calculou: nada de streak ou situação é calculado aqui
@@ -53,7 +63,7 @@ export default function GoalProgress({ progress }: GoalProgressProps) {
         </Text>
         <View style={styles.track}>
           <View
-          testID="goal-progress-fill"
+            testID="goal-progress-fill"
             style={[
               styles.fill,
               {
@@ -103,10 +113,10 @@ export default function GoalProgress({ progress }: GoalProgressProps) {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: theme.colors.surface,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#E7E2DE",
+    borderColor: theme.colors.border,
     paddingVertical: 14,
     paddingHorizontal: 16,
     gap: 8,
@@ -114,12 +124,12 @@ const styles = StyleSheet.create({
   goal: {
     fontFamily: theme.font.semiBold,
     fontSize: 15,
-    color: "#1C1917",
+    color: theme.colors.text,
   },
   period: {
     fontFamily: theme.font.regular,
     fontSize: 12,
-    color: "#6B6560",
+    color: theme.colors.muted,
   },
   doneRow: {
     display: "flex",
@@ -131,13 +141,13 @@ const styles = StyleSheet.create({
   done: {
     fontFamily: theme.font.medium,
     fontSize: 14,
-    color: "#1C1917",
+    color: theme.colors.text,
   },
   track: {
     flex: 1,
     height: 8,
     borderRadius: 9999,
-    backgroundColor: "#E7E2DE",
+    backgroundColor: theme.colors.border,
     overflow: "hidden",
   },
   fill: {
@@ -164,16 +174,16 @@ const styles = StyleSheet.create({
   streak: {
     fontFamily: theme.font.semiBold,
     fontSize: 15,
-    color: "#1C1917",
+    color: theme.colors.text,
   },
   best: {
     fontFamily: theme.font.regular,
     fontSize: 13,
-    color: "#6B6560",
+    color: theme.colors.muted,
   },
   consistency: {
     fontFamily: theme.font.regular,
     fontSize: 13,
-    color: "#6B6560",
+    color: theme.colors.muted,
   },
 });

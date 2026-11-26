@@ -5,9 +5,7 @@ import {
 } from "@/config/goal-labels";
 import type { HabitProgress } from "@/services/types/habits";
 
-function makeProgress(
-  overrides: Partial<HabitProgress> = {},
-): HabitProgress {
+function makeProgress(overrides: Partial<HabitProgress> = {}): HabitProgress {
   return {
     habit_id: "habit-1",
     goal: {

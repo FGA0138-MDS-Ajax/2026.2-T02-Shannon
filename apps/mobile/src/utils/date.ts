@@ -26,8 +26,49 @@ export function formatDate(date: Date): string {
   return `${pad(date.getDate())}/${pad(date.getMonth() + 1)}/${date.getFullYear()}`;
 }
 
+/** Data e hora ISO em UTC → `"07:30"` no fuso do aparelho */
+export function formatTime(isoDateTime: string): string {
+  const date = new Date(isoDateTime);
+  return `${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
 /** Data e hora ISO em UTC (ex.: `created_at` do check-in) → `"28/10/2026 às 07:30"` no fuso do aparelho */
 export function formatDateTime(isoDateTime: string): string {
-  const date = new Date(isoDateTime);
-  return `${formatDate(date)} às ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  return `${formatDate(new Date(isoDateTime))} às ${formatTime(isoDateTime)}`;
+}
+
+export const MONTH_NAMES = [
+  "Janeiro",
+  "Fevereiro",
+  "Março",
+  "Abril",
+  "Maio",
+  "Junho",
+  "Julho",
+  "Agosto",
+  "Setembro",
+  "Outubro",
+  "Novembro",
+  "Dezembro",
+];
+
+// Na ordem de `Date.getDay()`: 0 = domingo
+export const WEEKDAY_NAMES = [
+  "Domingo",
+  "Segunda",
+  "Terça",
+  "Quarta",
+  "Quinta",
+  "Sexta",
+  "Sábado",
+];
+
+/** `"2026-10-26"` → `"26/10"` */
+export function formatDayMonth(value: string): string {
+  return formatDate(parseApiDate(value)).slice(0, 5);
+}
+
+/** `Date` → `"Quarta, 25 de novembro"` */
+export function formatLongDate(date: Date): string {
+  return `${WEEKDAY_NAMES[date.getDay()]}, ${date.getDate()} de ${MONTH_NAMES[date.getMonth()].toLowerCase()}`;
 }

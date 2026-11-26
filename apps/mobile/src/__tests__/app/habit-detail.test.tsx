@@ -146,7 +146,7 @@ describe("HabitDetailScreen", () => {
 
   it("loads the habit after retrying a failed request", async () => {
     mockRequest.mockRejectedValue(
-      new ApiError("Server error", 500, { detail: "internal"}),
+      new ApiError("Server error", 500, { detail: "internal" }),
     );
 
     const screen = await renderScreen();
@@ -156,14 +156,13 @@ describe("HabitDetailScreen", () => {
     ).toBeTruthy();
 
     mockRequest.mockImplementation(async (path: string) => {
-    if (path === "/habits/habit-1") return makeHabit();
-    if (path === "/habits/habit-1/check-ins") return [] as CheckIn[];
-    if (path === "/goals/habits/habit-1/progress") return makeProgress();
-    throw new Error(`Unexpected request: ${path}`);
+      if (path === "/habits/habit-1") return makeHabit();
+      if (path === "/habits/habit-1/check-ins") return [] as CheckIn[];
+      if (path === "/goals/habits/habit-1/progress") return makeProgress();
+      throw new Error(`Unexpected request: ${path}`);
     });
 
     await fireEvent.press(screen.getByText("Tentar novamente"));
     expect(await screen.findByText("Correr")).toBeTruthy();
-
   });
 });

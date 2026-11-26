@@ -60,7 +60,7 @@ const styles = StyleSheet.create({
   label: {
     fontFamily: theme.font.medium,
     fontSize: 14,
-    color: "#3D3835",
+    color: theme.colors.label,
     marginBottom: 6,
   },
   options: {
@@ -69,9 +69,9 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   option: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: theme.colors.surface,
     borderWidth: 1,
-    borderColor: "#D8D2CD",
+    borderColor: theme.colors.inputBorder,
     borderRadius: 9999,
     paddingVertical: 6,
     paddingHorizontal: 14,
@@ -81,20 +81,20 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.primaryDark,
   },
   optionError: {
-    borderColor: "#DC2626",
+    borderColor: theme.colors.dangerStrong,
   },
   optionText: {
     fontFamily: theme.font.regular,
     fontSize: 14,
-    color: "#1C1917",
+    color: theme.colors.text,
   },
   textSelected: {
-    color: "#FFFFFF",
+    color: theme.colors.surface,
   },
   errorText: {
     fontFamily: theme.font.regular,
     fontSize: 12,
-    color: "#DC2626",
+    color: theme.colors.dangerStrong,
     marginTop: 4,
   },
 });

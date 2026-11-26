@@ -67,7 +67,7 @@ const styles = StyleSheet.create({
   tagline: {
     fontFamily: theme.font.regular,
     fontSize: 16,
-    color: "#6B6560",
+    color: theme.colors.muted,
     textAlign: "center",
     lineHeight: 24,
   },

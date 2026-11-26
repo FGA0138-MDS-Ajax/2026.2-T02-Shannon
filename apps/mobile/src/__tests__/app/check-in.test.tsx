@@ -13,6 +13,7 @@ jest.mock("expo-router", () => {
 });
 
 jest.mock("@/services/check-ins-api", () => ({
+  ...jest.requireActual("@/services/check-ins-api"),
   listUserCheckIns: jest.fn(),
 }));
 
