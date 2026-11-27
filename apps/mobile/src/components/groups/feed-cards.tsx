@@ -1,5 +1,6 @@
 import { Lucide } from "@react-native-vector-icons/lucide";
 import { StyleSheet, Text, View } from "react-native";
+import CheckInPhoto from "@/components/check-in-photo";
 import { Card } from "@/components/ui";
 import { habitCategoryIcons } from "@/config/habit-categories";
 import { theme } from "@/config/theme";
@@ -14,10 +15,18 @@ export interface FeedCardProps {
   category?: HabitCategory;
   isMine: boolean;
   onPress: () => void;
+  /** Refaz o feed quando a miniatura expira (as URLs valem 30 min) */
+  onPhotoExpired?: () => void;
 }
 
 /** Check-in no feed do grupo: quem, em quais hábitos, a hora e o título */
-export function FeedCard({ item, category, isMine, onPress }: FeedCardProps) {
+export function FeedCard({
+  item,
+  category,
+  isMine,
+  onPress,
+  onPhotoExpired,
+}: FeedCardProps) {
   return (
     <Card
       testID={`feed-item-${item.id}`}
@@ -49,6 +58,13 @@ export function FeedCard({ item, category, isMine, onPress }: FeedCardProps) {
         <Text style={[styles.description, styles.quote]} numberOfLines={1}>
           “{item.title}”
         </Text>
+        {item.photo && (
+          <CheckInPhoto
+            photo={item.photo}
+            variant="thumb"
+            onExpired={onPhotoExpired}
+          />
+        )}
         <Lucide name="chevron-right" size={18} color={theme.colors.subtle} />
       </View>
     </Card>

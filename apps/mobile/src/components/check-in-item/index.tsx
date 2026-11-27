@@ -1,5 +1,6 @@
 import { Lucide } from "@react-native-vector-icons/lucide";
 import { StyleSheet, Text, View } from "react-native";
+import CheckInPhoto from "@/components/check-in-photo";
 import { Card } from "@/components/ui";
 import { theme } from "@/config/theme";
 import type { CheckIn } from "@/services/types/habits";
@@ -9,10 +10,16 @@ import { formatDuration } from "@/utils/duration";
 export interface CheckInItemProps {
   checkIn: CheckIn;
   onPress: () => void;
+  /** Refaz a lista quando a miniatura expira (as URLs valem 30 min) */
+  onPhotoExpired?: () => void;
 }
 
-// Card de um check-in na lista do dia: título, descrição, hora e duração
-export default function CheckInItem({ checkIn, onPress }: CheckInItemProps) {
+// Card de um check-in na lista do dia: título, descrição, hora, duração e foto
+export default function CheckInItem({
+  checkIn,
+  onPress,
+  onPhotoExpired,
+}: CheckInItemProps) {
   const habitCount = checkIn.habit_ids.length;
 
   return (
@@ -26,6 +33,13 @@ export default function CheckInItem({ checkIn, onPress }: CheckInItemProps) {
         <Text style={styles.title} numberOfLines={1}>
           {checkIn.title}
         </Text>
+        {checkIn.photo && (
+          <CheckInPhoto
+            photo={checkIn.photo}
+            variant="thumb"
+            onExpired={onPhotoExpired}
+          />
+        )}
         <Lucide name="chevron-right" size={18} color={theme.colors.subtle} />
       </View>
 
