@@ -34,6 +34,18 @@ export const buttonVariants = createVariants({
       secondary: ({ pressed }) => ({
         opacity: pressed ? 0.8 : 1,
       }),
+      outline: ({ pressed }) => ({
+        backgroundColor: theme.colors.surface,
+        borderWidth: 1,
+        borderColor: theme.colors.inputBorder,
+        opacity: pressed ? 0.8 : 1,
+      }),
+      danger: ({ pressed }) => ({
+        backgroundColor: theme.colors.surface,
+        borderWidth: 1,
+        borderColor: theme.colors.dangerBorder,
+        opacity: pressed ? 0.8 : 1,
+      }),
     },
     width: {
       full: {
@@ -59,10 +71,16 @@ export const buttonTextVariants = createTextVariants({
   variants: {
     variant: {
       primary: {
-        color: "#ffffff",
+        color: theme.colors.surface,
       },
       secondary: {
         color: theme.colors.primaryDark,
+      },
+      outline: {
+        color: theme.colors.primaryDark,
+      },
+      danger: {
+        color: theme.colors.danger,
       },
     },
   },

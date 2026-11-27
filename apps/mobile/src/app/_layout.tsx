@@ -1,5 +1,7 @@
 import { SplashScreen, Stack } from "expo-router";
+import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
+import DocumentTitle from "@/components/document-title";
 import SWR from "@/config/swr";
 import { SessionProvider, useSession } from "@/contexts/auth-context";
 import useFonts from "@/hooks/useFonts";
@@ -25,17 +27,22 @@ function RootNavigation() {
   }
 
   return (
-    <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="index" />
+    <>
+      {/* Base do app: ícones escuros. As telas de cabeçalho escuro
+          (HeroLayout) põem a clara por cima enquanto estão na frente. */}
+      <StatusBar style="dark" />
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="index" />
 
-      <Stack.Protected guard={!!session}>
-        <Stack.Screen name="(app)" />
-      </Stack.Protected>
+        <Stack.Protected guard={!!session}>
+          <Stack.Screen name="(app)" />
+        </Stack.Protected>
 
-      <Stack.Protected guard={!session}>
-        <Stack.Screen name="(auth)" />
-      </Stack.Protected>
-    </Stack>
+        <Stack.Protected guard={!session}>
+          <Stack.Screen name="(auth)" />
+        </Stack.Protected>
+      </Stack>
+    </>
   );
 }
 
@@ -43,6 +50,8 @@ function RootLayout() {
   return (
     <SWR>
       <SessionProvider>
+        {/* Título da aba do navegador (só na web) */}
+        <DocumentTitle />
         <RootNavigation />
       </SessionProvider>
     </SWR>

@@ -56,6 +56,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     paddingHorizontal: 16,
+    maxWidth: theme.layout.form,
   },
   appName: {
     fontFamily: theme.font.bold,
@@ -67,13 +68,15 @@ const styles = StyleSheet.create({
   tagline: {
     fontFamily: theme.font.regular,
     fontSize: 16,
-    color: "#6B6560",
+    color: theme.colors.muted,
     textAlign: "center",
     lineHeight: 24,
   },
+  // Em telas largas os botões não esticam de ponta a ponta
   actions: {
     display: "flex",
     width: "100%",
+    maxWidth: theme.layout.form,
     flexDirection: "column",
     gap: 16,
   },

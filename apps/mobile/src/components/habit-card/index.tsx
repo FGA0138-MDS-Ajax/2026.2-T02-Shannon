@@ -1,21 +1,25 @@
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import { describeGoal } from "@/config/goal-labels";
+import { currentPeriodPhrases, describeGoal } from "@/config/goal-labels";
 import { habitCategoryLabels } from "@/config/habit-categories";
 import { theme } from "@/config/theme";
-import type {
-  GoalPeriod,
-  HabitProgress,
-  HabitWithProgress,
-} from "@/services/types/habits";
+import type { Habit, HabitProgress } from "@/services/types/habits";
 
 export interface HabitCardProps {
-  habit: HabitWithProgress;
+  /** `progress` vem em GET /habits; sem meta, fica `null` */
+  habit: Habit & { progress?: HabitProgress | null };
   onPress?: () => void;
+}
+
+// Hábito de grupo mostra o grupo; o pessoal, se é público ou privado
+function describeOwner(habit: Habit): string {
+  if (habit.group) return `Grupo ${habit.group.name}`;
+  return habit.is_public ? "Público" : "Privado";
 }
 
 export default function HabitCard({ habit, onPress }: HabitCardProps) {
   const isFinished = habit.status === "finished";
   const isAtRisk = habit.progress?.status === "at_risk";
+  const owner = describeOwner(habit);
 
   return (
     <Pressable
@@ -39,27 +43,24 @@ export default function HabitCard({ habit, onPress }: HabitCardProps) {
         )}
       </View>
       <Text style={styles.details}>
-        {habitCategoryLabels[habit.category]} ·{" "}
-        {habit.is_public ? "Público" : "Privado"}
+        {habitCategoryLabels[habit.category]} · {owner}
       </Text>
 
-      {/* Hábito criado antes das metas: a API manda progress null */}
       {habit.progress ? (
         <HabitProgressSummary progress={habit.progress} />
       ) : (
         <View style={styles.progressSection}>
-          <Text style={styles.noGoal}>Sem meta · toque para definir</Text>
+          <Text style={habit.goal ? styles.goalSummary : styles.noGoal}>
+            {habit.goal
+              ? describeGoal(habit.goal)
+              : // Hábito criado antes das metas: a API manda goal null
+                "Sem meta · toque para definir"}
+          </Text>
         </View>
       )}
     </Pressable>
   );
 }
-
-const periodPhrases: Record<GoalPeriod, string> = {
-  day: "hoje",
-  week: "nesta semana",
-  month: "neste mês",
-};
 
 function HabitProgressSummary({ progress }: { progress: HabitProgress }) {
   const { done, target_count } = progress.current_period;
@@ -72,7 +73,7 @@ function HabitProgressSummary({ progress }: { progress: HabitProgress }) {
     <View testID="habit-progress" style={styles.progressSection}>
       <View style={styles.progressHeader}>
         <Text style={styles.progressCount}>
-          {done}/{target_count} {periodPhrases[period]}
+          {done}/{target_count} {currentPeriodPhrases[period]}
         </Text>
         <Text style={styles.goalRule}>{describeGoal(progress.goal)}</Text>
       </View>
@@ -94,19 +95,12 @@ function HabitProgressSummary({ progress }: { progress: HabitProgress }) {
   );
 }
 
-const colors = {
-  text: "#1C1917",
-  muted: "#6B6560",
-  border: "#E7E2DE",
-  success: "#2F7D4F",
-};
-
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: theme.colors.surface,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: theme.colors.border,
     paddingVertical: 14,
     paddingHorizontal: 16,
     marginBottom: 12,
@@ -128,10 +122,10 @@ const styles = StyleSheet.create({
     flex: 1,
     fontFamily: theme.font.semiBold,
     fontSize: 16,
-    color: colors.text,
+    color: theme.colors.text,
   },
   badge: {
-    backgroundColor: colors.border,
+    backgroundColor: theme.colors.border,
     borderRadius: 9999,
     paddingVertical: 2,
     paddingHorizontal: 10,
@@ -139,18 +133,18 @@ const styles = StyleSheet.create({
   badgeText: {
     fontFamily: theme.font.medium,
     fontSize: 12,
-    color: "#57534E",
+    color: theme.colors.textSecondary,
   },
   details: {
     fontFamily: theme.font.regular,
     fontSize: 14,
-    color: colors.muted,
+    color: theme.colors.muted,
   },
   progressSection: {
     marginTop: 12,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: colors.border,
+    borderTopColor: theme.colors.border,
     gap: 6,
   },
   progressHeader: {
@@ -162,14 +156,14 @@ const styles = StyleSheet.create({
   progressCount: {
     fontFamily: theme.font.semiBold,
     fontSize: 14,
-    color: colors.text,
+    color: theme.colors.text,
   },
   goalRule: {
     flexShrink: 1,
     textAlign: "right",
     fontFamily: theme.font.regular,
     fontSize: 12,
-    color: colors.muted,
+    color: theme.colors.muted,
   },
   progressTrack: {
     height: 6,
@@ -183,28 +177,17 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.primary,
   },
   progressFillCompleted: {
-    backgroundColor: colors.success,
+    backgroundColor: theme.colors.success,
   },
-  streak: {
+  goalSummary: {
     fontFamily: theme.font.regular,
     fontSize: 13,
-    color: colors.muted,
-  },
-  status: {
-    fontFamily: theme.font.medium,
-    fontSize: 13,
-    color: colors.muted,
-  },
-  statusAtRisk: {
-    color: theme.colors.primaryDark,
-  },
-  statusCompleted: {
-    color: colors.success,
+    color: theme.colors.muted,
   },
   noGoal: {
     fontFamily: theme.font.regular,
     fontSize: 13,
     fontStyle: "italic",
-    color: colors.muted,
+    color: theme.colors.muted,
   },
 });

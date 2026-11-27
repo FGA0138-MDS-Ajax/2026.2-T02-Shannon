@@ -14,6 +14,7 @@ jest.mock("expo-router", () => {
   return {
     router: { replace: jest.fn(), back: jest.fn() },
     useFocusEffect: (effect: () => void) => useEffect(effect, [effect]),
+    useLocalSearchParams: () => ({}),
   };
 });
 
@@ -23,6 +24,7 @@ jest.mock("@/services/api", () => ({
 }));
 
 jest.mock("@/services/check-ins-api", () => ({
+  ...jest.requireActual("@/services/check-ins-api"),
   createCheckIn: jest.fn(),
   listHabitOptions: jest.fn(),
 }));
@@ -178,5 +180,30 @@ describe("CreateCheckInScreen", () => {
       expect(router.replace).toHaveBeenCalledWith("/check-ins/check-in-1"),
     );
     expect(screen.queryByText("Check-in salvo! Seu progresso:")).toBeNull();
+  });
+
+  it("keeps a suggested habit unchecked after the user unchecks it", async () => {
+    mockRequest.mockImplementation(async (path: string) => {
+      if (path.startsWith("/check-ins/categories")) {
+        return { categories: [{ name: "corrida", habit_count: 2 }] };
+      }
+      return {
+        items: [{ ...habitOptions[0], preselected: true }, habitOptions[1]],
+        page: 1,
+        has_more: false,
+      };
+    });
+    const screen = await renderScreen();
+
+    await fireEvent.press(await screen.findByTestId("category-corrida"));
+    const suggested = await screen.findByTestId("habit-h1");
+    expect(suggested.props.accessibilityState).toMatchObject({ checked: true });
+
+    await fireEvent.press(suggested);
+
+    expect(
+      screen.getByTestId("habit-h1").props.accessibilityState,
+    ).toMatchObject({ checked: false });
+    expect(screen.getByText("0/20 selecionados")).toBeTruthy();
   });
 });
