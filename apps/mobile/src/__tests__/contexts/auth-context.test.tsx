@@ -1,4 +1,5 @@
 import { act, renderHook, waitFor } from "@testing-library/react-native";
+import { Image } from "expo-image";
 import type { ReactNode } from "react";
 import { SessionProvider, useSession } from "@/contexts/auth-context";
 
@@ -14,6 +15,13 @@ jest.mock("expo-secure-store", () => {
     }),
   };
 });
+
+jest.mock("expo-image", () => ({
+  Image: {
+    clearMemoryCache: jest.fn(async () => true),
+    clearDiskCache: jest.fn(async () => true),
+  },
+}));
 
 const mockFetch = jest.fn();
 global.fetch = mockFetch;
@@ -154,6 +162,9 @@ describe("SessionProvider", () => {
     expect(result.current.user).toBeNull();
     expect(result.current.session).toBeNull();
     expect(getSecureStore().deleteItemAsync).toHaveBeenCalled();
+    // Fotos de check-in não podem ficar para a próxima conta no celular
+    expect(Image.clearMemoryCache).toHaveBeenCalled();
+    expect(Image.clearDiskCache).toHaveBeenCalled();
   });
 });
 

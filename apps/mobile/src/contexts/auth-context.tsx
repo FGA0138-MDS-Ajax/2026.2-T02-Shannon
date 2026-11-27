@@ -1,3 +1,4 @@
+import { Image } from "expo-image";
 import {
   createContext,
   type ReactNode,
@@ -64,6 +65,11 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   /** Limpa toda a sessão (estado + storage). */
   const resetSession = useCallback(async () => {
     await clearTokens();
+    // As fotos de check-in ficam no cache de imagens: outra conta no mesmo
+    // celular não pode vê-las. Falha ao limpar não impede a saída.
+    await Promise.all([Image.clearMemoryCache(), Image.clearDiskCache()]).catch(
+      () => {},
+    );
     setUser(null);
     setSession(null);
   }, []);
