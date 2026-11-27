@@ -1,6 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "installCommand": "npx -y pnpm@12.4.0 install --no-frozen-lockfile",
+  "installCommand": "printf 'allowBuilds:\\n  \"@parcel/watcher\": false\\n  esbuild: true\\n' > pnpm-workspace.yaml && npx -y pnpm@12.4.0 install --no-frozen-lockfile",
   "buildCommand": "npx expo export -p web",
   "outputDirectory": "dist",
   "cleanUrls": true,
