@@ -83,4 +83,18 @@ export const theme = {
   spacing: {
     screen: 24,
   },
+  /** Larguras mínimas da janela para tablet e computador */
+  breakpoints: {
+    tablet: 768,
+    desktop: 1024,
+  },
+  /**
+   * Larguras máximas do conteúdo. Em telas largas a coluna fica centralizada,
+   * em vez de esticar cards e botões de ponta a ponta.
+   */
+  layout: {
+    content: 720,
+    form: 480,
+    sheet: 560,
+  },
 };

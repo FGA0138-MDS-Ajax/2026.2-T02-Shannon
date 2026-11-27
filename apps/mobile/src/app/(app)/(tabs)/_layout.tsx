@@ -1,8 +1,11 @@
 import { Lucide } from "@react-native-vector-icons/lucide";
 import { Tabs } from "expo-router";
 import { theme } from "@/config/theme";
+import { useBreakpoint } from "@/hooks/useBreakpoint";
 
 export default function TabLayout() {
+  const { isTablet, isDesktop } = useBreakpoint();
+
   return (
     <Tabs
       backBehavior="history"
@@ -14,6 +17,19 @@ export default function TabLayout() {
         tabBarStyle: {
           backgroundColor: theme.colors.gray100,
         },
+        // Celular: barra embaixo. Tablet e computador: barra lateral, com o
+        // nome embaixo do ícone (tablet) ou ao lado dele (computador).
+        ...(isTablet && {
+          tabBarPosition: "left",
+          tabBarVariant: "material",
+          tabBarLabelPosition: isDesktop ? "beside-icon" : "below-icon",
+          tabBarActiveBackgroundColor: theme.colors.primarySoft,
+          tabBarStyle: {
+            backgroundColor: theme.colors.gray100,
+            borderRightColor: theme.colors.border,
+            ...(isDesktop && { width: 220 }),
+          },
+        }),
       }}
     >
       <Tabs.Screen

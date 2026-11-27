@@ -31,7 +31,7 @@ export default function AuthLayout({
   footer,
 }: AuthLayoutProps) {
   return (
-    <Screen keyboardAvoiding>
+    <Screen keyboardAvoiding maxWidth="form">
       <ScreenHeader title={title} subtitle={subtitle} />
 
       {error && <ErrorBanner message={error} />}

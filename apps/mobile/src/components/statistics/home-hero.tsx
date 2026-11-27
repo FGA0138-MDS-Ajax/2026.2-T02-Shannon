@@ -33,7 +33,10 @@ export default function HomeHero({
   const ringSize = Math.min(
     MAX_RING,
     Math.floor(
-      (Math.min(width, 640) - theme.spacing.screen * 2 - DAY_GAP * 6) / 7,
+      (Math.min(width, theme.layout.content) -
+        theme.spacing.screen * 2 -
+        DAY_GAP * 6) /
+        7,
     ),
   );
   const today = parseApiDate(referenceDate);
