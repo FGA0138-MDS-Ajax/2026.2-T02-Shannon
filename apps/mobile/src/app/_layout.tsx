@@ -1,6 +1,7 @@
 import { SplashScreen, Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
+import DocumentTitle from "@/components/document-title";
 import SWR from "@/config/swr";
 import { SessionProvider, useSession } from "@/contexts/auth-context";
 import useFonts from "@/hooks/useFonts";
@@ -49,6 +50,8 @@ function RootLayout() {
   return (
     <SWR>
       <SessionProvider>
+        {/* Título da aba do navegador (só na web) */}
+        <DocumentTitle />
         <RootNavigation />
       </SessionProvider>
     </SWR>
