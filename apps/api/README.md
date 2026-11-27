@@ -80,7 +80,9 @@ uv run python scripts/storage_smoke.py
 
 ### Varredor de fotos órfãs
 
-Para encontrar e remover objetos sob `check-ins/` no bucket que não possuem mais registro em `check_in_photos` e têm mais de 24 horas (margem de segurança para não apagar envios em andamento):
+A rotina `app.photos.sweep` **não é agendada automaticamente** nesta entrega (execução manual). Ela encontra e remove objetos sob `check-ins/` no bucket que não possuem mais registro em `check_in_photos` e têm mais de 24 horas (margem de segurança para não apagar envios em andamento):
+
+> 🚨 **CUIDADO CRÍTICO:** **Nunca** rode o varredor apontando para o bucket de produção (`habbit-photos-prod`) com outro banco conectado (por exemplo, o banco local): todas as fotos válidas de produção seriam tratadas como órfãs e apagadas. Sempre rode primeiro com `--dry-run`.
 
 ```bash
 # Apenas lista e conta os órfãos sem apagar nada
@@ -89,6 +91,30 @@ uv run python -m app.photos.sweep --dry-run
 # Remove efetivamente os órfãos encontrados
 uv run python -m app.photos.sweep
 ```
+
+---
+
+## ☁️ Produção (Vercel + Neon)
+
+Em produção, a API roda na **Vercel (Hobby)** na região `gru1` (São Paulo, configurada em `apps/api/vercel.json`) conectada ao **PostgreSQL 17 no Neon** (`aws-sa-east-1`, São Paulo) e ao **Cloudflare R2** (`habbit-photos-prod`).
+
+### Variáveis de ambiente adicionais de produção
+
+Além das variáveis de autenticação e do R2 (ver `.env.example`), produção utiliza:
+
+| Variável | Descrição |
+|---|---|
+| `DATABASE_URL` | URL do Neon **com `-pooler`** e `sslmode=require`, usada pela API em execução (com `pool_pre_ping=True` para reconexão após suspensão do Neon). |
+| `DIRECT_DATABASE_URL` | URL direta do Neon (**sem `-pooler`**, com `sslmode=require`), usada pelo Alembic nas migrações em produção. Localmente é opcional (fallback para `DATABASE_URL`). |
+| `CORS_ORIGINS` | Origens permitidas no CORS separadas por vírgula, sem barra no final (ex.: endereço da PWA na Vercel). Vazio localmente mantém `["*"]`. |
+
+### Fluxo de migrações em produção
+
+- O `pyproject.toml` define `[tool.vercel.scripts] build = "python scripts/vercel_build.py"`.
+- O script `scripts/vercel_build.py` executa `alembic upgrade head` **somente quando `VERCEL_ENV=production`**, exigindo `DIRECT_DATABASE_URL`.
+- Se a migração falhar, o build é interrompido sem publicar a nova versão.
+- Migrações já aplicadas no banco **não são desfeitas** ao fazer rollback de código na Vercel.
+- A publicação é disparada manualmente via [`scripts/deploy.sh`](../../scripts/deploy.sh) (sem conectar o repositório Git na Vercel).
 
 ---
 
