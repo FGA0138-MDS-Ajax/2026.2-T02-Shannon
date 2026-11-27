@@ -125,18 +125,22 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  // Presa ao pé da tela: o fundo da folha vai até embaixo da barra de gestos
+  // Presa ao pé da tela: o fundo da folha vai até embaixo da barra de gestos.
+  // Em telas largas fica centralizada, sem esticar de ponta a ponta.
   positioner: {
     position: "absolute",
     left: 0,
     right: 0,
     bottom: 0,
+    alignItems: "center",
   },
   backdrop: {
     backgroundColor: theme.colors.overlay,
   },
   sheet: {
     flexShrink: 1,
+    width: "100%",
+    maxWidth: theme.layout.sheet,
     paddingTop: 10,
     paddingHorizontal: theme.spacing.screen,
     backgroundColor: theme.colors.gray,

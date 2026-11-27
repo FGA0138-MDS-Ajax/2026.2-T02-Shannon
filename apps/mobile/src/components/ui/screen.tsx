@@ -19,14 +19,27 @@ export interface ScreenProps {
   /** Telas de formulário: o conteúdo sobe junto com o teclado no iOS */
   keyboardAvoiding?: boolean;
   style?: StyleProp<ViewStyle>;
+  /**
+   * Largura máxima da coluna em telas largas (tablet e computador):
+   * "content" para listas e detalhes, "form" para login e cadastro
+   */
+  maxWidth?: keyof typeof theme.layout;
 }
 
 // Fundo e margens de todas as telas. O rodapé fica livre para a tab bar.
+// Em telas largas o conteúdo fica numa coluna centralizada.
 export function Screen({
   children,
   keyboardAvoiding = false,
   style,
+  maxWidth = "content",
 }: ScreenProps) {
+  const column = (
+    <View style={[styles.column, { maxWidth: theme.layout[maxWidth] }]}>
+      {children}
+    </View>
+  );
+
   return (
     <SafeAreaView
       edges={{ top: "additive", bottom: keyboardAvoiding ? "additive" : "off" }}
@@ -37,10 +50,10 @@ export function Screen({
           style={styles.keyboard}
           behavior={Platform.OS === "ios" ? "padding" : undefined}
         >
-          {children}
+          {column}
         </KeyboardAvoidingView>
       ) : (
-        children
+        column
       )}
     </SafeAreaView>
   );
@@ -126,20 +139,30 @@ export function BackButton({
   );
 }
 
-// Botão principal fixo no rodapé, por cima da lista
+// Botão principal fixo no rodapé, por cima da lista. Em telas largas fica
+// centralizado na largura da coluna de conteúdo, não de ponta a ponta.
 export function FloatingAction({ children }: { children: ReactNode }) {
-  return <View style={styles.floating}>{children}</View>;
+  return (
+    <View pointerEvents="box-none" style={styles.floating}>
+      <View style={styles.floatingInner}>{children}</View>
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingHorizontal: theme.spacing.screen,
     paddingTop: 16,
     backgroundColor: theme.colors.gray,
   },
   keyboard: {
     flex: 1,
+  },
+  column: {
+    flex: 1,
+    width: "100%",
+    alignSelf: "center",
+    paddingHorizontal: theme.spacing.screen,
   },
   header: {
     marginTop: 16,
@@ -187,8 +210,14 @@ const styles = StyleSheet.create({
     zIndex: 1,
     position: "absolute",
     bottom: 24,
-    left: theme.spacing.screen,
-    right: theme.spacing.screen,
+    left: 0,
+    right: 0,
+    paddingHorizontal: theme.spacing.screen,
+    alignItems: "center",
+  },
+  floatingInner: {
+    width: "100%",
+    maxWidth: theme.layout.content - theme.spacing.screen * 2,
     gap: 8,
   },
 });

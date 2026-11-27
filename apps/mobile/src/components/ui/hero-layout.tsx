@@ -108,7 +108,7 @@ export function HeroLayout({
   return (
     <SafeAreaView testID={testID} edges={["top"]} style={styles.container}>
       {focused && <StatusBar style="light" />}
-      {header}
+      {header && <View style={styles.column}>{header}</View>}
       <View style={styles.viewport}>
         <Animated.ScrollView
           ref={scrollRef}
@@ -236,8 +236,17 @@ const styles = StyleSheet.create({
     right: 0,
     height: EDGE_FADE,
   },
+  // Em telas largas a folha vira uma coluna centralizada sobre o fundo escuro
+  column: {
+    width: "100%",
+    maxWidth: theme.layout.content,
+    alignSelf: "center",
+  },
   content: {
     flexGrow: 1,
+    width: "100%",
+    maxWidth: theme.layout.content,
+    alignSelf: "center",
   },
   sheet: {
     flexGrow: 1,
