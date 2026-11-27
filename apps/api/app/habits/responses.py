@@ -2,6 +2,7 @@ from fastapi import status
 
 from app.goals.exceptions import MSG_GOAL_WEEKDAY_REQUIRED
 from app.habits.exceptions import (
+  MSG_GROUP_HABIT_FORBIDDEN,
   MSG_HABIT_ALREADY_FINISHED,
   MSG_HABIT_FORBIDDEN,
   MSG_HABIT_NOT_FOUND,
@@ -76,9 +77,117 @@ RESPONSES_422_LIST = {
   }
 }
 
+_GOAL_DAY = {
+  "schedule_type": "frequency",
+  "period": "day",
+  "target_count": 1,
+  "period_end_weekday": None,
+  "starts_on": "2026-11-01",
+}
+
+_PROGRESS_DAY = {
+  "habit_id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+  "goal": _GOAL_DAY,
+  "current_period": {
+    "start": "2026-11-11",
+    "end": "2026-11-11",
+    "done": 0,
+    "target_count": 1,
+  },
+  "status": "at_risk",
+  "current_streak": 2,
+  "best_streak": 2,
+  "streak_started_on": "2026-11-09",
+  "consistent_days": 3,
+}
+
+_EXAMPLE_PERSONAL_HABIT = {
+  "id": "3b241101-e2bb-4255-8caf-4136c566a962",
+  "name": "Ler 20 minutos",
+  "description": None,
+  "category": "outros",
+  "is_public": False,
+  "status": "active",
+  "author_user_id": "9f1c2d3e-4b5a-4c6d-8e7f-0a1b2c3d4e5f",
+  "author_group_id": None,
+  "created_at": "2026-11-01",
+  "target_end_date": None,
+  "finished_at": None,
+  "goal": _GOAL_DAY,
+  "group": None,
+}
+
+_EXAMPLE_GROUP_HABIT = {
+  "id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+  "name": "Correr 5 km",
+  "description": None,
+  "category": "corrida",
+  "is_public": False,
+  "status": "active",
+  "author_user_id": None,
+  "author_group_id": "a3bb189e-8bf9-3888-9912-ace4e6543002",
+  "created_at": "2026-11-01",
+  "target_end_date": None,
+  "finished_at": None,
+  "goal": _GOAL_DAY,
+  "group": {"id": "a3bb189e-8bf9-3888-9912-ace4e6543002", "name": "Corredores da FGA"},
+}
+
+RESPONSES_LIST = {
+  status.HTTP_200_OK: {
+    "description": (
+      "Hábitos do usuário e dos grupos de que ele é membro, do mais recente ao"
+      " mais antigo. Em hábito de grupo, `group` vem preenchido, `author_user_id`"
+      " é nulo e `progress` é o do próprio usuário (a partir da entrada dele no"
+      " grupo). Em hábito pessoal, `group` é `null`. O filtro `status` vale para"
+      " os dois tipos. Hábito de grupo não pode ser editado, encerrado nem"
+      " excluído por estas rotas."
+    ),
+    "content": {
+      "application/json": {
+        "example": [
+          {**_EXAMPLE_GROUP_HABIT, "progress": _PROGRESS_DAY},
+          {
+            **_EXAMPLE_PERSONAL_HABIT,
+            "progress": {
+              **_PROGRESS_DAY,
+              "habit_id": _EXAMPLE_PERSONAL_HABIT["id"],
+            },
+          },
+        ]
+      }
+    },
+  },
+  **RESPONSES_422_LIST,
+}
+
 RESPONSES_GET_BY_ID = {
+  status.HTTP_200_OK: {
+    "description": (
+      "Hábito visível ao usuário. Em hábito de grupo (só para membros), `group`"
+      " vem preenchido e `author_user_id` é nulo; em hábito pessoal, `group` é"
+      " `null`."
+    ),
+    "content": {
+      "application/json": {
+        "examples": {
+          "habito_pessoal": {
+            "summary": "Hábito pessoal",
+            "value": _EXAMPLE_PERSONAL_HABIT,
+          },
+          "habito_de_grupo": {
+            "summary": "Hábito de grupo, visto por um membro",
+            "value": _EXAMPLE_GROUP_HABIT,
+          },
+        }
+      }
+    },
+  },
   status.HTTP_404_NOT_FOUND: {
-    "description": "Hábito não encontrado ou privado de outro usuário.",
+    "description": (
+      "Hábito não encontrado, privado de outro usuário ou de um grupo de que o"
+      " usuário não participa (inclui quem saiu do grupo)."
+    ),
     "content": {"application/json": {"example": {"detail": MSG_HABIT_NOT_FOUND}}},
   },
   status.HTTP_422_UNPROCESSABLE_ENTITY: {
@@ -104,12 +213,31 @@ _RESPONSE_401 = {
 }
 
 _RESPONSE_403_OWNED = {
-  "description": "Hábito público de outro usuário: só o autor pode alterar.",
-  "content": {"application/json": {"example": {"detail": MSG_HABIT_FORBIDDEN}}},
+  "description": (
+    "O usuário vê o hábito, mas não pode alterá-lo: hábito público de outro"
+    " usuário (só o autor altera) ou hábito de grupo (só pelas rotas do grupo)."
+  ),
+  "content": {
+    "application/json": {
+      "examples": {
+        "habito_publico_de_outro": {
+          "summary": "Hábito público de outro usuário",
+          "value": {"detail": MSG_HABIT_FORBIDDEN},
+        },
+        "habito_de_grupo": {
+          "summary": "Hábito de grupo (membro ou administrador)",
+          "value": {"detail": MSG_GROUP_HABIT_FORBIDDEN},
+        },
+      }
+    }
+  },
 }
 
 _RESPONSE_404_OWNED = {
-  "description": "Hábito inexistente ou privado de outro usuário.",
+  "description": (
+    "Hábito inexistente, privado de outro usuário ou de um grupo de que o"
+    " usuário não participa."
+  ),
   "content": {"application/json": {"example": {"detail": MSG_HABIT_NOT_FOUND}}},
 }
 

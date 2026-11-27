@@ -4,6 +4,7 @@ from app.checkins.exceptions import (
   MSG_CHECK_IN_FORBIDDEN,
   MSG_CHECK_IN_HABIT_FORBIDDEN,
   MSG_CHECK_IN_NOT_FOUND,
+  MSG_GROUP_ENDED_CHECK_IN,
 )
 from app.checkins.schemas import (
   MSG_DUPLICATE_HABIT_IDS,
@@ -117,11 +118,33 @@ RESPONSES_CREATE = {
     "Hábito público de outro usuário.", MSG_CHECK_IN_HABIT_FORBIDDEN
   ),
   status.HTTP_404_NOT_FOUND: _refusal_response(
-    "Hábito inexistente ou privado de outro usuário.", MSG_HABIT_NOT_FOUND
+    "Hábito inexistente, privado de outro usuário ou de um grupo do qual o usuário"
+    " não é membro.",
+    MSG_HABIT_NOT_FOUND,
   ),
-  status.HTTP_409_CONFLICT: _refusal_response(
-    "Hábito do usuário já encerrado.", MSG_HABIT_FINISHED
-  ),
+  status.HTTP_409_CONFLICT: {
+    "description": (
+      "Hábito encerrado, pessoal ou de grupo, ou grupo encerrado. Se houver os dois"
+      " motivos, vem o do grupo."
+    ),
+    "content": {
+      "application/json": {
+        "examples": {
+          "habito_encerrado": {
+            "summary": "Hábito encerrado",
+            "value": {"detail": MSG_HABIT_FINISHED, "habit_ids": [_EXAMPLE_HABIT_ID]},
+          },
+          "grupo_encerrado": {
+            "summary": "Grupo do hábito encerrado",
+            "value": {
+              "detail": MSG_GROUP_ENDED_CHECK_IN,
+              "habit_ids": [_EXAMPLE_HABIT_ID],
+            },
+          },
+        }
+      }
+    },
+  },
   status.HTTP_422_UNPROCESSABLE_ENTITY: _RESPONSE_422_CREATE,
 }
 

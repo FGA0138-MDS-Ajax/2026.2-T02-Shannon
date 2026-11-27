@@ -41,10 +41,10 @@ class Goal(SQLModel, table=True):
   """Meta de um hábito: quantas vezes cumprir em cada período (1 por hábito).
 
   `schedule_type` e `period` são VARCHAR, sem ENUM nativo no banco (como a `category`
-  do hábito), pois a lista de valores vai crescer e não há Alembic. As regras de
-  cada período ficam no `CHECK` `ck_goals_period_rules`. `starts_on` é o dia a
-  partir do qual os check-ins contam. A relação `habit` é só do Python: no banco
-  existe apenas a FK `habit_id`, apagada junto com o hábito.
+  do hábito), facilitando a evolução da lista de valores via migrações do Alembic.
+  As regras de cada período ficam no `CHECK` `ck_goals_period_rules`.
+  `starts_on` é o dia a partir do qual os check-ins contam. A relação `habit`
+  é só do Python: no banco existe apenas a FK `habit_id`, apagada junto com o hábito.
   """
 
   __tablename__ = "goals"
