@@ -1,0 +1,64 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "installCommand": "pnpm install --frozen-lockfile",
+  "buildCommand": "npx expo export -p web",
+  "outputDirectory": "dist",
+  "cleanUrls": true,
+  "headers": [
+    {
+      "source": "/manifest.json",
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "application/manifest+json; charset=utf-8"
+        }
+      ]
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/groups/:id/habits/create",
+      "destination": "/groups/[id]/habits/create.html"
+    },
+    {
+      "source": "/groups/:id/habits/:habitId/edit",
+      "destination": "/groups/[id]/habits/[habitId]/edit.html"
+    },
+    {
+      "source": "/groups/:id/habits/:habitId",
+      "destination": "/groups/[id]/habits/[habitId].html"
+    },
+    {
+      "source": "/groups/:id/edit",
+      "destination": "/groups/[id]/edit.html"
+    },
+    {
+      "source": "/groups/:id",
+      "destination": "/groups/[id].html"
+    },
+    {
+      "source": "/habits/:id/edit",
+      "destination": "/habits/[id]/edit.html"
+    },
+    {
+      "source": "/habits/:id/goal",
+      "destination": "/habits/[id]/goal.html"
+    },
+    {
+      "source": "/habits/:id",
+      "destination": "/habits/[id].html"
+    },
+    {
+      "source": "/check-ins/:id/edit",
+      "destination": "/check-ins/[id]/edit.html"
+    },
+    {
+      "source": "/check-ins/:id",
+      "destination": "/check-ins/[id].html"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}
