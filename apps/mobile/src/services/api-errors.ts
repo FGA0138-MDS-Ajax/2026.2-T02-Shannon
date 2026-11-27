@@ -9,6 +9,8 @@ const STATUS_MESSAGES: Record<number, string> = {
   403: "Você não tem permissão para fazer isso.",
   404: "Não encontrado.",
   409: "Esta ação não pode ser feita agora.",
+  // A Vercel corta o envio acima de 4,5 MB sem o JSON da API
+  413: "A foto deve ter no máximo 4 MB.",
   422: "Confira os campos destacados.",
 };
 

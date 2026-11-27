@@ -120,6 +120,13 @@ export interface HabitUpdate {
   target_end_date?: string | null;
 }
 
+// Foto do check-in: as URLs são assinadas, valem 30 min e mudam a cada
+// resposta. Nas listas `url` vem `null`: a foto cheia só vem no detalhe.
+export interface CheckInPhotoPublic {
+  thumbnail_url: string;
+  url: string | null;
+}
+
 export interface CheckIn {
   id: string;
   user_id: string;
@@ -130,6 +137,8 @@ export interface CheckIn {
   duration: string | null;
   // A ordem não é garantida.
   habit_ids: string[];
+  // `null` sem foto ou quando quem lê não pode vê-la.
+  photo?: CheckInPhotoPublic | null;
 }
 
 export interface CheckInCreate {

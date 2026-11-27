@@ -132,7 +132,10 @@ export async function request<T>(
   const url = `${API_URL}${endpoint}`;
 
   const headers: Record<string, string> = {
-    "Content-Type": "application/json",
+    // Com FormData o fetch monta o Content-Type sozinho, com o boundary
+    ...(options.body instanceof FormData
+      ? {}
+      : { "Content-Type": "application/json" }),
     Accept: "application/json",
     ...((options.headers as Record<string, string>) || {}),
   };

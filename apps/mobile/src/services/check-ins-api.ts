@@ -1,3 +1,4 @@
+import { Platform } from "react-native";
 import { request, toQueryString } from "@/services/api";
 import { isGroupDataKey } from "@/services/groups-api";
 import { isHomeDataKey } from "@/services/statistics-api";
@@ -6,6 +7,7 @@ import type {
   CheckInCategoriesResponse,
   CheckInCreate,
   CheckInCreated,
+  CheckInPhotoPublic,
   CheckInsPage,
   CheckInUpdate,
   HabitOptionsPage,
@@ -88,4 +90,40 @@ export function updateCheckIn(
 
 export function deleteCheckIn(id: string): Promise<void> {
   return request<void>(`/check-ins/${id}`, { method: "DELETE" });
+}
+
+// O nome e o tipo são só informativos: a API reconhece o formato pelos bytes.
+async function photoFormData(uri: string): Promise<FormData> {
+  const form = new FormData();
+  if (Platform.OS === "web") {
+    // O navegador precisa de um Blob de verdade
+    const blob = await (await fetch(uri)).blob();
+    form.append("photo", blob, "photo.jpg");
+  } else {
+    form.append("photo", {
+      uri,
+      name: "photo.jpg",
+      type: "image/jpeg",
+    } as unknown as Blob);
+  }
+  return form;
+}
+
+/**
+ * Envia ou troca a foto. Só o autor, e só em check-in de hoje (São Paulo).
+ * `uri` deve ser a imagem já preparada (JPEG de até 4 MB).
+ */
+export async function uploadCheckInPhoto(
+  id: string,
+  uri: string,
+): Promise<CheckInPhotoPublic> {
+  return request<CheckInPhotoPublic>(`/check-ins/${id}/photo`, {
+    method: "PUT",
+    body: await photoFormData(uri),
+  });
+}
+
+/** Responde 204 mesmo se o check-in já estava sem foto. */
+export function removeCheckInPhoto(id: string): Promise<void> {
+  return request<void>(`/check-ins/${id}/photo`, { method: "DELETE" });
 }
