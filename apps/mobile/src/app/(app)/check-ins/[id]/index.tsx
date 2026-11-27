@@ -1,6 +1,14 @@
+import { Image } from "expo-image";
 import { router, useLocalSearchParams } from "expo-router";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import {
+  ActivityIndicator,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import useSWR from "swr";
+import CheckInPhoto from "@/components/check-in-photo";
 import {
   ActionRow,
   BackButton,
@@ -10,11 +18,13 @@ import {
 } from "@/components/ui";
 import { theme } from "@/config/theme";
 import { confirmAction, useAsyncAction } from "@/hooks/useAsyncAction";
+import { useCheckInPhoto } from "@/hooks/useCheckInPhoto";
 import { useRefreshOnFocus } from "@/hooks/useRefreshOnFocus";
 import { useSession } from "@/hooks/useSession";
 import { request } from "@/services/api";
 import { checkInKeys, deleteCheckIn } from "@/services/check-ins-api";
 import type { CheckIn } from "@/services/types/habits";
+import { canEditPhoto } from "@/utils/check-in-photo";
 import { formatDateTime } from "@/utils/date";
 import { formatDuration } from "@/utils/duration";
 
@@ -27,6 +37,8 @@ export default function CheckInDetailScreen() {
     error,
     mutate: refreshCheckIn,
   } = useSWR<CheckIn>(checkInKeys.detail(id), request);
+
+  const photoActions = useCheckInPhoto(id);
 
   useRefreshOnFocus(refreshCheckIn);
 
@@ -43,6 +55,83 @@ export default function CheckInDetailScreen() {
         }),
     });
 
+  const renderPhoto = (checkIn: CheckIn) => {
+    // Enquanto envia (ou se der para tentar de novo), mostra a foto escolhida
+    if (photoActions.pending) {
+      return (
+        <View style={styles.photo}>
+          <Image
+            source={{ uri: photoActions.pending.uri }}
+            contentFit="cover"
+            style={styles.preview}
+          />
+          {photoActions.busy && (
+            <View style={styles.previewOverlay}>
+              <ActivityIndicator color={theme.colors.surface} />
+            </View>
+          )}
+        </View>
+      );
+    }
+    if (!checkIn.photo) return null;
+    return (
+      <View style={styles.photo}>
+        <CheckInPhoto
+          photo={checkIn.photo}
+          variant="full"
+          onExpired={() => refreshCheckIn()}
+        />
+      </View>
+    );
+  };
+
+  const renderPhotoActions = (checkIn: CheckIn) => {
+    if (photoActions.locked || !canEditPhoto(checkIn, user?.id)) return null;
+    const { busy, canRetry, choose, retry, remove } = photoActions;
+
+    if (canRetry) {
+      return (
+        <ActionRow
+          icon="refresh-cw"
+          title="Tentar enviar de novo"
+          description="A foto escolhida ainda não foi salva"
+          disabled={busy}
+          onPress={retry}
+        />
+      );
+    }
+    if (!checkIn.photo) {
+      return (
+        <ActionRow
+          icon="camera"
+          title="Adicionar foto"
+          description="Da galeria ou da câmera, só no dia do check-in"
+          disabled={busy}
+          onPress={choose}
+        />
+      );
+    }
+    return (
+      <>
+        <ActionRow
+          icon="image"
+          title="Trocar foto"
+          description="A foto atual é substituída"
+          disabled={busy}
+          onPress={choose}
+        />
+        <ActionRow
+          icon="image-off"
+          title="Remover foto"
+          description="O check-in fica sem foto"
+          destructive
+          disabled={busy}
+          onPress={remove}
+        />
+      </>
+    );
+  };
+
   const renderContent = (checkIn: CheckIn) => {
     const isOwner = checkIn.user_id === user?.id;
 
@@ -54,6 +143,8 @@ export default function CheckInDetailScreen() {
           {checkIn.duration ? ` · ${formatDuration(checkIn.duration)}` : ""}
         </Text>
 
+        {renderPhoto(checkIn)}
+
         {checkIn.description && (
           <Section title="Descrição">
             <Text style={styles.description}>{checkIn.description}</Text>
@@ -62,6 +153,7 @@ export default function CheckInDetailScreen() {
 
         {isOwner && (
           <View style={styles.actions}>
+            {renderPhotoActions(checkIn)}
             <ActionRow
               icon="edit-2"
               title="Editar"
@@ -116,6 +208,22 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: theme.colors.label,
     lineHeight: 22,
+  },
+  photo: {
+    marginTop: 16,
+  },
+  preview: {
+    width: "100%",
+    aspectRatio: 4 / 3,
+    borderRadius: theme.radius.lg,
+    backgroundColor: theme.colors.gray200,
+  },
+  previewOverlay: {
+    ...StyleSheet.absoluteFill,
+    borderRadius: theme.radius.lg,
+    backgroundColor: theme.colors.overlay,
+    alignItems: "center",
+    justifyContent: "center",
   },
   actions: {
     marginTop: 24,

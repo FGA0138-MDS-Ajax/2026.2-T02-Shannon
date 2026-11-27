@@ -38,6 +38,15 @@ export function isAffectedByCheckIn(key: unknown): boolean {
 }
 
 /**
+ * Chaves que mostram a foto de um check-in: o detalhe, a lista da aba
+ * Check-in, o histórico dos hábitos e o feed dos grupos.
+ */
+export function isAffectedByPhoto(key: unknown): boolean {
+  if (typeof key === "string" && key.startsWith("/check-ins")) return true;
+  return isAffectedByCheckIn(key);
+}
+
+/**
  * Lista os check-ins do usuário logado agrupados por dia, do mais recente ao
  * mais antigo. Cada item de `items` é um objeto `{ [data]: CheckIn[] }`.
  */
