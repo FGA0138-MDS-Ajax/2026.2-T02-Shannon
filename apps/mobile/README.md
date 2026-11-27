@@ -141,3 +141,16 @@ apps/mobile/
 
 - **Adição de dependências:** Sempre dê preferência ao comando `npx expo install <pacote>` para garantir que a versão instalada seja compatível com a versão do Expo SDK em uso.
 - **Estrutura de rotas:** Mantenha apenas arquivos de rotas/telas em `src/app/`. Componentes reutilizáveis, hooks e utilitários devem residir em pastas dedicadas fora da árvore de rotas.
+
+---
+
+## 🌐 Entrega Web / PWA (Vercel)
+
+A entrega oficial do Habbit em produção é a versão **Expo Web publicada como PWA** na Vercel (instalável via *"Adicionar à Tela Inicial"* em Android, iOS e desktop):
+
+- **Exportação estática:** `app.json` usa `web.output: "static"` (`npx expo export -p web` → `dist/`).
+- **Arquivos de PWA:** `public/manifest.json`, ícones (`icon-192.png`, `icon-512.png`, `apple-touch-icon.png`) e `src/app/+html.tsx` (meta tags Apple e link do manifest).
+- **Rotas na Vercel:** `apps/mobile/vercel.json` configura `cleanUrls: true` e os rewrites para as rotas dinâmicas (`/habits/:id`, `/groups/:id`, `/check-ins/:id`, etc.), evitando HTTP 404 em acesso direto ou atualização (F5).
+- **Variável de ambiente:** `EXPO_PUBLIC_API_URL` aponta para a URL da API em produção (sem barra no final). **Nunca** coloque segredos em variáveis `EXPO_PUBLIC_*`, pois elas ficam expostas no bundle enviado ao navegador.
+- **Sessão na web (limitação conhecida):** no navegador não existe `expo-secure-store`; o arquivo `src/services/token-storage.web.ts` armazena tokens em `localStorage` **provisoriamente** para a apresentação (não é a solução definitiva de segurança).
+- **Publicação:** disparada manualmente a partir da `main` via [`scripts/deploy.sh`](../../scripts/deploy.sh).
