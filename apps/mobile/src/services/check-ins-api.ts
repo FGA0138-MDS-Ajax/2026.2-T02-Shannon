@@ -1,3 +1,4 @@
+import { File } from "expo-file-system";
 import { Platform } from "react-native";
 import { request, toQueryString } from "@/services/api";
 import { isGroupDataKey } from "@/services/groups-api";
@@ -101,19 +102,16 @@ export function deleteCheckIn(id: string): Promise<void> {
   return request<void>(`/check-ins/${id}`, { method: "DELETE" });
 }
 
-// O nome e o tipo são só informativos: a API reconhece o formato pelos bytes.
+// A API reconhece o formato pelos bytes; o nome do arquivo só precisa existir
 async function photoFormData(uri: string): Promise<FormData> {
   const form = new FormData();
   if (Platform.OS === "web") {
-    // O navegador precisa de um Blob de verdade
     const blob = await (await fetch(uri)).blob();
     form.append("photo", blob, "photo.jpg");
   } else {
-    form.append("photo", {
-      uri,
-      name: "photo.jpg",
-      type: "image/jpeg",
-    } as unknown as Blob);
+    // O fetch do Expo não aceita o `{ uri, name, type }` antigo do React
+    // Native: o arquivo vai como File do expo-file-system, que é um Blob
+    form.append("photo", new File(uri));
   }
   return form;
 }

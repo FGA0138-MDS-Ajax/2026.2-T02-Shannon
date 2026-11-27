@@ -14,6 +14,16 @@ jest.mock("expo-secure-store", () => ({
   deleteItemAsync: jest.fn(),
 }));
 
+// File do expo-file-system: guarda a uri para o teste conferir o que foi anexado
+jest.mock("expo-file-system", () => ({
+  File: class {
+    uri: string;
+    constructor(fileUri: string) {
+      this.uri = fileUri;
+    }
+  },
+}));
+
 const mockFetch = jest.fn();
 global.fetch = mockFetch;
 
@@ -39,7 +49,7 @@ beforeEach(() => {
 });
 
 describe("uploadCheckInPhoto", () => {
-  it("sends the file in the photo field without a JSON content type", async () => {
+  it("sends the file as an expo File in the photo field, without a JSON content type", async () => {
     await expect(uploadCheckInPhoto("c1", "file:///foto.jpg")).resolves.toEqual(
       photo,
     );
@@ -52,8 +62,6 @@ describe("uploadCheckInPhoto", () => {
     expect(init.headers.Authorization).toBe("Bearer acc");
     expect(appendSpy).toHaveBeenCalledWith("photo", {
       uri: "file:///foto.jpg",
-      name: "photo.jpg",
-      type: "image/jpeg",
     });
   });
 
