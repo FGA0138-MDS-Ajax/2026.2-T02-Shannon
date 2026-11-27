@@ -29,7 +29,7 @@ import type {
   HabitOptionsPage,
 } from "@/services/types/habits";
 import {
-  PhotoError,
+  localPhotoErrorMessage,
   type PreparedPhoto,
   pickPhoto,
   preparePhoto,
@@ -215,9 +215,7 @@ export function useCheckInFlow({ onOpenCheckIn }: CheckInFlowParams) {
         const picked = await pickPhoto(source);
         if (picked) setPhoto(await preparePhoto(picked));
       } catch (err: unknown) {
-        setPhotoError(
-          err instanceof PhotoError ? err.message : getErrorMessage(err),
-        );
+        setPhotoError(localPhotoErrorMessage(err));
       } finally {
         setPreparingPhoto(false);
       }

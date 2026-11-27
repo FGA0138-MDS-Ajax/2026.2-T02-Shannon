@@ -1,7 +1,9 @@
 import * as ImagePicker from "expo-image-picker";
 import {
   canEditPhoto,
+  localPhotoErrorMessage,
   PHOTO_MAX_BYTES,
+  PhotoError,
   pickPhoto,
   preparePhoto,
 } from "@/utils/check-in-photo";
@@ -27,15 +29,18 @@ jest.mock("expo-image-manipulator", () => ({
 
 const picker = jest.mocked(ImagePicker);
 
-// Tamanho de cada arquivo salvo, na ordem das tentativas
-let savedSizes: number[] = [];
-global.fetch = jest.fn(async () => ({
-  blob: async () => ({ size: savedSizes.shift() ?? 1000 }),
-})) as unknown as typeof fetch;
+// Tamanho de cada arquivo salvo, na ordem das tentativas. No celular o
+// tamanho vem do expo-file-system (o fetch do Android não abre `file://`)
+let mockSavedSizes: number[] = [];
+jest.mock("expo-file-system", () => ({
+  File: class {
+    size = mockSavedSizes.shift() ?? 1000;
+  },
+}));
 
 beforeEach(() => {
   jest.clearAllMocks();
-  savedSizes = [];
+  mockSavedSizes = [];
   mockSave.mockImplementation(async ({ compress }) => ({
     uri: `file:///jpeg-${compress}.jpg`,
   }));
@@ -108,7 +113,7 @@ describe("preparePhoto", () => {
   });
 
   it("compresses more until the file fits in 4 MB", async () => {
-    savedSizes = [PHOTO_MAX_BYTES + 1, PHOTO_MAX_BYTES];
+    mockSavedSizes = [PHOTO_MAX_BYTES + 1, PHOTO_MAX_BYTES];
 
     const prepared = await preparePhoto({
       uri: "file:///a.jpg",
@@ -120,7 +125,7 @@ describe("preparePhoto", () => {
   });
 
   it("gives up when not even the smallest version fits", async () => {
-    savedSizes = Array(4).fill(PHOTO_MAX_BYTES + 1);
+    mockSavedSizes = Array(4).fill(PHOTO_MAX_BYTES + 1);
 
     await expect(
       preparePhoto({ uri: "file:///a.jpg", width: 4000, height: 3000 }),
@@ -148,5 +153,16 @@ describe("canEditPhoto", () => {
     ],
   ])("is %s → %s", (_case, userId, now, allowed) => {
     expect(canEditPhoto(checkIn, userId, new Date(now))).toBe(allowed);
+  });
+});
+
+describe("localPhotoErrorMessage", () => {
+  it("keeps our own messages and hides internal failures", () => {
+    expect(localPhotoErrorMessage(new PhotoError("Permita o acesso."))).toBe(
+      "Permita o acesso.",
+    );
+    expect(
+      localPhotoErrorMessage(new TypeError("Network request failed")),
+    ).toBe("Não foi possível usar esta foto. Escolha outra.");
   });
 });

@@ -10,6 +10,7 @@ import {
   uploadCheckInPhoto,
 } from "@/services/check-ins-api";
 import {
+  localPhotoErrorMessage,
   PhotoError,
   type PhotoSource,
   type PreparedPhoto,
@@ -75,7 +76,10 @@ export function useCheckInPhoto(checkInId: string) {
         const picked = await pickPhoto(source);
         if (picked) send(await preparePhoto(picked));
       } catch (err: unknown) {
-        handleError(err);
+        Alert.alert(
+          "Não foi possível usar a foto",
+          localPhotoErrorMessage(err),
+        );
       }
     });
 

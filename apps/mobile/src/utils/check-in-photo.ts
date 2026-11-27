@@ -1,5 +1,7 @@
+import { File } from "expo-file-system";
 import { ImageManipulator, SaveFormat } from "expo-image-manipulator";
 import * as ImagePicker from "expo-image-picker";
+import { Platform } from "react-native";
 import type { CheckIn } from "@/services/types/habits";
 
 // Limite da API: acima disso ela responde 413
@@ -23,6 +25,13 @@ export interface PreparedPhoto {
 }
 
 export class PhotoError extends Error {}
+
+/** Frase para falhas ao escolher ou preparar a foto, ainda no celular. */
+export function localPhotoErrorMessage(err: unknown): string {
+  return err instanceof PhotoError
+    ? err.message
+    : "Não foi possível usar esta foto. Escolha outra.";
+}
 
 /** Abre a galeria ou a câmera. `null` quando a pessoa cancela. */
 export async function pickPhoto(
@@ -54,9 +63,10 @@ export async function pickPhoto(
   return { uri: asset.uri, width: asset.width, height: asset.height };
 }
 
+// No Android o fetch não abre `file://`: no celular o tamanho vem do arquivo
 async function fileSize(uri: string): Promise<number> {
-  const blob = await (await fetch(uri)).blob();
-  return blob.size;
+  if (Platform.OS === "web") return (await (await fetch(uri)).blob()).size;
+  return new File(uri).size;
 }
 
 async function toJpeg(photo: PickedPhoto, longSide: number, compress: number) {
