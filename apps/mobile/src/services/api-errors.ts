@@ -36,12 +36,18 @@ export function getErrorMessage(error: unknown): string {
     return NETWORK_ERROR_MESSAGE;
   }
 
-  if (error.status >= 500) {
+  const detail = getDetail(error);
+
+  // O 503 do back tem frase para o usuário (ex.: falha ao salvar a foto); os
+  // outros 5xx podem trazer detalhes internos
+  if (
+    error.status >= 500 &&
+    !(error.status === 503 && typeof detail === "string")
+  ) {
     return SERVER_ERROR_MESSAGE;
   }
 
-  // Os textos do back (403, 404, 409 e alguns 422) já são para o usuário.
-  const detail = getDetail(error);
+  // Os textos do back (403, 404, 409, 503 e alguns 422) já são para o usuário.
   if (typeof detail === "string") {
     return detail;
   }
