@@ -1,6 +1,8 @@
 from logging.config import fileConfig
 
 from alembic import context
+from sqlalchemy import create_engine
+from sqlalchemy.pool import NullPool
 from sqlmodel import SQLModel
 
 # 1. Importa todos os módulos de modelos para registrar
@@ -30,7 +32,7 @@ def run_migrations_offline() -> None:
 
   Gera comandos SQL em texto puro sem precisar de uma conexão ativa com o banco.
   """
-  url = settings.database_url_sync
+  url = settings.database_url_migrations
   context.configure(
     url=url,
     target_metadata=target_metadata,
@@ -49,7 +51,7 @@ def run_migrations_online() -> None:
   Conecta diretamente ao banco de dados e aplica as alterações.
   """
   # Se o pytest injetou uma conexão temporária no config.attributes, usa ela.
-  # Caso contrário, usa o engine padrão configurado na aplicação.
+  # Caso contrário, usa a conexão direta de migrações (ou o engine padrão).
   connection = config.attributes.get("connection")
 
   if connection is not None:
@@ -60,6 +62,22 @@ def run_migrations_online() -> None:
     )
     with context.begin_transaction():
       context.run_migrations()
+  elif settings.DIRECT_DATABASE_URL:
+    direct_engine = create_engine(
+      settings.database_url_migrations,
+      poolclass=NullPool,
+    )
+    try:
+      with direct_engine.connect() as conn:
+        context.configure(
+          connection=conn,
+          target_metadata=target_metadata,
+          compare_type=True,
+        )
+        with context.begin_transaction():
+          context.run_migrations()
+    finally:
+      direct_engine.dispose()
   else:
     with engine.connect() as conn:
       context.configure(
