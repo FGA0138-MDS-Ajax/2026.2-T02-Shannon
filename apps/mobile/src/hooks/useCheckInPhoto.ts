@@ -17,6 +17,15 @@ import {
   preparePhoto,
 } from "@/utils/check-in-photo";
 
+/** Pergunta de onde vem a foto: galeria ou câmera. */
+export function askPhotoSource(onChoose: (source: PhotoSource) => void) {
+  Alert.alert("Foto do check-in", undefined, [
+    { text: "Escolher da galeria", onPress: () => onChoose("library") },
+    { text: "Tirar foto", onPress: () => onChoose("camera") },
+    { text: "Cancelar", style: "cancel" },
+  ]);
+}
+
 /**
  * Adicionar, trocar e remover a foto no detalhe do check-in. Depois de cada
  * mudança, recarrega o detalhe e as listas que mostram a miniatura.
@@ -70,12 +79,7 @@ export function useCheckInPhoto(checkInId: string) {
       }
     });
 
-  const choose = () =>
-    Alert.alert("Foto do check-in", undefined, [
-      { text: "Escolher da galeria", onPress: () => pickAndSend("library") },
-      { text: "Tirar foto", onPress: () => pickAndSend("camera") },
-      { text: "Cancelar", style: "cancel" },
-    ]);
+  const choose = () => askPhotoSource(pickAndSend);
 
   const retry = () => {
     if (pending) send(pending);

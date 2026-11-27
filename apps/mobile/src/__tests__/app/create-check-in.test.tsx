@@ -1,8 +1,9 @@
 import { fireEvent, render, waitFor } from "@testing-library/react-native";
+import { Alert, type AlertButton } from "react-native";
 import { SWRConfig } from "swr";
 import CreateCheckInScreen from "@/app/(app)/check-ins/create";
-import { request } from "@/services/api";
-import { createCheckIn } from "@/services/check-ins-api";
+import { ApiError, request } from "@/services/api";
+import { createCheckIn, uploadCheckInPhoto } from "@/services/check-ins-api";
 import type {
   CheckInCreated,
   HabitOption,
@@ -27,7 +28,23 @@ jest.mock("@/services/check-ins-api", () => ({
   ...jest.requireActual("@/services/check-ins-api"),
   createCheckIn: jest.fn(),
   listHabitOptions: jest.fn(),
+  uploadCheckInPhoto: jest.fn(),
 }));
+
+jest.mock("@/utils/check-in-photo", () => ({
+  ...jest.requireActual("@/utils/check-in-photo"),
+  pickPhoto: jest.fn(async () => ({
+    uri: "file:///a.heic",
+    width: 4000,
+    height: 3000,
+  })),
+  preparePhoto: jest.fn(async () => ({ uri: "file:///a.jpg", size: 1000 })),
+}));
+
+jest.mock("expo-image", () => {
+  const { View } = jest.requireActual("react-native");
+  return { Image: (props: object) => <View {...props} /> };
+});
 
 const mockRequest = request as jest.MockedFunction<typeof request>;
 const mockCreateCheckIn = createCheckIn as jest.MockedFunction<
@@ -102,8 +119,8 @@ function renderScreen() {
   );
 }
 
-// Categoria → marca os dois hábitos → título → envia
-async function submitCheckIn(screen: Awaited<ReturnType<typeof renderScreen>>) {
+// Categoria → marca os dois hábitos → título
+async function fillCheckIn(screen: Awaited<ReturnType<typeof renderScreen>>) {
   await fireEvent.press(await screen.findByTestId("category-corrida"));
   await fireEvent.press(await screen.findByTestId("habit-h1"));
   await fireEvent.press(screen.getByTestId("habit-h2"));
@@ -112,6 +129,10 @@ async function submitCheckIn(screen: Awaited<ReturnType<typeof renderScreen>>) {
     screen.getByTestId("check-in-title-input"),
     "Treino",
   );
+}
+
+async function submitCheckIn(screen: Awaited<ReturnType<typeof renderScreen>>) {
+  await fillCheckIn(screen);
   await fireEvent.press(screen.getByTestId("submit-button"));
 }
 
@@ -205,5 +226,78 @@ describe("CreateCheckInScreen", () => {
       screen.getByTestId("habit-h1").props.accessibilityState,
     ).toMatchObject({ checked: false });
     expect(screen.getByText("0/20 selecionados")).toBeTruthy();
+  });
+});
+
+describe("CreateCheckInScreen photo", () => {
+  const mockUpload = jest.mocked(uploadCheckInPhoto);
+
+  // Escolhe "galeria" na pergunta de onde vem a foto
+  function answerAlerts() {
+    return jest
+      .spyOn(Alert, "alert")
+      .mockImplementation((_title, _message, buttons) => {
+        (buttons as AlertButton[] | undefined)
+          ?.find((button) => button.text === "Escolher da galeria")
+          ?.onPress?.();
+      });
+  }
+
+  async function submitWithPhoto(
+    screen: Awaited<ReturnType<typeof renderScreen>>,
+  ) {
+    await fillCheckIn(screen);
+    await fireEvent.press(screen.getByTestId("photo-field-add"));
+    await screen.findByTestId("photo-field-preview");
+    await fireEvent.press(screen.getByTestId("submit-button"));
+  }
+
+  afterEach(() => jest.restoreAllMocks());
+
+  it("sends the photo only after the check-in is created", async () => {
+    answerAlerts();
+    mockCreateCheckIn.mockResolvedValueOnce(makeCreated([makeProgress("h1")]));
+    mockUpload.mockResolvedValueOnce({ thumbnail_url: "t", url: "u" });
+    const screen = await renderScreen();
+
+    await submitWithPhoto(screen);
+
+    await waitFor(() =>
+      expect(mockUpload).toHaveBeenCalledWith("check-in-1", "file:///a.jpg"),
+    );
+    expect(mockCreateCheckIn).toHaveBeenCalledWith(
+      expect.not.objectContaining({ photo: expect.anything() }),
+    );
+  });
+
+  it("keeps the check-in when the photo fails", async () => {
+    const alertSpy = answerAlerts();
+    mockCreateCheckIn.mockResolvedValueOnce(makeCreated([makeProgress("h1")]));
+    mockUpload.mockRejectedValueOnce(
+      new ApiError("Unavailable", 503, {
+        detail: "Não foi possível salvar a foto. Tente novamente.",
+      }),
+    );
+    const screen = await renderScreen();
+
+    await submitWithPhoto(screen);
+
+    expect(
+      await screen.findByText("Check-in salvo! Seu progresso:"),
+    ).toBeTruthy();
+    expect(alertSpy).toHaveBeenCalledWith(
+      "A foto não foi enviada",
+      "Não foi possível salvar a foto. Tente novamente. O check-in foi salvo: abra-o hoje para tentar de novo.",
+    );
+  });
+
+  it("does not call the photo route without a photo", async () => {
+    mockCreateCheckIn.mockResolvedValueOnce(makeCreated([makeProgress("h1")]));
+    const screen = await renderScreen();
+
+    await submitCheckIn(screen);
+
+    await screen.findByText("Check-in salvo! Seu progresso:");
+    expect(mockUpload).not.toHaveBeenCalled();
   });
 });
