@@ -116,18 +116,19 @@ describe("HabitGoalScreen", () => {
   });
 
   it("does not save the goal change when the user cancels", async () => {
-  jest.spyOn(Alert, "alert").mockImplementation((_title, _message, buttons) => {
-    buttons?.find((button) => button.text === "Cancelar")?.onPress?.();
-  });
+    jest
+      .spyOn(Alert, "alert")
+      .mockImplementation((_title, _message, buttons) => {
+        buttons?.find((button) => button.text === "Cancelar")?.onPress?.();
+      });
 
-  const screen = await renderScreen();
+    const screen = await renderScreen();
 
-  await fireEvent.press(await screen.findByTestId("goal-period-month"));
-  await fireEvent.press(screen.getByText("Salvar"));
+    await fireEvent.press(await screen.findByTestId("goal-period-month"));
+    await fireEvent.press(screen.getByText("Salvar"));
 
-  expect(mockSetHabitGoal).not.toHaveBeenCalled();
-  expect(router.back).not.toHaveBeenCalled();
-
+    expect(mockSetHabitGoal).not.toHaveBeenCalled();
+    expect(router.back).not.toHaveBeenCalled();
   });
   it("shows a conflict error and stays on the screen when the change is rejected", async () => {
     mockSetHabitGoal.mockRejectedValueOnce(
@@ -149,7 +150,7 @@ describe("HabitGoalScreen", () => {
 
   it("sets a goal on a legacy habit without a confirmation warning", async () => {
     mockRequest.mockImplementation(async (path: string) => {
-     if (path === "/habits/habit-1") return makeHabit(null);
+      if (path === "/habits/habit-1") return makeHabit(null);
       throw new Error(`Unexpected request: ${path}`);
     });
     const alertSpy = jest.spyOn(Alert, "alert");
@@ -185,7 +186,7 @@ describe("HabitGoalScreen", () => {
 
   it("recovers the goal form after a failed habit load", async () => {
     mockRequest.mockRejectedValue(
-      new ApiError("Server error" , 500, {detail: "internal"}),
+      new ApiError("Server error", 500, { detail: "internal" }),
     );
 
     const screen = await renderScreen();
@@ -195,10 +196,8 @@ describe("HabitGoalScreen", () => {
     ).toBeTruthy();
 
     mockRequest.mockResolvedValue(makeHabit());
-    await fireEvent.press(screen.getByText("Tentar novamente"))
+    await fireEvent.press(screen.getByText("Tentar novamente"));
 
     expect(await screen.findByTestId("goal-period-week")).toBeTruthy();
-
-
   });
 });

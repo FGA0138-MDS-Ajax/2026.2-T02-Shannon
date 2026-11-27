@@ -9,7 +9,7 @@ export default function TabLayout() {
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: theme.colors.primary,
-        tabBarInactiveTintColor: "#6B6560",
+        tabBarInactiveTintColor: theme.colors.muted,
         tabBarLabelStyle: { fontFamily: theme.font.medium, fontSize: 13 },
         tabBarStyle: {
           backgroundColor: theme.colors.gray100,
@@ -40,6 +40,15 @@ export default function TabLayout() {
           title: "Check-in",
           tabBarIcon: ({ color }) => (
             <Lucide name="book-open-check" size={20} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="groups"
+        options={{
+          title: "Grupos",
+          tabBarIcon: ({ color }) => (
+            <Lucide name="users" size={20} color={color} />
           ),
         }}
       />

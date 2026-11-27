@@ -6,7 +6,7 @@ guardar nem servir o original. Decodificamos só os pixels e geramos bytes novos
 modo que metadados (EXIF, GPS, comentários, perfis ICC, XMP) e qualquer coisa colada
 no fim do arquivo ficam para trás.
 
-Função pura: não usa banco, armazenamento nem FastAPI. O limite de 5 MB do upload é
+Função pura: não usa banco, armazenamento nem FastAPI. O limite de 4 MB do upload é
 conferido na FOTO-5, antes de chamar `process_photo`.
 """
 

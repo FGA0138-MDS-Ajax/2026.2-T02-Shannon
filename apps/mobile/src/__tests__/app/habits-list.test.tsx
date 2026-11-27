@@ -155,23 +155,19 @@ describe("HabitsScreen", () => {
   });
 
   it("loads habits after retrying a failed request", async () => {
-  mockRequest.mockRejectedValue(
-    new ApiError("Server error", 500, { detail: "internal" }),
-  );
+    mockRequest.mockRejectedValue(
+      new ApiError("Server error", 500, { detail: "internal" }),
+    );
 
-  const screen = await renderScreen();
+    const screen = await renderScreen();
 
-  expect(
-    await screen.findByText("Erro no servidor. Tente de novo em instantes."),
-  ).toBeTruthy();
+    expect(
+      await screen.findByText("Erro no servidor. Tente de novo em instantes."),
+    ).toBeTruthy();
 
-  mockRequest.mockResolvedValue(habits);
-  await fireEvent.press(screen.getByText("Tentar novamente"));
+    mockRequest.mockResolvedValue(habits);
+    await fireEvent.press(screen.getByText("Tentar novamente"));
 
-  expect(await screen.findByText("2/4 nesta semana")).toBeTruthy();
-});
-
-
-
-
+    expect(await screen.findByText("2/4 nesta semana")).toBeTruthy();
+  });
 });

@@ -2,7 +2,9 @@ import { Lucide } from "@react-native-vector-icons/lucide";
 import { useEffect, useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { theme } from "@/config/theme";
-import { toApiDate } from "@/utils/date";
+import { MONTH_NAMES, toApiDate } from "@/utils/date";
+
+export type CalendarVariant = "dark" | "light";
 
 export interface CalendarProps {
   year?: number;
@@ -11,25 +13,56 @@ export interface CalendarProps {
   selectedDate?: string | null;
   onSelectDate?: (date: string) => void;
   onMonthChange?: (year: number, month: number) => void;
-  variant?: "dark" | "light";
+  variant?: CalendarVariant;
 }
 
-const MONTH_NAMES = [
-  "Janeiro",
-  "Fevereiro",
-  "Março",
-  "Abril",
-  "Maio",
-  "Junho",
-  "Julho",
-  "Agosto",
-  "Setembro",
-  "Outubro",
-  "Novembro",
-  "Dezembro",
-];
-
 const WEEKDAYS = ["DOM", "SEG", "TER", "QUA", "QUI", "SEX", "SÁB"];
+
+// O tema escuro é o destaque da aba de check-ins; o claro segue os cards.
+// Os tons escuros (zinc) só existem aqui, por isso não estão no theme.
+const palettes: Record<
+  CalendarVariant,
+  {
+    background: string;
+    border: string;
+    title: string;
+    navBackground: string;
+    weekday: string;
+    day: string;
+    checkInBackground: string;
+    checkInBorder: string;
+    today: string;
+  }
+> = {
+  dark: {
+    background: "#121214",
+    border: "#27272A",
+    title: theme.colors.surface,
+    navBackground: "#27272A",
+    weekday: "#A1A1AA",
+    day: "#A1A1AA",
+    checkInBackground: "#222226",
+    checkInBorder: "#3F3F46",
+    today: theme.colors.surface,
+  },
+  light: {
+    background: theme.colors.surface,
+    border: theme.colors.border,
+    title: theme.colors.text,
+    navBackground: theme.colors.gray100,
+    weekday: theme.colors.muted,
+    day: theme.colors.muted,
+    checkInBackground: theme.colors.gray100,
+    checkInBorder: theme.colors.border,
+    today: theme.colors.text,
+  },
+};
+
+/** Soma `delta` meses: `(2026, 12, 1)` → `[2027, 1]` */
+function shiftMonth(year: number, month: number, delta: number) {
+  const date = new Date(year, month - 1 + delta, 1);
+  return [date.getFullYear(), date.getMonth() + 1] as const;
+}
 
 export default function Calendar({
   year,
@@ -41,149 +74,95 @@ export default function Calendar({
   variant = "dark",
 }: CalendarProps) {
   const today = useMemo(() => new Date(), []);
-  const todayStr = useMemo(() => toApiDate(today), [today]);
+  const todayStr = toApiDate(today);
+  const colors = palettes[variant];
 
-  const [currentYear, setCurrentYear] = useState<number>(
-    year ?? today.getFullYear(),
-  );
-  const [currentMonth, setCurrentMonth] = useState<number>(
+  const [currentYear, setCurrentYear] = useState(year ?? today.getFullYear());
+  const [currentMonth, setCurrentMonth] = useState(
     month ?? today.getMonth() + 1,
   );
 
+  // Componente semicontrolado: segue `year`/`month` quando o pai os muda
   useEffect(() => {
-    if (year !== undefined) {
-      setCurrentYear(year);
-    }
+    if (year !== undefined) setCurrentYear(year);
   }, [year]);
 
   useEffect(() => {
-    if (month !== undefined) {
-      setCurrentMonth(month);
-    }
+    if (month !== undefined) setCurrentMonth(month);
   }, [month]);
 
-  const checkInDatesSet = useMemo(() => {
-    if (!checkInDates) return new Set<string>();
-    if (checkInDates instanceof Set) return checkInDates;
-    return new Set(checkInDates);
-  }, [checkInDates]);
+  const checkInDatesSet = useMemo(
+    () => new Set<string>(checkInDates ?? []),
+    [checkInDates],
+  );
 
-  const handlePrevMonth = () => {
-    let nextYear = currentYear;
-    let nextMonth = currentMonth - 1;
-    if (nextMonth < 1) {
-      nextMonth = 12;
-      nextYear -= 1;
-    }
+  const goToMonth = (delta: number) => {
+    const [nextYear, nextMonth] = shiftMonth(currentYear, currentMonth, delta);
     setCurrentYear(nextYear);
     setCurrentMonth(nextMonth);
     onMonthChange?.(nextYear, nextMonth);
   };
 
-  const handleNextMonth = () => {
-    let nextYear = currentYear;
-    let nextMonth = currentMonth + 1;
-    if (nextMonth > 12) {
-      nextMonth = 1;
-      nextYear += 1;
-    }
-    setCurrentYear(nextYear);
-    setCurrentMonth(nextMonth);
-    onMonthChange?.(nextYear, nextMonth);
-  };
-
-  // Cálculos do grid do mês
   const daysInMonth = new Date(currentYear, currentMonth, 0).getDate();
   const firstDayOfWeek = new Date(currentYear, currentMonth - 1, 1).getDay();
-
-  const isDark = variant === "dark";
-
-  const monthLabel = `${MONTH_NAMES[currentMonth - 1]} ${currentYear}`;
-
-  const padNumber = (num: number) => String(num).padStart(2, "0");
 
   return (
     <View
       style={[
         styles.container,
-        isDark ? styles.containerDark : styles.containerLight,
+        { backgroundColor: colors.background, borderColor: colors.border },
       ]}
       testID="calendar-container"
     >
-      {/* Cabeçalho do mês e navegação */}
       <View style={styles.header}>
         <Text
-          style={[
-            styles.monthTitle,
-            isDark ? styles.textDark : styles.textLight,
-          ]}
+          style={[styles.monthTitle, { color: colors.title }]}
           accessibilityRole="header"
         >
-          {monthLabel}
+          {MONTH_NAMES[currentMonth - 1]} {currentYear}
         </Text>
         <View style={styles.navigation}>
-          <Pressable
+          <NavButton
             testID="calendar-prev-month"
-            accessibilityLabel="Mês anterior"
-            onPress={handlePrevMonth}
-            style={({ pressed }) => [
-              styles.navButton,
-              isDark ? styles.navButtonDark : styles.navButtonLight,
-              pressed && styles.pressed,
-            ]}
-          >
-            <Lucide
-              name="chevron-left"
-              size={18}
-              color={isDark ? "#FFFFFF" : "#1C1917"}
-            />
-          </Pressable>
-          <Pressable
+            label="Mês anterior"
+            icon="chevron-left"
+            color={colors.title}
+            background={colors.navBackground}
+            onPress={() => goToMonth(-1)}
+          />
+          <NavButton
             testID="calendar-next-month"
-            accessibilityLabel="Próximo mês"
-            onPress={handleNextMonth}
-            style={({ pressed }) => [
-              styles.navButton,
-              isDark ? styles.navButtonDark : styles.navButtonLight,
-              pressed && styles.pressed,
-            ]}
-          >
-            <Lucide
-              name="chevron-right"
-              size={18}
-              color={isDark ? "#FFFFFF" : "#1C1917"}
-            />
-          </Pressable>
+            label="Próximo mês"
+            icon="chevron-right"
+            color={colors.title}
+            background={colors.navBackground}
+            onPress={() => goToMonth(1)}
+          />
         </View>
       </View>
 
-      {/* Dias da semana */}
       <View style={styles.weekdaysRow}>
         {WEEKDAYS.map((day) => (
-          <View key={day} style={styles.weekdayCol}>
-            <Text
-              style={[
-                styles.weekdayText,
-                isDark ? styles.weekdayTextDark : styles.weekdayTextLight,
-              ]}
-            >
-              {day}
-            </Text>
-          </View>
+          <Text
+            key={day}
+            style={[styles.weekdayText, { color: colors.weekday }]}
+          >
+            {day}
+          </Text>
         ))}
       </View>
 
-      {/* Grid de dias */}
       <View style={styles.daysGrid}>
-        {/* Espaços em branco antes do 1º dia */}
-        {WEEKDAYS.slice(0, firstDayOfWeek).map((wd) => (
-          <View key={`empty-${wd}`} style={styles.dayCellContainer} />
+        {/* Espaços em branco antes do dia 1 */}
+        {WEEKDAYS.slice(0, firstDayOfWeek).map((weekday) => (
+          <View key={`empty-${weekday}`} style={styles.dayCellContainer} />
         ))}
 
-        {/* Dias do mês */}
-        {Array.from({ length: daysInMonth }).map((_, index) => {
+        {Array.from({ length: daysInMonth }, (_, index) => {
           const dayNum = index + 1;
-          const dateStr = `${currentYear}-${padNumber(currentMonth)}-${padNumber(dayNum)}`;
+          const dateStr = toApiDate(
+            new Date(currentYear, currentMonth - 1, dayNum),
+          );
           const hasCheckIn = checkInDatesSet.has(dateStr);
           const isSelected = selectedDate === dateStr;
           const isToday = todayStr === dateStr;
@@ -196,15 +175,12 @@ export default function Calendar({
                 onPress={() => onSelectDate?.(dateStr)}
                 style={({ pressed }) => [
                   styles.dayCell,
-                  isDark ? styles.dayCellDark : styles.dayCellLight,
-                  hasCheckIn &&
-                    (isDark
-                      ? styles.dayCellCheckInDark
-                      : styles.dayCellCheckInLight),
-                  isToday &&
-                    (isDark
-                      ? styles.dayCellTodayDark
-                      : styles.dayCellTodayLight),
+                  hasCheckIn && {
+                    backgroundColor: colors.checkInBackground,
+                    borderWidth: 1,
+                    borderColor: colors.checkInBorder,
+                  },
+                  isToday && { borderWidth: 1.5, borderColor: colors.today },
                   isSelected && styles.dayCellSelected,
                   pressed && styles.pressed,
                 ]}
@@ -212,19 +188,17 @@ export default function Calendar({
                 <Text
                   style={[
                     styles.dayText,
-                    isDark ? styles.dayTextDark : styles.dayTextLight,
-                    hasCheckIn && styles.dayTextCheckIn,
+                    { color: colors.day },
+                    hasCheckIn && [styles.dayTextBold, { color: colors.title }],
                     isSelected && styles.dayTextSelected,
                   ]}
                 >
                   {dayNum}
                 </Text>
-
-                {/* Ponto laranja indicando check-in */}
                 {hasCheckIn && (
                   <View
                     testID={`check-in-dot-${dateStr}`}
-                    style={styles.orangeDot}
+                    style={styles.checkInDot}
                   />
                 )}
               </Pressable>
@@ -236,21 +210,45 @@ export default function Calendar({
   );
 }
 
+interface NavButtonProps {
+  testID: string;
+  label: string;
+  icon: "chevron-left" | "chevron-right";
+  color: string;
+  background: string;
+  onPress: () => void;
+}
+
+function NavButton({
+  testID,
+  label,
+  icon,
+  color,
+  background,
+  onPress,
+}: NavButtonProps) {
+  return (
+    <Pressable
+      testID={testID}
+      accessibilityLabel={label}
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.navButton,
+        { backgroundColor: background },
+        pressed && styles.pressed,
+      ]}
+    >
+      <Lucide name={icon} size={18} color={color} />
+    </Pressable>
+  );
+}
+
 const styles = StyleSheet.create({
   container: {
-    borderRadius: 20,
-    padding: 16,
     width: "100%",
-  },
-  containerDark: {
-    backgroundColor: "#121214",
+    borderRadius: 20,
     borderWidth: 1,
-    borderColor: "#27272A",
-  },
-  containerLight: {
-    backgroundColor: "#FFFFFF",
-    borderWidth: 1,
-    borderColor: "#E7E2DE",
+    padding: 16,
   },
   header: {
     flexDirection: "row",
@@ -262,12 +260,6 @@ const styles = StyleSheet.create({
     fontFamily: theme.font.bold,
     fontSize: 20,
     letterSpacing: -0.2,
-  },
-  textDark: {
-    color: "#FFFFFF",
-  },
-  textLight: {
-    color: "#1C1917",
   },
   navigation: {
     flexDirection: "row",
@@ -281,12 +273,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  navButtonDark: {
-    backgroundColor: "#27272A",
-  },
-  navButtonLight: {
-    backgroundColor: theme.colors.gray100,
-  },
   pressed: {
     opacity: 0.7,
     transform: [{ scale: 0.95 }],
@@ -295,21 +281,12 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     marginBottom: 8,
   },
-  weekdayCol: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
   weekdayText: {
+    flex: 1,
+    textAlign: "center",
     fontFamily: theme.font.semiBold,
     fontSize: 11,
     letterSpacing: 0.5,
-  },
-  weekdayTextDark: {
-    color: "#A1A1AA",
-  },
-  weekdayTextLight: {
-    color: "#78716C",
   },
   daysGrid: {
     flexDirection: "row",
@@ -317,7 +294,7 @@ const styles = StyleSheet.create({
     rowGap: 8,
   },
   dayCellContainer: {
-    width: "14.2857%", // 100% / 7 colunas
+    width: `${100 / 7}%`,
     paddingHorizontal: 2.5,
   },
   dayCell: {
@@ -326,31 +303,6 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     alignItems: "center",
     justifyContent: "center",
-    position: "relative",
-  },
-  dayCellDark: {
-    backgroundColor: "transparent",
-  },
-  dayCellLight: {
-    backgroundColor: "transparent",
-  },
-  dayCellCheckInDark: {
-    backgroundColor: "#222226",
-    borderWidth: 1,
-    borderColor: "#3F3F46",
-  },
-  dayCellCheckInLight: {
-    backgroundColor: "#F5F3F0",
-    borderWidth: 1,
-    borderColor: "#E7E2DE",
-  },
-  dayCellTodayDark: {
-    borderWidth: 1.5,
-    borderColor: "#FFFFFF",
-  },
-  dayCellTodayLight: {
-    borderWidth: 1.5,
-    borderColor: "#1C1917",
   },
   dayCellSelected: {
     borderWidth: 2,
@@ -360,21 +312,14 @@ const styles = StyleSheet.create({
     fontFamily: theme.font.medium,
     fontSize: 15,
   },
-  dayTextDark: {
-    color: "#A1A1AA",
-  },
-  dayTextLight: {
-    color: "#78716C",
-  },
-  dayTextCheckIn: {
-    color: "#FFFFFF",
+  dayTextBold: {
     fontFamily: theme.font.bold,
   },
   dayTextSelected: {
     color: theme.colors.primary,
     fontFamily: theme.font.bold,
   },
-  orangeDot: {
+  checkInDot: {
     position: "absolute",
     bottom: 5,
     width: 6,

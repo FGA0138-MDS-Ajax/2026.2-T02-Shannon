@@ -8,20 +8,18 @@ import {
   useRef,
   useState,
 } from "react";
-import {
-  api,
-  type LoginRequest,
-  type SignupRequest,
-  setAuthHandlers,
-  toStoredTokens,
-  type UserPublic,
-} from "@/services/api";
+import { api, setAuthHandlers, toStoredTokens } from "@/services/api";
 import {
   clearTokens,
   getTokens,
   type StoredTokens,
   saveTokens,
 } from "@/services/token-storage";
+import type {
+  LoginRequest,
+  SignupRequest,
+  UserPublic,
+} from "@/services/types/auth";
 
 export interface AuthContextType {
   user: UserPublic | null;

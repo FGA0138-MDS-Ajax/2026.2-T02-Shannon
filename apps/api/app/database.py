@@ -24,6 +24,7 @@ from app.photos import (
 engine = create_engine(
   settings.database_url_sync,
   echo=False,
+  pool_pre_ping=True,
 )
 
 

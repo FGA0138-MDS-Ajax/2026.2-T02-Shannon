@@ -1,7 +1,7 @@
 import { useCallback } from "react";
 import useSWR from "swr";
 import { getErrorMessage, getFieldErrors } from "@/services/api-errors";
-import { getUserStatistics } from "@/services/statistics-api";
+import { getUserStatistics, statisticsKeys } from "@/services/statistics-api";
 import type { StatisticsMode } from "@/services/types/statistics";
 
 export const MIN_DAYS = 1;
@@ -19,7 +19,7 @@ interface Filters {
 export function useUserStatistics({ mode = "calendar", days = 30 }: Filters) {
   // A chave muda com os filtros, então o SWR descarta respostas de filtros antigos
   const { data, error, mutate } = useSWR(
-    isValidDays(days) ? ["/user/statistics", mode, days] : null,
+    isValidDays(days) ? statisticsKeys.user(mode, days) : null,
     () => getUserStatistics({ mode, days }),
     { keepPreviousData: true },
   );

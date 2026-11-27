@@ -28,7 +28,7 @@ describe("GoalProgress", () => {
   it("shows the current streak and record", async () => {
     const screen = await render(<GoalProgress progress={progress} />);
 
-    expect(screen.getByText("Streak: 2 semanas")).toBeTruthy();
+    expect(screen.getByText("Sequência: 2 semanas")).toBeTruthy();
     expect(screen.getByText("Recorde: 4 semanas")).toBeTruthy();
   });
 
@@ -37,27 +37,22 @@ describe("GoalProgress", () => {
     ["in_progress", "Falta 1", 2],
     ["at_risk", "Não pode faltar nenhum dia", 1],
     ["failed", "Este período não fecha mais; recomece no próximo", 2],
-    ["ended", "Streak final", 2],
-  ] as const)(
-    "renders the %s status",
-    async (status, label, done) => {
-      const statusProgress: HabitProgress = {
-        ...progress,
-        status,
-        current_period: { ...progress.current_period, done },
-      };
-      const screen = await render(
-        <GoalProgress progress={statusProgress} />,
-      );
+    ["ended", "Sequência final", 2],
+  ] as const)("renders the %s status", async (status, label, done) => {
+    const statusProgress: HabitProgress = {
+      ...progress,
+      status,
+      current_period: { ...progress.current_period, done },
+    };
+    const screen = await render(<GoalProgress progress={statusProgress} />);
 
-      expect(screen.getByText(label)).toBeTruthy();
-      if (status === "at_risk") {
-        expect(screen.getByTestId("goal-progress-status")).toHaveStyle({
-          color: "#C2410C",
-        });
-      }
-    },
-  );
+    expect(screen.getByText(label)).toBeTruthy();
+    if (status === "at_risk") {
+      expect(screen.getByTestId("goal-progress-status")).toHaveStyle({
+        color: "#C2410C",
+      });
+    }
+  });
 
   it("caps the progress bar at 100 percent", async () => {
     const overTarget: HabitProgress = {
@@ -67,8 +62,8 @@ describe("GoalProgress", () => {
     const screen = await render(<GoalProgress progress={overTarget} />);
 
     expect(screen.getByText("4 de 3")).toBeTruthy();
-    expect(screen.getByTestId("goal-progress-fill")).toHaveStyle({
-      width: "100%",
+    expect(screen.getByTestId("goal-progress-bar")).toHaveAccessibilityValue({
+      now: 100,
     });
   });
 

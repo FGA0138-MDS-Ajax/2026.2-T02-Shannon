@@ -17,6 +17,12 @@ jest.mock("@/hooks/useHabitsCheckIns", () => ({
   }),
 }));
 
+// A folha de check-in rápido busca os check-ins do hábito para numerar o título
+jest.mock("@/services/api", () => ({
+  ...jest.requireActual("@/services/api"),
+  request: jest.fn(async () => []),
+}));
+
 jest.mock("@/hooks/useUserStatistics", () => ({
   ...jest.requireActual("@/hooks/useUserStatistics"),
   useUserStatistics: jest.fn(),
@@ -89,6 +95,18 @@ describe("StatisticsPanel", () => {
     const screen = await render(<StatisticsPanel />);
 
     expect(screen.getByTestId("statistics-content")).toBeTruthy();
+  });
+
+  it("opens the quick check-in from a habit card", async () => {
+    mockHook({ status: "success", data: statistics });
+
+    const screen = await render(<StatisticsPanel />);
+    await fireEvent.press(
+      screen.getByLabelText("Fazer check-in em Ler 10 páginas"),
+    );
+
+    expect(screen.getByTestId("quick-check-in")).toBeTruthy();
+    expect(screen.getByTestId("quick-check-in-title")).toBeTruthy();
   });
 
   it("does not apply days outside 1 to 365", async () => {
