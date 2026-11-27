@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.auth.router import auth_router
 from app.checkins.router import check_ins_router
+from app.config import settings
 from app.goals.router import goals_router
 from app.group.feed import feed_router
 from app.group.habits import group_habits_router
@@ -28,7 +29,7 @@ app = FastAPI(lifespan=lifespan)
 # Middlewares
 
 # CORS
-origins = ["*"]
+origins = settings.cors_origins_list
 
 app.add_middleware(
   CORSMiddleware,

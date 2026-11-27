@@ -28,6 +28,12 @@ dev = [
 [tool.fastapi]
 entrypoint = "app.main:app"
 
+[tool.vercel]
+entrypoint = "app.main:app"
+
+[tool.vercel.scripts]
+build = "python scripts/vercel_build.py"
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]

@@ -38,3 +38,6 @@ Thumbs.db
 web-build/
 ios/
 android/
+
+# Vercel
+.vercel/
