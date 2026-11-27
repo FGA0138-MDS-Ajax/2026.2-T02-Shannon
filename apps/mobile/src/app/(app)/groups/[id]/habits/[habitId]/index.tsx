@@ -17,6 +17,7 @@ import {
   Section,
 } from "@/components/ui";
 import { confirmAction, useAsyncAction } from "@/hooks/useAsyncAction";
+import { usePageTitle } from "@/hooks/usePageTitle";
 import { useRefreshOnFocus } from "@/hooks/useRefreshOnFocus";
 import { useSession } from "@/hooks/useSession";
 import { request } from "@/services/api";
@@ -49,6 +50,7 @@ export default function GroupHabitDetailScreen() {
 
   useRefreshOnFocus(refreshHabit);
   useRefreshOnFocus(refreshStats);
+  usePageTitle(habit.data?.name);
 
   const handleFinish = () =>
     confirmAction({

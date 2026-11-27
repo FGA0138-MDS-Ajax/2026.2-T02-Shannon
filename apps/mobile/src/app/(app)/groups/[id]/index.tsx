@@ -17,6 +17,7 @@ import {
   SegmentedTabs,
 } from "@/components/ui";
 import { useGroupPeriod } from "@/hooks/useGroupPeriod";
+import { usePageTitle } from "@/hooks/usePageTitle";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { useRefreshOnFocus } from "@/hooks/useRefreshOnFocus";
 import { useSession } from "@/hooks/useSession";
@@ -65,6 +66,7 @@ export default function GroupDetailScreen() {
 
   useRefreshOnFocus(refreshGroup);
   useRefreshOnFocus(refreshBoard);
+  usePageTitle(group?.name);
 
   const colorOf = useMemo(
     () => memberColors(group?.members ?? []),

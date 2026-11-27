@@ -7,6 +7,7 @@ import HabitCheckInsSection from "@/components/habit-detail/habit-check-ins-sect
 import HabitGoalSection from "@/components/habit-detail/habit-goal-section";
 import HabitSummary from "@/components/habit-detail/habit-summary";
 import { BackButton, QueryState, Screen } from "@/components/ui";
+import { usePageTitle } from "@/hooks/usePageTitle";
 import { useRefreshOnFocus } from "@/hooks/useRefreshOnFocus";
 import { useSession } from "@/hooks/useSession";
 import { request } from "@/services/api";
@@ -24,6 +25,7 @@ export default function HabitDetailScreen() {
   } = useSWR<Habit>(habitKeys.detail(id), request);
 
   useRefreshOnFocus(refreshHabit);
+  usePageTitle(habit?.name);
 
   const handleFinished = (updated: Habit) => {
     refreshHabit(updated, { revalidate: false });
