@@ -65,10 +65,10 @@ O sistema **HABBIT** está organizado logicamente em três subsistemas principai
 flowchart LR
     subgraph MobileClient["Subsistema 1: MobileClient (apps/mobile)"]
         direction TB
-        AppRoutes["app/ (Expo Router)\n• (auth): login, signup\n• (app): index, habits, new-habit,\n  check-in, check-ins, user"]
-        Comp["components/\n• button, input, habit-card,\n  habit-form, category-picker, calendar"]
-        HooksCtx["contexts/ & hooks/ & config/\n• AuthContext, useSession\n• SWRConfig (swr.tsx)\n• theme.ts, habit-categories.ts"]
-        Services["services/ (Service Integration)\n• api.ts (Axios + Refresh Queue)\n• habits-api.ts, check-ins-api.ts\n• token-storage.ts / .web.ts"]
+        AppRoutes["app/ (Expo Router)\n• (auth): login, signup\n• (app)/(tabs): index, habits,\n  check-in, groups, user\n• (app): habits/*, check-ins/*, groups/*"]
+        Comp["components/\n• ui, statistics, groups, check-in-flow,\n  forms, habit-detail, habit-card,\n  calendar, goal-picker, category-picker"]
+        HooksCtx["contexts/ & hooks/ & config/\n• AuthContext, useSession, useCheckInFlow,\n  useUserStatistics, useRefreshOnFocus\n• SWRConfig (swr.tsx)\n• theme.ts, habit-categories.ts"]
+        Services["services/ (Service Integration)\n• api.ts (fetch + refresh em voo único)\n• habits-api, goals-api, check-ins-api,\n  statistics-api, groups-api\n• token-storage.ts / .web.ts"]
 
         AppRoutes --> Comp
         AppRoutes --> HooksCtx
@@ -81,7 +81,7 @@ flowchart LR
         AuthM["app/auth/\n(Auth & Session Module)"]
         HabitM["app/habits/\n(Habit Module)"]
         GoalM["app/goals/\n(Goal & Streak Module)"]
-        CheckInM["app/checkins/ & app/photos/\n(Check-In & Photos Module)"]
+        CheckInM["app/checkins/, app/photos/\n& app/storage/\n(Check-In, Photos & Storage)"]
         StatM["app/statistics/\n(Statistics & Calendar Module)"]
         GroupM["app/group/\n(Group Module)"]
 
@@ -117,13 +117,13 @@ Responsável pela interface gráfica, navegação, cache reativo e comunicação
 
 - **`app/` (*UI & Telas via Expo Router*):** Organiza as telas por grupos de rotas:
   - `(auth)/login.tsx` e `(auth)/signup.tsx`: Fluxos públicos de entrada e cadastro;
-  - `(app)/index.tsx`: Painel principal do usuário autenticado;
-  - `(app)/habits.tsx`, `(app)/new-habit.tsx` e `(app)/habits/[id]`: Listagem com progresso, criação e gerenciamento detalhado de hábitos e metas;
-  - `(app)/check-in.tsx` e `(app)/check-ins/[id]`: Fluxo guiado de check-in por categoria e tela de detalhe/edição/exclusão de check-in;
-  - `(app)/user.tsx`: Tela de perfil e sessão do usuário consumindo dados via SWR.
-- **`components/` (*Visual Components*):** Catálogo de componentes visuais isolados, testados com Jest e documentados no Storybook (`button`, `input`, `habit-card`, `habit-form`, `category-picker`, `calendar`).
-- **`contexts/`, `hooks/` e `config/`:** Gerenciamento global de sessão (`AuthContext`), configuração global do **SWR** (`src/config/swr.tsx`), catálogo de categorias (`habit-categories.ts`) e tokens de design (`theme.ts`).
-- **`services/` (*Service Integration*):** Camada única de rede baseada em **Axios** (`api.ts`), contendo interceptors automáticos que injetam o `Bearer access_token` e enfileiram requisições concorrentes durante a renovação transparente do `refresh_token` em caso de `HTTP 401`.
+  - `(app)/(tabs)/`: navegação principal por abas — `index.tsx` (Home com painel de estatísticas e check-in rápido), `habits.tsx`, `check-in.tsx`, `groups.tsx` e `user.tsx` (perfil e sessão, consumindo dados via SWR);
+  - `(app)/habits/create.tsx` e `(app)/habits/[id]/` (`index`, `edit`, `goal`): criação e gerenciamento detalhado de hábitos e metas;
+  - `(app)/check-ins/create.tsx` e `(app)/check-ins/[id]/` (`index`, `edit`): fluxo guiado de check-in e detalhe/edição/exclusão;
+  - `(app)/groups/` (`create`, `join`, `[id]/` com `edit` e `habits/`): criação, entrada por código, detalhe do grupo e hábitos de grupo.
+- **`components/` (*Visual Components*):** Componentes organizados por domínio — `ui/` (cartões, seções, abas segmentadas, estados de consulta etc.), `statistics/`, `groups/`, `check-in-flow/`, `forms/`, `habit-detail/` e componentes isolados (`button`, `input`, `habit-card`, `calendar`, `goal-picker`, `category-picker`), testados com Jest e, em parte, documentados no Storybook.
+- **`contexts/`, `hooks/` e `config/`:** Gerenciamento global de sessão (`AuthContext`), configuração global do **SWR** (`src/config/swr.tsx`), hooks de fluxo (`useCheckInFlow`, `useUserStatistics`, `useRefreshOnFocus`, `useAsyncAction`), catálogo de categorias (`habit-categories.ts`) e tokens de design (`theme.ts`).
+- **`services/` (*Service Integration*):** Camada única de rede baseada em **`fetch`** (`api.ts`), com serviços por domínio (`habits-api`, `goals-api`, `check-ins-api`, `statistics-api`, `groups-api`), injeção automática do `Bearer access_token` e renovação transparente do `refresh_token` em caso de `HTTP 401`, compartilhando um único *refresh* em voo entre requisições concorrentes. Detalhes em [Arquitetura do Mobile](mobile.md).
 
 ---
 

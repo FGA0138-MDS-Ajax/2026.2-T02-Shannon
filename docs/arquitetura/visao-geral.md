@@ -28,8 +28,8 @@ flowchart TB
     subgraph Client["Camada 1: Client Mobile & PWA (React Native + Expo + TypeScript)"]
         UI["Telas & Componentes\n(Expo Router + StyleSheet)"]
         SWR["Cache Reativo & Estado\n(SWR + AuthContext)"]
-        Axios["Integração HTTP\n(Axios + Refresh Interceptor)"]
-        UI --> SWR --> Axios
+        Http["Integração HTTP\n(fetch + Refresh em voo único)"]
+        UI --> SWR --> Http
     end
 
     subgraph Edge["Borda Gerenciada (Vercel Edge Proxy)"]
@@ -59,7 +59,7 @@ flowchart TB
     R2[("Cloudflare R2\n[Object Storage S3 — habbit-photos-prod]")]
 
     Usuario -->|"Toques / Interação"| UI
-    Axios -->|"HTTPS / JSON"| VercelEdge
+    Http -->|"HTTPS / JSON"| VercelEdge
     VercelEdge -->|"ASGI"| Server
 
     AuthMod -->|"TLS (psycopg3 -pooler)"| TUsers

@@ -108,6 +108,8 @@ nav:
       - "Visão Geral, Metas e Restrições": arquitetura/visao-geral.md
       - "Visão de Uso e Organização Lógica": arquitetura/visoes-uso-logica.md
       - "Visão Estrutural e Modelo de Dados": arquitetura/modelo-dados.md
+      - "Arquitetura do Mobile": arquitetura/mobile.md
+      - "Fotos de Check-in e Perfil": arquitetura/fotos-perfil.md
       - "Motor de Metas, Streaks e Estatísticas": arquitetura/motor-metas-estatisticas.md
       - "Visão de Implantação e CI/CD": arquitetura/implantacao.md
       - "Decisões de Arquitetura (ADRs)": arquitetura/adrs.md
