@@ -17,6 +17,9 @@ Este catálogo registra as principais **Decisões de Arquitetura (*Architecture 
 | **[ADR-007](#adr-007-grupos-multi-habito-trava-pessimista-sucessao-e-estado-sob-demanda)** | Grupos Multi-hábito, Trava Pessimista (`FOR UPDATE`), Sucessão e Estado Sob Demanda | **Aceito** | `C5-RF-11` a `C5-RF-13`, `D-05`, `D-06` | v4.0 |
 | **[ADR-008](#adr-008-feed-de-grupo-com-paginacao-por-cursor-opaco-e-polling-sem-websocket)** | Feed de Grupo com Paginação por Cursor Opaco e *Polling* (sem WebSocket) | **Aceito** | `C7-RF-17`, `US-30`, `D-07` | v4.0 |
 | **[ADR-009](#adr-009-armazenamento-de-fotos-de-check-in-em-object-storage-s3-compativel-cloudflare-r2)** | Armazenamento de Fotos de Check-in em Object Storage S3-Compatível (Cloudflare R2) | **Aceito (S6)** | `C7-RF-16`, `C7-RNF-07`, `US-28`, `US-29` | v4.0 |
+| **[ADR-010](#adr-010-hospedagem-serverless-da-api-na-vercel-hobby-e-postgresql-17-no-neon-free)** | Hospedagem *Serverless* da API na Vercel Hobby (`gru1`) e PostgreSQL 17 no Neon Free (`aws-sa-east-1`) | **Aceito** | `C1-RNF-02`, `C4-RNF-05` | v4.1 |
+| **[ADR-011](#adr-011-entrega-oficial-via-expo-web-pwa-e-retirada-do-nginx)** | Entrega Oficial via Expo Web (PWA) e Retirada do NGINX | **Aceito** | `C1-RNF-02`, `C4-RNF-06` | v4.1 |
+| **[ADR-012](#adr-012-publicacao-manual-por-cli-e-script-local-sem-tokens-no-github)** | Publicação Manual por CLI e Script Local (`scripts/deploy.sh`) sem Tokens no GitHub | **Aceito** | `C1-RNF-01` a `03` | v4.1 |
 
 ---
 
@@ -109,3 +112,35 @@ Este catálogo registra as principais **Decisões de Arquitetura (*Architecture 
 - **Contexto:** Salvar binários de imagem diretamente no PostgreSQL degrada backups e consultas, enquanto serviços de *object storage* convencionais cobram tráfego de saída (*egress*) na exibição de fotos em feeds.
 - **Decisão:** Adotar o **Cloudflare R2** acessado via SDK `boto3` (API S3-compatível), isolado por uma interface `Storage` com implementações `S3Storage` (produção) e `FakeStorage` (testes automatizados), armazenando versão cheia e miniatura acessadas por URLs temporárias assinadas e removidas automaticamente nas exclusões (`FOTO-1`–`FOTO-7`).
 - **Consequências:** Zero custo de *egress*, conformidade com `C7-RNF-07`, banco relacional enxuto e suíte `pytest` rápida sem dependência de rede externa.
+
+---
+
+## ADR-010: Hospedagem *Serverless* da API na Vercel Hobby e PostgreSQL 17 no Neon Free
+
+- **Status:** Aceito (Deploy / v4.1)
+- **Contexto:** O projeto precisava operar 24 horas em endereço público HTTPS, com custo zero, sem exigência de cartão de crédito e sem administração manual de servidor Linux (VPS), mantendo baixa latência no Brasil.
+- **Decisão:**
+  1. Publicar a API FastAPI (`apps/api`) na **Vercel Hobby** com Python 3.13 + `uv` nativo na região **São Paulo (`gru1`)** (`apps/api/vercel.json`) e `CORS_ORIGINS` restrito à URL da PWA;
+  2. Provisionar o **PostgreSQL 17** no **Neon Free** na região **AWS São Paulo (`aws-sa-east-1`)**, usando a URL com **`-pooler`** (`DATABASE_URL`) e `pool_pre_ping=True` em execução, e a URL direta (`DIRECT_DATABASE_URL`, sem `-pooler`) para rodar `alembic upgrade head` no build de produção (`scripts/vercel_build.py`, apenas quando `VERCEL_ENV=production`).
+- **Consequências:** Custo R$ 0,00/mês, co-localização API ↔ Banco em São Paulo e reconexão transparente após suspensão por inatividade do Neon; sujeito ao teto de 4,5 MB por requisição na Vercel Hobby (fotos limitadas a 4 MB na API) e às cotas mensais gratuitas (4 CPU-h na Vercel e 100 CU-h no Neon).
+
+---
+
+## ADR-011: Entrega Oficial via Expo Web (PWA) e Retirada do NGINX
+
+- **Status:** Aceito (Deploy / v4.1)
+- **Contexto:** Publicar nas lojas oficiais (Google Play e Apple App Store) é inviável para o prazo e orçamento da disciplina (taxas pagas e regra de 12 testadores por 14 dias na Play Store). Além disso, o PaaS escolhido já fornece proxy reverso e TLS automáticos na borda.
+- **Decisão:**
+  1. Adotar o **Expo Web (`output: "static"`) publicado como PWA instalável na Vercel** (`https://habbit-routine.vercel.app`, com `manifest.json`, ícones e meta tags Apple em `+html.tsx`) como entrega oficial multiplataforma;
+  2. Retirar o **NGINX** da topologia de produção, delegando terminação TLS/HTTPS, compressão e repasse de IP (`X-Forwarded-For`) à camada de borda da Vercel;
+  3. Manter provisoriamente o armazenamento de tokens em `localStorage` (`token-storage.web.ts`) para a apresentação, registrando-o como limitação conhecida de segurança.
+- **Consequências:** Acesso imediato por link único em Android, iOS e desktop sem depender de lojas nem de configuração manual de NGINX/Certbot; componentes nativos sem equivalente web (`Alert.alert` e `@expo/ui` no `DateField`) precisam de adaptação dedicada para o navegador em issue própria do Front-end.
+
+---
+
+## ADR-012: Publicação Manual por CLI e Script Local sem Tokens no GitHub
+
+- **Status:** Aceito (Deploy / v4.1)
+- **Contexto:** Os projetos na Vercel (`habbit-api` e `habbit-web`) e o banco no Neon estão hospedados na conta pessoal do mantenedor de deploy, enquanto o repositório no GitHub é público e compartilhado com toda a equipe. Armazenar `VERCEL_TOKEN` nos *Secrets* do GitHub Actions permitiria que qualquer pessoa com escrita no repositório lesse o token por meio de workflows.
+- **Decisão:** Não conectar o repositório GitHub aos projetos da Vercel e não gravar nenhum token da Vercel no GitHub. A publicação em produção parte exclusivamente da branch `main` por meio do script manual [`scripts/deploy.sh`](https://github.com/FGA0138-MDS-Ajax/2026.2-T02-Shannon/blob/main/scripts/deploy.sh), que valida o estado da `main` e do CI (GitHub Actions) e utiliza apenas o login local da Vercel CLI (`vercel login`) na máquina do mantenedor.
+- **Consequências:** Isolamento completo das credenciais pessoais do mantenedor e publicação de banco (via build da API), API e PWA em um único comando; em contrapartida, o deploy não é CD automático após merge na `main` e depende de disparo manual.
