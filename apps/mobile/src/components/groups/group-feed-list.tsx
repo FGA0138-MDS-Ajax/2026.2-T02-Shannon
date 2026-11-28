@@ -49,6 +49,7 @@ export default function GroupFeedList({
             category={habitsById.get(item.habits[0]?.id)?.category}
             isMine={item.author.id === userId}
             onPress={() => onOpen(item)}
+            onPhotoExpired={() => feed.refresh()}
           />
         </FadeIn>
       ))}

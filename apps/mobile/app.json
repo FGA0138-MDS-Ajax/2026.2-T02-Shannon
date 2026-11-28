@@ -36,6 +36,14 @@
       "expo-font",
       "@react-native-vector-icons/lucide",
       "expo-image",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "O Habbit usa suas fotos para anexar uma imagem ao check-in.",
+          "cameraPermission": "O Habbit usa a câmera para tirar a foto do check-in.",
+          "microphonePermission": false
+        }
+      ],
       "expo-status-bar",
       "expo-web-browser"
     ],

@@ -78,6 +78,7 @@ export default function CheckInScreen() {
             key={checkIn.id}
             checkIn={checkIn}
             onPress={() => router.push(`/check-ins/${checkIn.id}`)}
+            onPhotoExpired={() => refreshCheckIns()}
           />
         ))}
       </View>

@@ -7,6 +7,7 @@ import {
 } from "@/components/forms/check-in-fields";
 import { ErrorBanner } from "@/components/ui";
 import { theme } from "@/config/theme";
+import PhotoField, { type PhotoFieldProps } from "./photo-field";
 
 export interface DetailsStepProps {
   values: CheckInFieldValues;
@@ -16,9 +17,10 @@ export interface DetailsStepProps {
   submitting: boolean;
   onChange: (values: CheckInFieldValues) => void;
   onSubmit: () => void;
+  photo: Omit<PhotoFieldProps, "disabled">;
 }
 
-// Etapa 3: título, descrição e duração do check-in
+// Etapa 3: título, descrição, duração e a foto opcional do check-in
 export default function DetailsStep({
   values,
   errors,
@@ -27,6 +29,7 @@ export default function DetailsStep({
   submitting,
   onChange,
   onSubmit,
+  photo,
 }: DetailsStepProps) {
   return (
     <>
@@ -37,6 +40,7 @@ export default function DetailsStep({
         keyboardShouldPersistTaps="handled"
       >
         <CheckInFields values={values} errors={errors} onChange={onChange} />
+        <PhotoField {...photo} disabled={submitting} />
       </ScrollView>
 
       <View style={styles.footer}>
@@ -46,7 +50,7 @@ export default function DetailsStep({
         <Button
           testID="submit-button"
           // Travado durante o envio para não criar check-in duplicado
-          disabled={submitting}
+          disabled={submitting || photo.preparing}
           onPress={onSubmit}
         >
           {submitting ? "Enviando..." : "Enviar"}

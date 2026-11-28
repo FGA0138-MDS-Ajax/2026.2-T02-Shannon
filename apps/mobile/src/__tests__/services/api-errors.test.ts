@@ -41,6 +41,19 @@ describe("getErrorMessage", () => {
     );
   });
 
+  it("should show the 503 text from the API, which is meant for the user", () => {
+    const error = apiError(503, {
+      detail: "Não foi possível salvar a foto. Tente novamente.",
+    });
+
+    expect(getErrorMessage(error)).toBe(
+      "Não foi possível salvar a foto. Tente novamente.",
+    );
+    expect(getErrorMessage(apiError(503, null))).toBe(
+      "Erro no servidor. Tente de novo em instantes.",
+    );
+  });
+
   it("should treat anything that is not an ApiError as a network failure", () => {
     expect(getErrorMessage(new TypeError("Network request failed"))).toBe(
       "Não foi possível conectar ao servidor. Verifique sua internet.",

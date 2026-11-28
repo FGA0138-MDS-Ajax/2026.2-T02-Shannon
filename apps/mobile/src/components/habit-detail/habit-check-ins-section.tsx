@@ -1,6 +1,7 @@
 import { router } from "expo-router";
-import { StyleSheet, Text } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 import useSWR from "swr";
+import CheckInPhoto from "@/components/check-in-photo";
 import { Card, ErrorBanner, Loading, Section } from "@/components/ui";
 import { theme } from "@/config/theme";
 import { useRefreshOnFocus } from "@/hooks/useRefreshOnFocus";
@@ -44,11 +45,21 @@ export default function HabitCheckInsSection({ habitId }: { habitId: string }) {
         onPress={() => router.push(`/check-ins/${checkIn.id}`)}
         style={styles.item}
       >
-        <Text style={styles.title}>{checkIn.title}</Text>
-        <Text style={styles.details}>
-          {formatDateTime(checkIn.created_at)}
-          {checkIn.duration ? ` · ${formatDuration(checkIn.duration)}` : ""}
-        </Text>
+        <View style={styles.texts}>
+          <Text style={styles.title}>{checkIn.title}</Text>
+          <Text style={styles.details}>
+            {formatDateTime(checkIn.created_at)}
+            {checkIn.duration ? ` · ${formatDuration(checkIn.duration)}` : ""}
+          </Text>
+        </View>
+        {/* `null` também quando quem lê não pode ver a foto */}
+        {checkIn.photo && (
+          <CheckInPhoto
+            photo={checkIn.photo}
+            variant="thumb"
+            onExpired={() => mutate()}
+          />
+        )}
       </Card>
     ));
   };
@@ -63,6 +74,12 @@ const styles = StyleSheet.create({
     color: theme.colors.label,
   },
   item: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  texts: {
+    flex: 1,
     gap: 2,
   },
   title: {

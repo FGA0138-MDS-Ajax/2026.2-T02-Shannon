@@ -1,3 +1,5 @@
+import { File } from "expo-file-system";
+import { Platform } from "react-native";
 import { request, toQueryString } from "@/services/api";
 import { isGroupDataKey } from "@/services/groups-api";
 import { isHomeDataKey } from "@/services/statistics-api";
@@ -6,6 +8,7 @@ import type {
   CheckInCategoriesResponse,
   CheckInCreate,
   CheckInCreated,
+  CheckInPhotoPublic,
   CheckInsPage,
   CheckInUpdate,
   HabitOptionsPage,
@@ -33,6 +36,15 @@ export function isAffectedByCheckIn(key: unknown): boolean {
     typeof key === "string" &&
     (key.startsWith("/habits/") || key.startsWith("/goals/habits/"));
   return isHomeDataKey(key) || isGroupDataKey(key) || isHabitKey;
+}
+
+/**
+ * Chaves que mostram a foto de um check-in: o detalhe, a lista da aba
+ * Check-in, o histórico dos hábitos e o feed dos grupos.
+ */
+export function isAffectedByPhoto(key: unknown): boolean {
+  if (typeof key === "string" && key.startsWith("/check-ins")) return true;
+  return isAffectedByCheckIn(key);
 }
 
 /**
@@ -88,4 +100,37 @@ export function updateCheckIn(
 
 export function deleteCheckIn(id: string): Promise<void> {
   return request<void>(`/check-ins/${id}`, { method: "DELETE" });
+}
+
+// A API reconhece o formato pelos bytes; o nome do arquivo só precisa existir
+async function photoFormData(uri: string): Promise<FormData> {
+  const form = new FormData();
+  if (Platform.OS === "web") {
+    const blob = await (await fetch(uri)).blob();
+    form.append("photo", blob, "photo.jpg");
+  } else {
+    // O fetch do Expo não aceita o `{ uri, name, type }` antigo do React
+    // Native: o arquivo vai como File do expo-file-system, que é um Blob
+    form.append("photo", new File(uri));
+  }
+  return form;
+}
+
+/**
+ * Envia ou troca a foto. Só o autor, e só em check-in de hoje (São Paulo).
+ * `uri` deve ser a imagem já preparada (JPEG de até 4 MB).
+ */
+export async function uploadCheckInPhoto(
+  id: string,
+  uri: string,
+): Promise<CheckInPhotoPublic> {
+  return request<CheckInPhotoPublic>(`/check-ins/${id}/photo`, {
+    method: "PUT",
+    body: await photoFormData(uri),
+  });
+}
+
+/** Responde 204 mesmo se o check-in já estava sem foto. */
+export function removeCheckInPhoto(id: string): Promise<void> {
+  return request<void>(`/check-ins/${id}/photo`, { method: "DELETE" });
 }

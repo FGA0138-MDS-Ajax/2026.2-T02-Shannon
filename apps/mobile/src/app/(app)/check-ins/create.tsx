@@ -71,6 +71,13 @@ export default function CreateCheckInScreen() {
             submitting={flow.submitting}
             onChange={flow.setFields}
             onSubmit={flow.submit}
+            photo={{
+              uri: flow.photo?.uri ?? null,
+              preparing: flow.preparingPhoto,
+              error: flow.photoError,
+              onChoose: flow.choosePhoto,
+              onRemove: flow.removePhoto,
+            }}
           />
         );
     }

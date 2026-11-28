@@ -3,6 +3,7 @@
 // chegam em ISO 8601 UTC.
 
 import type {
+  CheckInPhotoPublic,
   GoalPeriod,
   Habit,
   HabitCreate,
@@ -106,6 +107,8 @@ export interface FeedItem {
   // Só os hábitos do grupo, nunca os pessoais.
   habits: { id: string; name: string }[];
   created_at: string;
+  // Só a miniatura (`url: null`).
+  photo?: CheckInPhotoPublic | null;
 }
 
 export interface FeedPage {
