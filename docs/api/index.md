@@ -14,6 +14,8 @@ Esta página documenta o contrato formal da API REST do **HABBIT** exposta pelo 
 | **Auth** | `POST` | `/auth/refresh` | Renovação do par de tokens com rotação de JTI | Refresh Token | `200` | `401`, `422` |
 | **Auth** | `POST` | `/auth/logout` | Encerramento idempotente da sessão no servidor | Refresh Token | `204` | `422` |
 | **Session** | `GET` | `/auth/session/me` | Dados do usuário autenticado | Bearer JWT | `200` | `401` |
+| **Session** | `PATCH` | `/auth/session/me` | Edição parcial de nome, *username* e e-mail (e-mail exige a senha atual) | Bearer JWT | `200` | `400`, `401`, `409`, `422` |
+| **Session** | `PUT` | `/auth/session/me/password` | Troca de senha; encerra todas as sessões e devolve novo par de tokens | Bearer JWT | `200` | `400`, `401`, `422` |
 | **Habits** | `POST` | `/habits` | Criação de hábito ativo com meta inicial obrigatória | Bearer JWT | `201` | `401`, `422` |
 | **Habits** | `GET` | `/habits` | Listagem de hábitos do usuário com meta e progresso | Bearer JWT | `200` | `401`, `422` |
 | **Habits** | `GET` | `/habits/{habit_id}` | Consulta de hábito por ID (autor ou hábito público) | Bearer JWT | `200` | `401`, `404` |
@@ -30,9 +32,12 @@ Esta página documenta o contrato formal da API REST do **HABBIT** exposta pelo 
 | **Check-ins** | `PATCH` | `/check-ins/{check_in_id}` | Edição de título, descrição ou duração do check-in | Autor (JWT) | `200` | `401`, `403`, `404`, `422` |
 | **Check-ins** | `DELETE` | `/check-ins/{check_in_id}` | Exclusão definitiva do check-in e de seus vínculos | Autor (JWT) | `204` | `401`, `403`, `404` |
 | **Check-ins** | `GET` | `/habits/{habit_id}/check-ins` | Histórico de check-ins vinculados a um hábito | Bearer JWT | `200` | `401`, `404` |
+| **Photos** | `PUT` | `/check-ins/{check_in_id}/photo` | Envio ou substituição da foto do check-in de hoje (`multipart/form-data`, campo `photo`; JPEG ou PNG de até 4 MB) | Autor (JWT) | `200` | `400`, `401`, `403`, `404`, `409`, `413`, `415`, `422`, `503` |
+| **Photos** | `DELETE` | `/check-ins/{check_in_id}/photo` | Remoção idempotente da foto do check-in de hoje | Autor (JWT) | `204` | `401`, `403`, `404`, `409`, `422` |
 | **Statistics** | `GET` | `/user/statistics` | Estatísticas consolidadas, streaks, risco e série diária | Bearer JWT | `200` | `401`, `422` |
 | **Statistics** | `GET` | `/user/statistics/habits/{habit_id}` | Estatísticas individuais de um hábito do usuário (ativo, encerrado ou sem meta) | Autor (JWT) | `200` | `401`, `404`, `422` |
 | **Statistics** | `GET` | `/user/statistics/habits/{habit_id}/calendar` | Calendário mensal do hábito (`completed`, `partial`, `none`, `outside`) | Autor (JWT) | `200` | `401`, `404`, `422` |
+| **Statistics** | `GET` | `/user/statistics/profile` | Resumo do perfil: sequência de atividade e total de check-ins | Bearer JWT | `200` | `401` |
 | **Groups** | `POST` | `/groups` | Criação de grupo (criador torna-se `admin` e recebe `invite_code`) | Bearer JWT | `201` | `401`, `422` |
 | **Groups** | `GET` | `/groups` | Listagem dos grupos do usuário (ativos primeiro, depois encerrados) | Bearer JWT | `200` | `401` |
 | **Groups** | `GET` | `/groups/{group_id}` | Detalhe do grupo e lista de integrantes (`invite_code` só para admin) | Membro (JWT) | `200` | `401`, `404`, `422` |
@@ -55,8 +60,8 @@ Esta página documenta o contrato formal da API REST do **HABBIT** exposta pelo 
 | **Groups** | `GET` | `/groups/{group_id}/stats` | Destaques coletivos (`most_consistent`, `best_record`, `check_ins_last_7_days`) | Membro (JWT) | `200` | `401`, `404`, `422` |
 | **Groups** | `GET` | `/groups/{group_id}/habits/{habit_id}/stats` | Progresso e `check_in_days` de cada integrante no hábito (`GRP-12`) | Membro (JWT) | `200` | `401`, `404`, `422` |
 
-!!! note "Rotas em desenvolvimento na Sprint 6"
-    Estão em implementação na Sprint 6 as rotas de **Fotos no Check-in** (`PUT /check-ins/{id}/photo` e `DELETE /check-ins/{id}/photo` integradas ao Cloudflare R2) e **Perfil do Usuário** (`PATCH /session/me`, `PUT /session/me/password` e `GET /user/profile`).
+!!! note "Rotas da Sprint 6"
+    As rotas de **Perfil** (`PATCH /auth/session/me`, `PUT /auth/session/me/password` e `GET /user/statistics/profile`) e de **Fotos** (`PUT`/`DELETE /check-ins/{id}/photo`) estão implementadas no Back-end. O consumo delas no aplicativo está em andamento. Detalhes em [Fotos e Perfil](../arquitetura/fotos-perfil.md).
 
 ---
 
@@ -254,3 +259,58 @@ Retorna itens do feed contendo apenas os hábitos pertencentes ao grupo, ordenad
 
 #### `POST /groups/{group_id}/leave` (`200 OK`)
 Responde sempre `200` com `{ "group_deleted": false, "promoted_user_id": "75a158dd-..." }` (promovendo o membro de menor `(joined_at, user_id)` caso o último admin saia, ou apagando o grupo com `group_deleted: true` quando sai o último integrante).
+
+---
+
+### 2.6. Perfil e Conta (`/auth/session/me` e `/user/statistics/profile`)
+
+#### `PATCH /auth/session/me` (`200 OK`)
+Altera apenas os campos enviados. Para trocar o e-mail é obrigatório enviar `current_password`:
+
+```json
+{ "email": "novo@unb.br", "current_password": "senha-atual" }
+```
+
+#### `PUT /auth/session/me/password` (`200 OK`)
+Exige `current_password`, `new_password` e `new_password_confirmation`. Todas as sessões do usuário são encerradas e a resposta traz um par de tokens novo, que o aplicativo deve guardar no lugar dos dois antigos. O *access token* já emitido em outros aparelhos continua valendo até expirar (15 minutos).
+
+#### `GET /user/statistics/profile` (`200 OK`)
+
+```json
+{
+  "id": "b3d7f890-12a4-4e6c-9b01-76543210fedc",
+  "name": "Pedro Melo",
+  "username": "pedromelo",
+  "activity_streak": { "current": 12, "best": 15 },
+  "check_ins_total": 42
+}
+```
+
+---
+
+### 2.7. Fotos de Check-in (`/check-ins/{id}/photo`)
+
+`PUT /check-ins/{id}/photo` recebe `multipart/form-data` com o campo `photo` e devolve `CheckInPhotoPublic` (`thumbnail_url` sempre presente; `url` apenas quando a rota entrega a versão cheia):
+
+```json
+{ "thumbnail_url": "https://...", "url": null }
+```
+
+Nas respostas de check-ins, histórico do hábito e feed do grupo, o campo `photo` é `null` quando não há foto ou quando a pessoa não pode vê-la.
+
+---
+
+## 3. Códigos HTTP Utilizados
+
+| Código | Quando ocorre |
+| :---: | :--- |
+| `200` / `201` / `204` | Sucesso (com corpo, criação e sem conteúdo, respectivamente). |
+| `400` | Senha atual errada (conta e senha) ou arquivo de imagem inválido. A senha errada responde `400`, e não `401`, para o aplicativo não confundir com problema de token. |
+| `401` | Token ausente, inválido ou expirado; credenciais de login inválidas; reuso de *refresh token*. |
+| `403` | Operação exclusiva do autor (ou do administrador do grupo) tentada por outra pessoa. |
+| `404` | Recurso inexistente ou privado de terceiros (a API não revela a existência). |
+| `409` | Conflito de regra: duplicidade de *username*/e-mail, hábito ou grupo encerrado, meta de hábito de grupo, foto de check-in que não é de hoje, limite de membros. |
+| `413` | Foto acima de 4 MB. |
+| `415` | Foto que não é JPEG nem PNG. |
+| `422` | Falha de validação dos dados de entrada. |
+| `503` | Falha ao gravar a foto no armazenamento. |

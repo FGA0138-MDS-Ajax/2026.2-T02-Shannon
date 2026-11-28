@@ -20,6 +20,9 @@ Este catálogo registra as principais **Decisões de Arquitetura (*Architecture 
 | **[ADR-010](#adr-010-hospedagem-serverless-da-api-na-vercel-hobby-e-postgresql-17-no-neon-free)** | Hospedagem *Serverless* da API na Vercel Hobby (`gru1`) e PostgreSQL 17 no Neon Free (`aws-sa-east-1`) | **Aceito** | `C1-RNF-02`, `C4-RNF-05` | v4.1 |
 | **[ADR-011](#adr-011-entrega-oficial-via-expo-web-pwa-e-retirada-do-nginx)** | Entrega Oficial via Expo Web (PWA) e Retirada do NGINX | **Aceito** | `C1-RNF-02`, `C4-RNF-06` | v4.1 |
 | **[ADR-012](#adr-012-publicacao-manual-por-cli-e-script-local-sem-tokens-no-github)** | Publicação Manual por CLI e Script Local (`scripts/deploy.sh`) sem Tokens no GitHub | **Aceito** | `C1-RNF-01` a `03` | v4.1 |
+| **[ADR-013](#adr-013-foto-do-check-in-em-chamada-separada-regravada-em-jpeg-sem-metadados)** | Foto do Check-in em Chamada Separada, Regravada em JPEG sem Metadados | **Aceito** | `C7-RF-16`, `C7-RNF-07`, `US-28`, `US-29` | v5.0 |
+| **[ADR-014](#adr-014-troca-de-senha-encerra-todas-as-sessoes-do-usuario)** | Troca de Senha Encerra Todas as Sessões do Usuário | **Aceito** | `C7-RF-15`, `C1-RNF-01`, `US-26` | v5.0 |
+| **[ADR-015](#adr-015-cliente-http-do-mobile-com-fetch-e-refresh-em-voo-unico)** | Cliente HTTP do Mobile com `fetch` e *Refresh* em Voo Único | **Aceito** | `C1-RF-02`, `C4-RNF-06` | v5.0 |
 
 ---
 
@@ -74,7 +77,7 @@ Este catálogo registra as principais **Decisões de Arquitetura (*Architecture 
 
 ## ADR-006: Stack Mobile com Expo Router, Fila de Refresh no Axios e Cache Reativo SWR
 
-- **Status:** Aceito (Sprint 2–4 / v3.0)
+- **Status:** Aceito (Sprint 2–4 / v3.0). O item 2 (cliente Axios com fila de promessas) foi **substituído pelo [ADR-015](#adr-015-cliente-http-do-mobile-com-fetch-e-refresh-em-voo-unico)**; os demais itens continuam vigentes.
 - **Contexto:** O aplicativo móvel precisava compartilhar dados do usuário, lista de hábitos e estatísticas entre várias telas sem recarregamentos manuais e sem deslogar o usuário quando múltiplas requisições simultâneas encontrassem um `access_token` expirado.
 - **Decisão:**
   1. Adotar **Expo Router** para navegação tipada baseada em arquivos (`(auth)` vs. `(app)`);
@@ -108,9 +111,9 @@ Este catálogo registra as principais **Decisões de Arquitetura (*Architecture 
 
 ## ADR-009: Armazenamento de Fotos de Check-in em Object Storage S3-Compatível (Cloudflare R2)
 
-- **Status:** Aceito (Sprint 6 / v4.0 — em implementação)
+- **Status:** Aceito (Sprint 6 / v5.0 — implementado no Back-end)
 - **Contexto:** Salvar binários de imagem diretamente no PostgreSQL degrada backups e consultas, enquanto serviços de *object storage* convencionais cobram tráfego de saída (*egress*) na exibição de fotos em feeds.
-- **Decisão:** Adotar o **Cloudflare R2** acessado via SDK `boto3` (API S3-compatível), isolado por uma interface `Storage` com implementações `S3Storage` (produção) e `FakeStorage` (testes automatizados), armazenando versão cheia e miniatura acessadas por URLs temporárias assinadas e removidas automaticamente nas exclusões (`FOTO-1`–`FOTO-7`).
+- **Decisão:** Adotar o **Cloudflare R2** acessado via SDK `boto3` (API S3-compatível), isolado por uma interface `Storage` com implementações `S3Storage` (produção) e `FakeStorage` (testes automatizados), armazenando versão cheia e miniatura em bucket privado, acessadas por URLs temporárias assinadas (30 minutos) e removidas nas exclusões, com um varredor de órfãos executado manualmente (`FOTO-1`–`FOTO-7`). O processamento da imagem usa **Pillow**; o detalhamento está no [ADR-013](#adr-013-foto-do-check-in-em-chamada-separada-regravada-em-jpeg-sem-metadados) e em [Fotos e Perfil](fotos-perfil.md).
 - **Consequências:** Zero custo de *egress*, conformidade com `C7-RNF-07`, banco relacional enxuto e suíte `pytest` rápida sem dependência de rede externa.
 
 ---
@@ -144,3 +147,35 @@ Este catálogo registra as principais **Decisões de Arquitetura (*Architecture 
 - **Contexto:** Os projetos na Vercel (`habbit-api` e `habbit-web`) e o banco no Neon estão hospedados na conta pessoal do mantenedor de deploy, enquanto o repositório no GitHub é público e compartilhado com toda a equipe. Armazenar `VERCEL_TOKEN` nos *Secrets* do GitHub Actions permitiria que qualquer pessoa com escrita no repositório lesse o token por meio de workflows.
 - **Decisão:** Não conectar o repositório GitHub aos projetos da Vercel e não gravar nenhum token da Vercel no GitHub. A publicação em produção parte exclusivamente da branch `main` por meio do script manual [`scripts/deploy.sh`](https://github.com/FGA0138-MDS-Ajax/2026.2-T02-Shannon/blob/main/scripts/deploy.sh), que valida o estado da `main` e do CI (GitHub Actions) e utiliza apenas o login local da Vercel CLI (`vercel login`) na máquina do mantenedor.
 - **Consequências:** Isolamento completo das credenciais pessoais do mantenedor e publicação de banco (via build da API), API e PWA em um único comando; em contrapartida, o deploy não é CD automático após merge na `main` e depende de disparo manual.
+
+---
+
+## ADR-013: Foto do Check-in em Chamada Separada, Regravada em JPEG sem Metadados
+
+- **Status:** Aceito (Sprint 6 / v5.0)
+- **Contexto:** Enviar a foto junto com o `POST /check-ins` faria uma falha de upload derrubar o registro do check-in (a ação principal do produto). Além disso, fotos de celular carregam metadados (EXIF, como localização) que não devem ser expostos a outros membros, e o teto de 4,5 MB por requisição da Vercel exige um limite de upload menor que o previsto inicialmente (5 MB).
+- **Decisão:**
+  1. A foto é enviada **depois** do check-in, em `PUT /check-ins/{id}/photo`; se a chamada falhar, o check-in continua válido;
+  2. Só JPEG e PNG, conferidos pelo **conteúdo** (não pela extensão), com limite de **4 MB** e de 40 milhões de pixels;
+  3. O original **nunca é guardado**: a imagem é regravada como JPEG novo, sem nenhum metadado, em duas versões (cheia de até 1280 px e miniatura de até 320 px);
+  4. Uma foto por check-in, alterada apenas pelo autor e apenas no dia do check-in (fuso `America/Sao_Paulo`);
+  5. Ordem de consistência: sobem os objetos novos, grava-se no banco com *commit* e só então apagam-se os antigos; falhas na remoção vão para o log e são recolhidas pelo varredor de órfãos.
+- **Consequências:** O check-in nunca depende do upload, as fotos não expõem metadados do aparelho e o consumo de dados no feed cai (listas usam só a miniatura). O aplicativo precisa reduzir a foto antes de enviar, e o varredor precisa ser executado manualmente.
+
+---
+
+## ADR-014: Troca de Senha Encerra Todas as Sessões do Usuário
+
+- **Status:** Aceito (Sprint 6 / v5.0)
+- **Contexto:** Quem troca a senha geralmente suspeita de comprometimento da conta; manter as sessões antigas vivas anularia o efeito da troca.
+- **Decisão:** `PUT /auth/session/me/password` exige a senha atual e a confirmação da nova, remove **todas** as linhas de `auth_sessions` do usuário (inclusive a do aparelho atual) e devolve um par de tokens de uma sessão nova. Senha atual errada responde `HTTP 400` (e não `401`), para o aplicativo não confundir o erro com expiração de token e acionar o fluxo de *refresh*.
+- **Consequências:** Os *refresh tokens* antigos passam a responder `401` e os outros aparelhos voltam ao login na próxima renovação. O *access token* já emitido continua válido até expirar (15 minutos), limite herdado do modelo híbrido do [ADR-002](#adr-002-sessoes-hibridas-jwt-com-rotacao-atomica-de-refresh-token). O aplicativo deve substituir os dois tokens guardados.
+
+---
+
+## ADR-015: Cliente HTTP do Mobile com `fetch` e *Refresh* em Voo Único
+
+- **Status:** Aceito (Sprint 6 / v5.0). Substitui o item 2 do [ADR-006](#adr-006-stack-mobile-com-expo-router-axios-refresh-queue-e-swr).
+- **Contexto:** Como o Back-end rotaciona o *refresh token* e derruba a sessão inteira se um token antigo for reapresentado ([ADR-002](#adr-002-sessoes-hibridas-jwt-com-rotacao-atomica-de-refresh-token)), requisições simultâneas que recebem `401` não podem disparar renovações independentes.
+- **Decisão:** O cliente (`src/services/api.ts`) usa o `fetch` nativo. Uma única promessa de renovação (`refreshPromise`) é compartilhada por todas as requisições que receberam `401`; antes de renovar, o cliente confere se os tokens guardados já não foram trocados por outra renovação. Falha de rede não encerra a sessão: apenas a recusa do servidor limpa os tokens e leva ao login. O `AuthProvider` registra *callbacks* (`onTokensRefreshed` e `onAuthFailure`) para sincronizar o estado em memória. Rotas públicas (`auth: false`) não enviam *Bearer* nem tentam renovar.
+- **Consequências:** Sem dependência de biblioteca HTTP no fluxo de renovação e sem falsos positivos de reuso de JTI. A dependência `axios` permanece no `package.json`, mas nenhum arquivo do aplicativo a importa.

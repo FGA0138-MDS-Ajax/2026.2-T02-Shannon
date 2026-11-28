@@ -9,7 +9,7 @@ Esta seção documenta o esquema relacional do banco de dados **PostgreSQL 17** 
 !!! info "Evolução do Esquema até a Versão 4.0"
     - **Sprint 4 (`f6976b737c1c` e `0ceac8027fbf`):** baseline das 6 tabelas iniciais + adição de `users.statistics_is_public`.
     - **Sprint 5 (`5c948effbeee`):** criação das tabelas `groups` e `group_members` (com `role`, `joined_at` e `invite_code` único), tornando `habits.author_user_id` anulável e adicionando `habits.author_group_id` protegidos pelo `CHECK ck_habits_single_author` (grupos multi-hábito).
-    - **Sprint 6 *(em andamento)*:** introdução da tabela `check_in_photos` (`FOTO-4`, PR `#160`) vinculada ao armazenamento de imagens no **Cloudflare R2**.
+    - **Sprint 6 (`fe2371e1b181`):** criação da tabela `check_in_photos` (relação 1:1 com `check_ins`), que guarda as chaves dos objetos de foto no **Cloudflare R2**.
 
 ```mermaid
 classDiagram
@@ -108,6 +108,17 @@ classDiagram
         +TIMESTAMPTZ joined_at
     }
 
+    class CheckInPhoto {
+        <<table: check_in_photos>>
+        +UUID check_in_id PK, FK
+        +VARCHAR(255) full_key
+        +VARCHAR(255) thumbnail_key
+        +TIMESTAMPTZ created_at
+        +TIMESTAMPTZ updated_at
+        --
+        ON DELETE CASCADE
+    }
+
     User "1" --> "0..*" AuthSession : possui (CASCADE)
     User "1" --> "0..*" Habit : cria pessoal (author_user_id)
     Group "1" --> "0..*" Habit : cria de grupo (author_group_id)
@@ -115,6 +126,7 @@ classDiagram
     Habit "1" --> "0..1" Goal : define meta (habit_id UNIQUE)
     CheckIn "1" --> "1..*" CheckInHabit : vincula (CASCADE)
     Habit "1" --> "0..*" CheckInHabit : contabiliza (CASCADE)
+    CheckIn "1" --> "0..1" CheckInPhoto : foto (CASCADE)
     User "1" --> "0..*" GroupMember : participa (CASCADE)
     Group "1" --> "1..30" GroupMember : agrega (CASCADE)
 ```
@@ -269,6 +281,16 @@ Adicionadas pela migração Alembic `5c948effbeee`, sustentam grupos multi-hábi
 
 ---
 
-### 2.7. Evolução Sprint 6 — `check_in_photos` *(Em Andamento)*
+### 2.7. Tabela `check_in_photos` (`app/photos/models.py` — Sprint 6)
 
-Na **Sprint 6** (`FOTO-4`, PR `#160`), foi modelada a tabela `check_in_photos` (relação 1:1 com `check_ins`, `ON DELETE CASCADE`) para persistir metadados das imagens (chaves do objeto cheio e da miniatura no **Cloudflare R2**, tipo MIME e dimensões), garantindo limpeza sincronizada de objetos ao substituir foto ou excluir check-in (`FOTO-7`).
+Adicionada pela migração Alembic `fe2371e1b181`. Guarda apenas as **chaves** dos objetos no bucket do **Cloudflare R2**; os bytes das imagens não ficam no banco. A chave primária é o próprio `check_in_id`, então o banco recusa uma segunda foto para o mesmo check-in, e apagar o check-in apaga a linha.
+
+| Coluna | Tipo no PostgreSQL | Nulo? | Restrições / Índices | Descrição |
+| :--- | :--- | :---: | :--- | :--- |
+| `check_in_id` | `UUID` | Não | `PRIMARY KEY`, `FK -> check_ins.id (ON DELETE CASCADE)` | Check-in dono da foto (no máximo uma por check-in). |
+| `full_key` | `VARCHAR(255)` | Não | — | Chave do objeto da versão cheia (JPEG de até 1280 px). |
+| `thumbnail_key` | `VARCHAR(255)` | Não | — | Chave do objeto da miniatura (JPEG de até 320 px). |
+| `created_at` | `TIMESTAMPTZ` | Não | `DEFAULT now()` | Instante do primeiro envio. |
+| `updated_at` | `TIMESTAMPTZ` | Não | `DEFAULT now()` | Atualizado a cada substituição da foto. |
+
+Regras de envio, visibilidade e limpeza: [Fotos de Check-in e Perfil](fotos-perfil.md).
