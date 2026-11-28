@@ -33,7 +33,9 @@ export default function HabitDetailScreen() {
 
   const renderContent = (habit: Habit) => {
     const isFinished = habit.status === "finished";
-    const isAuthor = habit.author_user_id === user?.id;
+    // Hábito de grupo só é gerenciado pela tela do grupo
+    const isGroupHabit = habit.group != null;
+    const isAuthor = !isGroupHabit && habit.author_user_id === user?.id;
 
     return (
       <ScrollView
@@ -59,11 +61,14 @@ export default function HabitDetailScreen() {
 
         <HabitGoalSection
           habit={habit}
-          canChangeGoal={isAuthor && !isFinished}
+          canChangeGoal={!isGroupHabit && isAuthor && !isFinished}
         />
         <HabitCheckInsSection habitId={habit.id} />
 
-        {isAuthor && <HabitActions habit={habit} onFinished={handleFinished} />}
+        {/* Nada que leve às rotas pessoais de escrita em hábito de grupo */}
+        {isAuthor && !isGroupHabit && (
+          <HabitActions habit={habit} onFinished={handleFinished} />
+        )}
       </ScrollView>
     );
   };

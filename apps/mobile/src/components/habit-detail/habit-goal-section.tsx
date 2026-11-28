@@ -9,7 +9,11 @@ import { useRefreshOnFocus } from "@/hooks/useRefreshOnFocus";
 import { request } from "@/services/api";
 import { getErrorMessage } from "@/services/api-errors";
 import { habitKeys } from "@/services/habits-api";
+import { groupKeys } from "@/services/groups-api";
+import type { GroupHabitStatistics } from "@/services/types/groups";
 import type { Habit, HabitProgress } from "@/services/types/habits";
+import { useSession } from "@/hooks/useSession";
+import { applyGroupStatusFix } from "@/utils/check-in-progress";
 
 export interface HabitGoalSectionProps {
   habit: Habit;
@@ -33,6 +37,17 @@ export default function HabitGoalSection({
 
   // Check-ins e metas mudam em outras telas: recarrega ao voltar
   useRefreshOnFocus(mutate);
+
+  // Contorno L1: situação correta de hábito de grupo vem das estatísticas
+  const { user } = useSession();
+  const group = habit.group ?? null;
+  const { data: groupStats } = useSWR<GroupHabitStatistics>(
+    group && habit.goal ? groupKeys.habitStats(group.id, habit.id) : null,
+    request,
+  );
+  const correctStatus = groupStats?.members.find(
+    (member) => member.user.id === user?.id,
+  )?.progress.status;
 
   const renderBody = () => {
     if (!habit.goal) {
@@ -60,7 +75,9 @@ export default function HabitGoalSection({
       );
     }
     if (!progress) return <Loading testID="habit-progress-loading" />;
-    return <GoalProgress progress={progress} />;
+    return (
+      <GoalProgress progress={applyGroupStatusFix(progress, correctStatus)} />
+    );
   };
 
   return <Section title="Meta">{renderBody()}</Section>;

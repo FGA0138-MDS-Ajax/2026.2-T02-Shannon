@@ -159,11 +159,12 @@ function RankingHero({ group, colorOf, userId, onOpenMember }: GroupHeroProps) {
   return (
     <View style={styles.block}>
       <Text style={styles.title}>
-        {ended ? "Ranking final" : "Ranking do grupo"}
+        {ended
+          ? `Resultado final em ${formatDayMonth(ranking.as_of)}`
+          : "Ranking do grupo"}
       </Text>
       <Text style={styles.text}>
         Por {rankingCriterionLabels[ranking.criterion].toLowerCase()}
-        {ended ? ` · resultado em ${formatDayMonth(ranking.as_of)}` : ""}
       </Text>
       {nobodyScored(ranking) ? (
         <View testID="ranking-empty" style={styles.empty}>
@@ -178,6 +179,7 @@ function RankingHero({ group, colorOf, userId, onOpenMember }: GroupHeroProps) {
           items={ranking.items}
           criterion={ranking.criterion}
           colorOf={colorOf}
+          me={ranking.me}
           userId={userId}
           onOpenMember={onOpenMember}
         />

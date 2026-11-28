@@ -20,7 +20,10 @@ export default function GroupAbout({
   onChanged,
 }: GroupAboutProps) {
   // Só admin recebe o código; grupo encerrado não aceita gente nova
-  const inviteCode = group.status === "active" ? group.invite_code : null;
+  const inviteCode =
+    group.my_role === "admin" && group.status === "active"
+      ? group.invite_code
+      : null;
   return (
     <>
       {inviteCode && (

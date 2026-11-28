@@ -1,7 +1,7 @@
 import { router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import { ScrollView, StyleSheet, View } from "react-native";
-import useSWR from "swr";
+import useSWR, { useSWRConfig } from "swr";
 import Button from "@/components/button";
 import GoalProgress from "@/components/goal-progress";
 import MemberHabitStatsList from "@/components/groups/member-habit-stats";
@@ -19,7 +19,7 @@ import {
 import { confirmAction, useAsyncAction } from "@/hooks/useAsyncAction";
 import { useRefreshOnFocus } from "@/hooks/useRefreshOnFocus";
 import { useSession } from "@/hooks/useSession";
-import { request } from "@/services/api";
+import { ApiError, request } from "@/services/api";
 import { getErrorMessage } from "@/services/api-errors";
 import { finishGroupHabit, groupKeys } from "@/services/groups-api";
 import type {
@@ -46,6 +46,7 @@ export default function GroupHabitDetailScreen() {
   const { data: group } = useSWR<GroupDetail>(groupKeys.detail(id), request);
   const { mutate: refreshHabit } = habit;
   const { mutate: refreshStats } = stats;
+  const { mutate: refreshHabitList } = useSWRConfig();
 
   useRefreshOnFocus(refreshHabit);
   useRefreshOnFocus(refreshStats);
@@ -59,9 +60,19 @@ export default function GroupHabitDetailScreen() {
       destructive: true,
       onConfirm: () =>
         run("Não foi possível encerrar", async () => {
-          refreshHabit(await finishGroupHabit(id, habitId), {
-            revalidate: false,
-          });
+          try {
+            refreshHabit(await finishGroupHabit(id, habitId), {
+              revalidate: false,
+            });
+          } catch (err: unknown) {
+            // 409 "Hábito já encerrado.": recarrega a lista/detalhe e reexibe
+            if (err instanceof ApiError && err.status === 409) {
+              refreshHabit();
+              refreshStats();
+              refreshHabitList(groupKeys.habits(id));
+            }
+            throw err;
+          }
           refreshStats();
         }),
     });

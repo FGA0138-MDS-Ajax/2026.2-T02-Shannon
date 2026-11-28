@@ -56,20 +56,26 @@ export default function GroupRanking({
             message="Com mais integrantes, a classificação continua aqui."
           />
         ) : (
-          rest.map((item, index) => (
-            <FadeIn key={item.user.id} index={index}>
-              <RankingRow
-                testID={`ranking-row-${item.user.id}`}
-                position={item.position}
-                label={item.user.id === userId ? "Você" : item.user.username}
-                username={item.user.username}
-                score={formatScore(item.score, ranking.criterion)}
-                color={colorOf(item.user.id)}
-                isMe={item.user.id === userId}
-                onPress={() => onOpenMember(item.user.id)}
-              />
-            </FadeIn>
-          ))
+          rest.map((item, index) => {
+            const isMe = ranking.me
+              ? item.position === ranking.me.position &&
+                item.score === ranking.me.score
+              : !!userId && item.user.id === userId;
+            return (
+              <FadeIn key={item.user.id} index={index}>
+                <RankingRow
+                  testID={`ranking-row-${item.user.id}`}
+                  position={item.position}
+                  label={isMe ? "Você" : item.user.username}
+                  username={item.user.username}
+                  score={formatScore(item.score, ranking.criterion)}
+                  color={colorOf(item.user.id)}
+                  isMe={isMe}
+                  onPress={() => onOpenMember(item.user.id)}
+                />
+              </FadeIn>
+            );
+          })
         )}
       </Section>
 

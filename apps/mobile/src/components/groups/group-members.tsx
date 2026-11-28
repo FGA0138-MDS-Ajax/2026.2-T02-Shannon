@@ -11,9 +11,23 @@ import {
   GROUP_MAX_MEMBERS,
   type GroupDetail,
   type GroupMember,
+  type LeaveResult,
 } from "@/services/types/groups";
 import { formatDate } from "@/utils/date";
 import AddMemberForm from "./add-member-form";
+
+/** Mensagem exibida ao sair, conforme o resultado da API. */
+export function leaveMessage(
+  result: LeaveResult,
+  members: GroupMember[],
+): string {
+  if (result.group_deleted) return "Grupo apagado";
+  if (result.promoted_user_id) {
+    const promoted = members.find((m) => m.user_id === result.promoted_user_id);
+    return `${promoted?.username ?? result.promoted_user_id} agora é admin`;
+  }
+  return "Você saiu do grupo";
+}
 
 export interface GroupMembersProps {
   group: GroupDetail;
@@ -44,9 +58,17 @@ export default function GroupMembers({
       text: "Remover do grupo",
       style: "destructive" as const,
       onPress: () =>
-        run("Não foi possível remover", async () => {
-          await removeMember(group.id, member.user_id);
-          onChanged();
+        // Remover não dá para desfazer: confirma antes de executar
+        confirmAction({
+          title: "Remover integrante",
+          message: `Remover ${member.username} do grupo?`,
+          confirmLabel: "Remover",
+          destructive: true,
+          onConfirm: () =>
+            run("Não foi possível remover", async () => {
+              await removeMember(group.id, member.user_id);
+              onChanged();
+            }),
         }),
     };
     Alert.alert(member.username, undefined, [
@@ -60,7 +82,7 @@ export default function GroupMembers({
     const isLastAdmin = isAdmin && adminCount === 1 && group.members_count > 1;
     const isLastMember = group.members_count === 1;
     confirmAction({
-      title: "Sair do grupo",
+      title: isLastMember ? "Sair e apagar o grupo" : "Sair do grupo",
       message: isLastMember
         ? "Você é o último integrante: o grupo será apagado."
         : isLastAdmin
@@ -70,7 +92,9 @@ export default function GroupMembers({
       destructive: true,
       onConfirm: () =>
         run("Não foi possível sair", async () => {
-          await leaveGroup(group.id);
+          const result = await leaveGroup(group.id);
+          // Volta para a lista recarregada; a mensagem explica o resultado
+          Alert.alert(leaveMessage(result, group.members));
           router.back();
         }),
     });
@@ -132,7 +156,7 @@ export default function GroupMembers({
         disabled={busy}
         onPress={handleLeave}
       >
-        Sair do grupo
+        {group.members_count === 1 ? "Sair e apagar o grupo" : "Sair do grupo"}
       </Button>
     </View>
   );
