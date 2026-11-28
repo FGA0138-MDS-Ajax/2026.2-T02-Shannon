@@ -59,7 +59,7 @@ $$
 | Atributo 5W2H | Especificação |
 | :--- | :--- |
 | **Questão associada (*Por quê?*)** | **Q1** — A equipe entrega o que planeja em cada sprint? |
-| **Definição (*O quê?*)** | Percentual dos itens planejados para a sprint que atingiram o estado **Done** até o fechamento semanal (quarta-feira). |
+| **Definição (*O quê?*)** | Percentual dos itens planejados para a sprint que atingiram o estado **Done** até o fechamento semanal (planejado para quarta-feira; na prática, sexta-feira à noite ou fim de semana). |
 | **Forma de cálculo (*Como?*)** | $\text{TCS} = (\text{Done} \div \text{Planejados}) \times 100$ |
 | **Escala e unidade** | Escala racional; unidade: percentual (`%`), de `0` a `100`. |
 | **Tipo de métrica** | Indireta (derivada de duas contagens) e objetiva. |

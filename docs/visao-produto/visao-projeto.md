@@ -27,7 +27,7 @@ flowchart LR
 ### Estrutura do Ciclo de Vida
 
 - **Metodologia:** Princípios ágeis focados em entregas frequentes e incrementais de valor, inspeção contínua, adaptação controlada a mudanças e colaboração estreita entre os 8 integrantes.
-- **Processo:** Ciclos iterativos semanais (*Sprints*), com fechamento às quartas-feiras, estruturados em Planejamento da Sprint, Desenvolvimento Contínuo, Testes Integrados e Revisão/Retrospectiva.
+- **Processo:** Ciclos iterativos semanais (*Sprints*), com fechamento planejado às quartas-feiras (na prática, entre a sexta-feira à noite e o fim de semana), estruturados em Planejamento da Sprint, Desenvolvimento Contínuo, Testes Integrados e Revisão/Retrospectiva.
 - **Procedimentos:**
   - **Branching Model (GitFlow adaptado):** Desenvolvimento em branches de funcionalidade (`feature/...`, `feat/...`, `fix/...`), integração contínua revisada na branch `developer`, lançamentos estáveis consolidados na `main` e documentação isolada na branch `docs`.
   - **Critérios de Qualidade:** Transição obrigatória pelos marcos **Ready** (código, critérios de aceite e testes unitários concluídos) e **Done** (testes de regressão e CI verdes, além de *Pull Request* aprovado por par).
@@ -56,7 +56,7 @@ A equipe é organizada em frentes complementares de gestão, desenvolvimento e g
 
 ## 2.3. Processo de Desenvolvimento de Software
 
-O processo de engenharia do **HABBIT** opera em ciclos semanais (fechamento às quartas-feiras), priorizando primeiro os requisitos essenciais (**Must** — que compõem o MVP) e incorporando os itens **Should** e **Could** nas sprints subsequentes conforme a capacidade medida da equipe.
+O processo de engenharia do **HABBIT** opera em ciclos semanais (fechamento planejado às quartas-feiras; na prática, sexta-feira à noite ou fim de semana), priorizando primeiro os requisitos essenciais (**Must** — que compõem o MVP) e incorporando os itens **Should** e **Could** nas sprints subsequentes conforme a capacidade medida da equipe.
 
 ### Quadro 8 — Eventos e Atividades do Processo
 

@@ -21,7 +21,7 @@ Foco no cenário `C4` (`US-13`, `US-16`, `US-17`, `C4-RF-10`) e na quitação do
 - Adoção definitiva do **Alembic** (`apps/api/migrations/`), removendo `create_all` do `lifespan` e aplicando migrações no `CMD` do Docker (`baseline f6976b737c1c` + `0ceac8027fbf` adicionando `users.statistics_is_public`);
 - Implementação de 3 novas rotas `GET` sob `/user/statistics` sem alterar nenhuma rota da Sprint 3: painel consolidado, estatísticas por hábito e calendário mensal;
 - Extensão do motor `app/goals/streak.py` com `completion_dates` e `period_results`;
-- Documentação de passagem para o Front-end com cenários reais validados (`01-contexto-logica-e-fluxo-AGENTE.md` e `02-contrato-api-AGENTE.md` da Sprint 4).
+- Documentação de passagem do contrato para o Front-end, com cenários reais validados contra PostgreSQL.
 
 ### Front-end (`apps/mobile`) *(dados factuais de Issues/PRs)*
 Consumo da API de Metas e Streaks da Sprint 3 (`US-08`, `US-11`–`US-15`, `US-27`):

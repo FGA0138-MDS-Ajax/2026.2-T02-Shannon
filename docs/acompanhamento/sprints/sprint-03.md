@@ -21,7 +21,7 @@ Entrega do núcleo algorítmico do produto (`US-08`, `US-11`, `US-12`, `US-14`, 
 - Criação da tabela `goals` (relação 1:1 com `habits`) e da constraint `ck_goals_period_rules`;
 - Motor puro de cálculo de períodos, streaks (`current_streak`, `best_streak`), constância (`streak_started_on`, `consistent_days`) e máquina de estados (`completed`, `in_progress`, `at_risk`, `failed`, `ended`);
 - Obrigatoriedade de `goal` no `POST /habits`, cálculo de progresso em lote no `GET /habits` e no `POST /check-ins`, novas rotas sob `/goals/habits/{habit_id}/goal` e `/progress`, além da listagem de check-ins agrupados por dias (`GET /check-ins`, [PR #81](https://github.com/FGA0138-MDS-Ajax/2026.2-T02-Shannon/pull/81));
-- Geração dos documentos de referência para o Front-end com cenários reais validados contra PostgreSQL (`01-contexto-logica-e-fluxo-AGENTE.md` e `02-contrato-api-AGENTE.md` da Sprint 3).
+- Documentação de passagem do contrato para o Front-end, com cenários reais validados contra PostgreSQL.
 
 ### Front-end (`apps/mobile`) *(dados factuais de Issues/PRs)*
 Implementação completa dos fluxos da Sprint 2 no aplicativo móvel (`US-04` a `US-07`, `US-09`, `US-10`, `US-34`, `US-35`, `US-36`):

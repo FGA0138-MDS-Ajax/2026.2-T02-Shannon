@@ -20,8 +20,8 @@ A frente de Back-end assumiu a construção da espinha dorsal da aplicação (`U
 
 - Criação do monorepo com **FastAPI**, **SQLModel**, **PostgreSQL 17** via Docker Compose e gerenciamento de dependências com **uv**;
 - Definição do padrão arquitetural em três camadas (`router → service → repository`) com separação estrita entre modelos ORM (`models.py`) e contratos Pydantic (`schemas.py`);
-- Implementação de cadastro (`POST /auth/signup`), login (`POST /auth/login`), consulta do usuário logado (`GET /session/me`), renovação com rotação de refresh token (`POST /auth/refresh`) e logout (`POST /auth/logout`);
-- Elaboração dos documentos de passagem para o Front-end (`auth-guia-rapido-frontend.md` e `auth-logica-implementacao.md`).
+- Implementação de cadastro (`POST /auth/signup`), login (`POST /auth/login`), consulta do usuário logado (`GET /auth/session/me`), renovação com rotação de refresh token (`POST /auth/refresh`) e logout (`POST /auth/logout`);
+- Elaboração da documentação de passagem do contrato de autenticação para o Front-end (PRs [#13](https://github.com/FGA0138-MDS-Ajax/2026.2-T02-Shannon/pull/13) e [#22](https://github.com/FGA0138-MDS-Ajax/2026.2-T02-Shannon/pull/22)).
 
 ### Front-end (`apps/mobile`)
 Seguindo o modelo defasado entre frentes, a Sprint 1 no Front-end foi dedicada ao estudo guiado da stack **React Native + Expo + TypeScript**, definição da identidade visual e prototipação das telas, preparando a equipe para consumir os endpoints de autenticação na Sprint 2.
@@ -36,7 +36,7 @@ Seguindo o modelo defasado entre frentes, a Sprint 1 no Front-end foi dedicada a
 | :---: | :---: | :--- | :---: | :---: | :--- | :---: |
 | **[#6](https://github.com/FGA0138-MDS-Ajax/2026.2-T02-Shannon/issues/6)** | `C1-RF-01`, `C1-RNF-01` | `[AUTH-1]` Modelo de usuário, consultas, schemas compartilhados e hash de senha (`bcrypt`) | Back-end | [#22](https://github.com/FGA0138-MDS-Ajax/2026.2-T02-Shannon/pull/22) | Caio Felipe | Concluída ✅ |
 | **[#7](https://github.com/FGA0138-MDS-Ajax/2026.2-T02-Shannon/issues/7)** | `C1-RF-02` | `[AUTH-2]` Geração e validação de tokens JWT (`access` e `refresh`) | Back-end | [#22](https://github.com/FGA0138-MDS-Ajax/2026.2-T02-Shannon/pull/22) | Caio Felipe / Pedro Melo | Concluída ✅ |
-| **[#8](https://github.com/FGA0138-MDS-Ajax/2026.2-T02-Shannon/issues/8)** | `C1-RF-02`, `C1-RNF-03` | `[AUTH-3]` Proteção de rotas autenticadas (`get_current_user`) e `GET /session/me` | Back-end | [#16](https://github.com/FGA0138-MDS-Ajax/2026.2-T02-Shannon/pull/16) | Pedro Melo | Concluída ✅ |
+| **[#8](https://github.com/FGA0138-MDS-Ajax/2026.2-T02-Shannon/issues/8)** | `C1-RF-02`, `C1-RNF-03` | `[AUTH-3]` Proteção de rotas autenticadas (`get_current_user`) e `GET /auth/session/me` | Back-end | [#16](https://github.com/FGA0138-MDS-Ajax/2026.2-T02-Shannon/pull/16) | Pedro Melo | Concluída ✅ |
 | **[#9](https://github.com/FGA0138-MDS-Ajax/2026.2-T02-Shannon/issues/9)** | `US-01` | `[AUTH-4]` Cadastro de usuário — `POST /auth/signup` | Back-end | [#17](https://github.com/FGA0138-MDS-Ajax/2026.2-T02-Shannon/pull/17) | José Luiz | Concluída ✅ |
 | **[#10](https://github.com/FGA0138-MDS-Ajax/2026.2-T02-Shannon/issues/10)** | `US-02` | `[AUTH-5]` Renovação de tokens com rotação de JTI — `POST /auth/refresh` | Back-end | [#15](https://github.com/FGA0138-MDS-Ajax/2026.2-T02-Shannon/pull/15) | Caio Felipe | Concluída ✅ |
 | **[#11](https://github.com/FGA0138-MDS-Ajax/2026.2-T02-Shannon/issues/11)** | `US-02` | `[AUTH-6]` Login por *username* ou e-mail — `POST /auth/login` | Back-end | [#18](https://github.com/FGA0138-MDS-Ajax/2026.2-T02-Shannon/pull/18) | Caio Felipe | Concluída ✅ |

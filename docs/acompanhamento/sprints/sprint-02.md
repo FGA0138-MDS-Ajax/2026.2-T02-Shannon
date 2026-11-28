@@ -20,7 +20,7 @@ Foco nos cenários `C2` (Gestão de Hábitos) e `C3` (Registro de Check-ins), al
 
 - Modelagem das tabelas `habits`, `check_ins` e da associativa `check_in_habits` (relação N:N);
 - Implementação de 6 rotas de hábitos (`/habits`), 5 rotas de check-ins (`/check-ins` e `/habits/{id}/check-ins`) e 2 rotas de apoio ao fluxo guiado da tela de check-in (`/check-ins/categories` e `/check-ins/habit-options`);
-- Consolidação dos documentos de fechamento da sprint (`habitos-checkins-guia-rapido-frontend.md` e `habitos-checkins-logica-implementacao.md`).
+- Documentação de passagem do contrato de hábitos e check-ins para o Front-end.
 
 ### Front-end (`apps/mobile`) *(dados factuais de Issues/PRs)*
 Consumo integral da API de autenticação entregue na Sprint 1 (`US-01`, `US-02`, `US-03`):

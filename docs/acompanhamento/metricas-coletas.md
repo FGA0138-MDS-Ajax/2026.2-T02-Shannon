@@ -56,8 +56,8 @@ xychart-beta
 | **S3** | Limpeza de estado do formulário de criação de hábito ao sair da tela mobile | Commit `2338f19` | Corrigido na integração mobile |
 | **S4** | Validação de anos limite (`0000-01`/`9999-12`) no calendário mensal (`STAT-7`) | Commit `6fb6054` | Corrigido antes do merge [PR #114](https://github.com/FGA0138-MDS-Ajax/2026.2-T02-Shannon/pull/114) |
 | **S4** | Limpeza de estado de erro de *retry* na tela de detalhe do hábito mobile | Commit `4ce8782` ([PR #129](https://github.com/FGA0138-MDS-Ajax/2026.2-T02-Shannon/pull/129)) | Corrigido na suíte de testes de metas |
-| **S5** | Bug `L1` (`GRP-10`): `progress.status` de hábito de grupo sai `"ended"` em `GET /habits` e `GET /goals/.../progress` | Documentado na bateria de QA `GRP-11` (`01-contexto-logica-e-fluxo-AGENTE.md`, `[S13]`) | Contorno documentado (`GRP-12`); correção alocada em `DT-04` |
-| **S5** | Bug `L2` (`GRP-5`): `code` não-string (`12345678` ou `null`) retorna HTTP `500` em `POST /groups/join` | Documentado na bateria de QA `GRP-11` (`01-contexto-logica-e-fluxo-AGENTE.md`, `[S13]`) | Correção alocada em `DT-04` |
+| **S5** | Bug `L1` (`GRP-10`): `progress.status` de hábito de grupo sai `"ended"` em `GET /habits` e `GET /goals/.../progress` | Documentado na bateria de QA `GRP-11` ([PR #147](https://github.com/FGA0138-MDS-Ajax/2026.2-T02-Shannon/pull/147)) | Contorno documentado (`GRP-12`); correção alocada em `DT-04` |
+| **S5** | Bug `L2` (`GRP-5`): `code` não-string (`12345678` ou `null`) retorna HTTP `500` em `POST /groups/join` | Documentado na bateria de QA `GRP-11` ([PR #147](https://github.com/FGA0138-MDS-Ajax/2026.2-T02-Shannon/pull/147)) | Correção alocada em `DT-04` |
 
 ### 3.2. Ciclo de Vida dos Débitos Técnicos (`M3 — DTA`)
 
