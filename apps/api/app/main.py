@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.auth.router import auth_router
 from app.checkins.router import check_ins_router
-from app.config import settings
+from app.config import Settings, settings
 from app.goals.router import goals_router
 from app.group.feed import feed_router
 from app.group.habits import group_habits_router
@@ -24,20 +24,38 @@ async def lifespan(app: FastAPI):
   yield
 
 
-app = FastAPI(lifespan=lifespan)
+def docs_urls(cfg: Settings) -> dict[str, str | None]:
+  """Argumentos do FastAPI que desligam a documentação em produção.
+
+  Em produção `/docs`, `/redoc` e `/openapi.json` ficam fechados, a menos que
+  `ENABLE_DOCS=true` (ex.: apresentações). Fora de produção, mantém o padrão.
+  """
+  if cfg.is_production and not cfg.ENABLE_DOCS:
+    return {"docs_url": None, "redoc_url": None, "openapi_url": None}
+  return {}
+
+
+def cors_options(cfg: Settings) -> dict[str, Any]:
+  """Argumentos do `CORSMiddleware`.
+
+  A API autentica por `Authorization: Bearer`, sem cookies, então não há
+  credenciais. Métodos e cabeçalhos ficam restritos ao que o app usa.
+  """
+  return {
+    "allow_origins": cfg.cors_origins_list,
+    "allow_credentials": False,
+    "allow_methods": ["GET", "POST", "PUT", "PATCH", "DELETE"],
+    "allow_headers": ["Authorization", "Content-Type"],
+    "max_age": 600,
+  }
+
+
+app = FastAPI(lifespan=lifespan, **docs_urls(settings))
 
 # Middlewares
 
 # CORS
-origins = settings.cors_origins_list
-
-app.add_middleware(
-  CORSMiddleware,
-  allow_origins=origins,
-  allow_credentials=True,
-  allow_methods=["*"],
-  allow_headers=["*"],
-)
+app.add_middleware(CORSMiddleware, **cors_options(settings))
 
 # Routers
 
