@@ -19,62 +19,63 @@ O **HABBIT** é um aplicativo móvel multiplataforma (**Android**, **iOS** e **W
 
 ## 2. Representação Arquitetural (Três Camadas)
 
-O sistema adota uma **arquitetura cliente-servidor em três camadas**: **Client Mobile (Front-end)**, **Web Server (Back-end, precedido por NGINX em nuvem)** e **Banco de Dados Relacional (PostgreSQL 17)**. Essa escolha prioriza simplicidade operacional, desacoplamento de contratos via REST/JSON e evolução modular sem prejuízo à performance ou à escalabilidade horizontal.
+O sistema adota uma **arquitetura cliente-servidor em três camadas**: **Client Mobile / PWA (Front-end)**, **Web Server (API FastAPI *serverless* na Vercel)** e **Banco de Dados Relacional (PostgreSQL 17 no Neon)**, além do armazenamento de objetos no **Cloudflare R2**. Essa escolha prioriza simplicidade operacional, desacoplamento de contratos via REST/JSON e evolução modular sem administração manual de servidores.
 
 ```mermaid
 flowchart TB
-    Usuario(["Usuário\n[Android / iOS / Web]"])
+    Usuario(["Usuário\n[Android / iOS / Web PWA]"])
 
-    subgraph Client["Camada 1: Client Mobile (React Native + Expo + TypeScript)"]
+    subgraph Client["Camada 1: Client Mobile & PWA (React Native + Expo + TypeScript)"]
         UI["Telas & Componentes\n(Expo Router + StyleSheet)"]
         SWR["Cache Reativo & Estado\n(SWR + AuthContext)"]
         Axios["Integração HTTP\n(Axios + Refresh Interceptor)"]
         UI --> SWR --> Axios
     end
 
-    subgraph Proxy["Gateway & Balanceamento (Ambiente Cloud)"]
-        NGINX["NGINX\n[Reverse Proxy & Load Balancer TLS/HTTPS]"]
+    subgraph Edge["Borda Gerenciada (Vercel Edge Proxy)"]
+        VercelEdge["Vercel Edge\n[HTTPS / TLS Automático • Sem NGINX]"]
     end
 
-    subgraph Server["Camada 2: Web Server (FastAPI / Python 3.13)"]
+    subgraph Server["Camada 2: Web Server (FastAPI / Python 3.13 — Vercel gru1)"]
         AuthMod["«Module»\nAuth & Session"]
         HabitMod["«Module»\nHabits"]
         GoalMod["«Module»\nGoals & Streaks"]
-        CheckInMod["«Module»\nCheck-Ins"]
+        CheckInMod["«Module»\nCheck-Ins & Photos"]
         StatMod["«Module»\nStatistics & Calendar"]
         GroupMod["«Module»\nGroups"]
     end
 
-    subgraph DB["Camada 3: Persistência Relacional (PostgreSQL 17 + Alembic)"]
+    subgraph DB["Camada 3: Persistência Relacional (Neon PostgreSQL 17 + Alembic)"]
         TUsers[("users")]
         TSessions[("auth_sessions")]
         THabits[("habits")]
         TGoals[("goals")]
         TCheckIns[("check_ins")]
         TCheckInHabits[("check_in_habits")]
+        TPhotos[("check_in_photos")]
         TGroups[("groups / group_members")]
     end
 
-    R2[("Cloudflare R2\n[Object Storage S3 — S6]")]
+    R2[("Cloudflare R2\n[Object Storage S3 — habbit-photos-prod]")]
 
     Usuario -->|"Toques / Interação"| UI
-    Axios -->|"HTTPS / JSON"| NGINX
-    NGINX -->|"HTTP"| Server
+    Axios -->|"HTTPS / JSON"| VercelEdge
+    VercelEdge -->|"ASGI"| Server
 
-    AuthMod -->|"TCP/IP (psycopg3)"| TUsers
-    AuthMod -->|"TCP/IP"| TSessions
-    HabitMod -->|"TCP/IP"| THabits
-    GoalMod -->|"TCP/IP"| TGoals
-    CheckInMod -->|"TCP/IP"| TCheckIns
-    CheckInMod -->|"TCP/IP"| TCheckInHabits
-    CheckInMod -.->|"S3 API (boto3 — S6)"| R2
+    AuthMod -->|"TLS (psycopg3 -pooler)"| TUsers
+    AuthMod -->|"TLS"| TSessions
+    HabitMod -->|"TLS"| THabits
+    GoalMod -->|"TLS"| TGoals
+    CheckInMod -->|"TLS"| TCheckIns
+    CheckInMod -->|"TLS"| TCheckInHabits
+    CheckInMod -->|"TLS"| TPhotos
+    CheckInMod -->|"S3 API (boto3)"| R2
     StatMod -->|"Consultas Analíticas"| THabits
     StatMod -->|"Consultas Analíticas"| TCheckIns
-    GroupMod -->|"TCP/IP"| TGroups
+    GroupMod -->|"TLS"| TGroups
 ```
 
-![Figura 01 - Diagrama de implementação](../assets/images/arquitetura-implementacao.png)
-*Figura 01 – Diagrama original de implementação em três camadas. Fonte: elaborado pelos autores (2026).*
+*Figura 01 – Representação arquitetural em três camadas na Vercel, Neon e Cloudflare R2. Fonte: elaborado pelos autores (2026).*
 
 ### Padrão Interno em Três Camadas por Módulo do Web Server
 
@@ -102,11 +103,11 @@ O Quadro 1 sintetiza as metas de qualidade e as restrições técnicas e legais 
 | **Meta** | **Padrão de API** | API REST sobre HTTPS com payloads em JSON, semântica estrita de verbos HTTP e documentação OpenAPI. | — |
 | **Meta** | **Segurança** | HTTPS, senhas com *hash* **bcrypt**, sessões JWT registradas em banco (`auth_sessions`) com rotação atômica de JTI e controle de acesso por perfil. | `C1-RNF-01` a `03` |
 | **Meta** | **Usabilidade** | Fluxo de check-in rápido, multi-hábito e retorno imediato do progresso recalculado na mesma requisição. | `C3-RNF-04` |
-| **Meta** | **Portabilidade** | Execução em Android, iOS e Web a partir de uma única base TypeScript com React Native e Expo Router. | `C4-RNF-06` |
-| **Meta** | **Escalabilidade** | Crescimento horizontal do Web Server apoiado pelo NGINX como *Reverse Proxy* e *Load Balancer*. | — |
+| **Meta** | **Portabilidade** | Execução em Android, iOS e Web (**PWA oficial na Vercel**) a partir de uma única base TypeScript com React Native e Expo Router. | `C4-RNF-06` |
+| **Meta** | **Escalabilidade** | Escalonamento automático *serverless* da API na Vercel Hobby (`gru1`) e do banco no Neon Free (`aws-sa-east-1`, com *pooling* PgBouncer). | — |
 | **Restrição** | **Legal (LGPD)** | Conformidade com a Lei Geral de Proteção de Dados Pessoais (Lei nº 13.709/2018) e controle de privacidade (`is_public`, `statistics_is_public`). | — |
 | **Restrição** | **Codificação** | **Ruff** (padrão PEP 8) no Back-end Python e **Biome** no Front-end TypeScript. | — |
-| **Restrição** | **Ambiente e Migrações** | Contêineres Docker (PostgreSQL 17), gerenciador **uv**, migrações **Alembic**, **Testcontainers** e CI no GitHub Actions sobre a branch `developer`. | — |
+| **Restrição** | **Ambiente e Migrações** | Docker Compose no desenvolvimento local (PostgreSQL 17), gerenciador **uv**, migrações **Alembic** (no build de produção da Vercel via `DIRECT_DATABASE_URL`), **Testcontainers** e CI no GitHub Actions. | — |
 | **Restrição** | **Fuso Horário** | Dia de negócio avaliado no fuso **`America/Sao_Paulo`**, com instantes persistidos em `TIMESTAMPTZ`. | `D-02` |
 | **Restrição** | **Validação de Dados** | Validação com **Pydantic v2**, rejeição de caracteres nulos (`\x00`) e normalização de e-mail e *username*. | — |
 
@@ -126,7 +127,7 @@ O Quadro 1 sintetiza as metas de qualidade e as restrições técnicas e legais 
 
 - **Fuso Horário (`America/Sao_Paulo`):** Todos os cálculos de início e fim de período (`starts_on`, `created_at`, `finished_at`, `reference_date`), agrupamento de check-ins por dia e virada de streaks utilizam `ZoneInfo("America/Sao_Paulo")`, enquanto os instantes exatos de criação (`check_ins.created_at`, `auth_sessions.expires_at`, `goals.created_at`) são persistidos com fuso horário (`TIMESTAMPTZ`).
 - **Validação e Integridade (`app/validators.py`):** Validadores compartilhados do Pydantic rejeitam o caractere nulo (`\x00`) em qualquer campo textual antes de chegar ao driver `psycopg 3` (evitando erros `500`), removem espaços excedentes e convertem `username` e `email` para minúsculas.
-- **Versionamento de Banco de Dados (`Alembic`):** Todas as evoluções de schema relacional são gerenciadas por migrações versionadas em `apps/api/migrations/versions/` (executadas automaticamente no `CMD` do container Docker) e verificadas pelo teste `tests/test_migrations.py`.
+- **Versionamento de Banco de Dados (`Alembic`):** Todas as evoluções de schema relacional são gerenciadas por migrações versionadas em `apps/api/migrations/versions/` (executadas no build de produção da Vercel via `scripts/vercel_build.py` com `DIRECT_DATABASE_URL` e no `CMD` do container local) e verificadas pelo teste `tests/test_migrations.py`.
 
 !!! note "Organização por Subdomínio no Módulo `app/group/` (Sprint 5)"
     Para viabilizar desenvolvimento paralelo sem conflitos de merge durante a Sprint 5, o módulo `app/group/` foi dividido em arquivos por subdomínio (`groups.py`, `members.py`, `invite.py`, `habits.py`, `feed.py`, `ranking.py`, `stats.py`), com `router.py` agregando as rotas e docstrings em cada função indicando o destino de unificação pós-sprint (`service.py` / `router.py`, acompanhado no débito técnico `DT-04`).

@@ -75,35 +75,35 @@ flowchart LR
         HooksCtx --> Services
     end
 
-    subgraph WebServer["Subsistema 2: WebServer (apps/api)"]
+    subgraph WebServer["Subsistema 2: WebServer (apps/api — Vercel Serverless gru1)"]
         direction TB
-        NGINX["NGINX\n(Reverse Proxy / TLS)"]
+        Edge["Vercel Edge Proxy\n(HTTPS / TLS • Sem NGINX)"]
         AuthM["app/auth/\n(Auth & Session Module)"]
         HabitM["app/habits/\n(Habit Module)"]
         GoalM["app/goals/\n(Goal & Streak Module)"]
-        CheckInM["app/checkins/\n(Check-In Module)"]
+        CheckInM["app/checkins/ & app/photos/\n(Check-In & Photos Module)"]
         StatM["app/statistics/\n(Statistics & Calendar Module)"]
         GroupM["app/group/\n(Group Module)"]
 
-        NGINX --> AuthM
-        NGINX --> HabitM
-        NGINX --> GoalM
-        NGINX --> CheckInM
-        NGINX --> StatM
-        NGINX --> GroupM
+        Edge --> AuthM
+        Edge --> HabitM
+        Edge --> GoalM
+        Edge --> CheckInM
+        Edge --> StatM
+        Edge --> GroupM
     end
 
-    subgraph Database["Subsistema 3: Database"]
+    subgraph Database["Subsistema 3: Database (Neon)"]
         PG[("PostgreSQL 17\n+ Alembic Migrations")]
     end
 
-    Services -->|"HTTP / HTTPS (REST JSON)"| NGINX
-    AuthM -->|"TCP/IP (SQLModel / psycopg3)"| PG
-    HabitM -->|"TCP/IP"| PG
-    GoalM -->|"TCP/IP"| PG
-    CheckInM -->|"TCP/IP"| PG
-    StatM -->|"TCP/IP"| PG
-    GroupM -->|"TCP/IP"| PG
+    Services -->|"HTTPS (REST JSON)"| Edge
+    AuthM -->|"TLS (SQLModel / psycopg3)"| PG
+    HabitM -->|"TLS"| PG
+    GoalM -->|"TLS"| PG
+    CheckInM -->|"TLS"| PG
+    StatM -->|"TLS"| PG
+    GroupM -->|"TLS"| PG
 ```
 
 ![Figura 05 – Diagrama de Pacotes do Sistema](../assets/images/diagrama-pacotes.png)

@@ -43,7 +43,7 @@ flowchart LR
 | Código | Requisito Não Funcional | Meta / Critério Objetivo | Componente Responsável | Evidência de Verificação |
 | :---: | :--- | :--- | :--- | :--- |
 | **C1-RNF-01** | Segurança das credenciais | Hash **bcrypt** com *salt*, senha entre 8 chars e 72 bytes | `app/auth/security.py` | `tests/auth/test_security.py` |
-| **C1-RNF-02** | Comunicação segura | HTTPS/TLS gerenciado na borda | NGINX Reverse Proxy | Topologia de implantação (`arquitetura/implantacao.md`) |
+| **C1-RNF-02** | Comunicação segura | HTTPS/TLS gerenciado na borda | Vercel Edge Proxy (sem NGINX) | Topologia de implantação (`arquitetura/implantacao.md`) |
 | **C1-RNF-03** | Controle de acesso e privacidade | `401` sem JWT, `403` fora de autoria, `404` em recursos privados de terceiros | `get_current_user`, `habits/service.py`, `checkins/service.py` | `tests/checkins/test_check_in_privacy.py`, `tests/habits/test_habits.py` |
 | **C3-RNF-04** | Usabilidade do check-in | Registro rápido multi-hábito com retorno de `progress` na mesma requisição | `POST /check-ins` + `(app)/check-in.tsx` | `tests/goals/test_goal_list_and_check_in.py`, `check-in.test.tsx` |
 | **C4-RNF-05** | Desempenho da API | P95 $\le 500\text{ ms}$ até 100 usuários simultâneos ($\approx 20\text{ req/s}$) | Consultas em lote (`list_check_in_days_for_habits`) | Cálculo em lote sem *N+1 queries* (`app/goals/service.py`) |
