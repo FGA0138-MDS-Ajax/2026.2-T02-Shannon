@@ -1,5 +1,6 @@
 import { Lucide } from "@react-native-vector-icons/lucide";
 import { StyleSheet, Text, View } from "react-native";
+import { CheckInPhoto } from "@/components/check-in-photo";
 import { Card } from "@/components/ui";
 import { theme } from "@/config/theme";
 import type { CheckIn } from "@/services/types/habits";
@@ -22,36 +23,54 @@ export default function CheckInItem({ checkIn, onPress }: CheckInItemProps) {
       accessibilityLabel={`Check-in ${checkIn.title}`}
       style={styles.card}
     >
-      <View style={styles.header}>
-        <Text style={styles.title} numberOfLines={1}>
-          {checkIn.title}
-        </Text>
-        <Lucide name="chevron-right" size={18} color={theme.colors.subtle} />
-      </View>
-
-      {!!checkIn.description && (
-        <Text style={styles.description} numberOfLines={2}>
-          {checkIn.description}
-        </Text>
-      )}
-
-      <View style={styles.meta}>
-        <View style={styles.metaItem}>
-          <Lucide name="clock" size={14} color={theme.colors.muted} />
-          <Text style={styles.metaText}>{formatTime(checkIn.created_at)}</Text>
-        </View>
-
-        {!!checkIn.duration && (
-          <View style={styles.duration}>
-            <Text style={styles.durationText}>
-              {formatDuration(checkIn.duration)}
-            </Text>
-          </View>
+      <View style={styles.row}>
+        {checkIn.photo && (
+          <CheckInPhoto
+            checkInId={checkIn.id}
+            photo={checkIn.photo}
+            testID={`check-in-thumbnail-${checkIn.id}`}
+          />
         )}
 
-        <Text style={[styles.metaText, styles.habits]}>
-          {habitCount} {habitCount === 1 ? "hábito" : "hábitos"}
-        </Text>
+        <View style={styles.content}>
+          <View style={styles.header}>
+            <Text style={styles.title} numberOfLines={1}>
+              {checkIn.title}
+            </Text>
+            <Lucide
+              name="chevron-right"
+              size={18}
+              color={theme.colors.subtle}
+            />
+          </View>
+
+          {!!checkIn.description && (
+            <Text style={styles.description} numberOfLines={2}>
+              {checkIn.description}
+            </Text>
+          )}
+
+          <View style={styles.meta}>
+            <View style={styles.metaItem}>
+              <Lucide name="clock" size={14} color={theme.colors.muted} />
+              <Text style={styles.metaText}>
+                {formatTime(checkIn.created_at)}
+              </Text>
+            </View>
+
+            {!!checkIn.duration && (
+              <View style={styles.duration}>
+                <Text style={styles.durationText}>
+                  {formatDuration(checkIn.duration)}
+                </Text>
+              </View>
+            )}
+
+            <Text style={[styles.metaText, styles.habits]}>
+              {habitCount} {habitCount === 1 ? "hábito" : "hábitos"}
+            </Text>
+          </View>
+        </View>
       </View>
     </Card>
   );
@@ -59,6 +78,15 @@ export default function CheckInItem({ checkIn, onPress }: CheckInItemProps) {
 
 const styles = StyleSheet.create({
   card: {
+    gap: 8,
+  },
+  row: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  content: {
+    flex: 1,
     gap: 8,
   },
   header: {

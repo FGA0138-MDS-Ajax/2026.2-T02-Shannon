@@ -1,6 +1,9 @@
 import { router, useLocalSearchParams } from "expo-router";
+import { useRef } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import useSWR from "swr";
+import { CheckInPhoto } from "@/components/check-in-photo";
+import { CheckInPhotoControls } from "@/components/check-in-photo-controls";
 import {
   ActionRow,
   BackButton,
@@ -14,14 +17,18 @@ import { useRefreshOnFocus } from "@/hooks/useRefreshOnFocus";
 import { useSession } from "@/hooks/useSession";
 import { request } from "@/services/api";
 import { checkInKeys, deleteCheckIn } from "@/services/check-ins-api";
-import type { CheckIn } from "@/services/types/habits";
+import type { CheckIn, CheckInPhotoPublic } from "@/services/types/habits";
 import { formatDateTime } from "@/utils/date";
 import { formatDuration } from "@/utils/duration";
+import { canManageCheckInPhoto } from "@/utils/photo-rules";
 
 export default function CheckInDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { user } = useSession();
   const { busy, run } = useAsyncAction();
+  // A URL assinada vale 30 min. Se a imagem falhar, renova uma vez por
+  // montagem com um GET novo; se voltar `photo: null`, a imagem some sem loop.
+  const renewedPhoto = useRef(false);
   const {
     data: checkIn,
     error,
@@ -29,6 +36,17 @@ export default function CheckInDetailScreen() {
   } = useSWR<CheckIn>(checkInKeys.detail(id), request);
 
   useRefreshOnFocus(refreshCheckIn);
+
+  const handlePhotoError = () => {
+    if (renewedPhoto.current) return;
+    renewedPhoto.current = true;
+    void refreshCheckIn();
+  };
+
+  const handlePhotoUpdated = (photo: CheckInPhotoPublic | null) => {
+    if (!checkIn) return;
+    void refreshCheckIn({ ...checkIn, photo }, { revalidate: false });
+  };
 
   const handleDelete = () =>
     confirmAction({
@@ -45,6 +63,7 @@ export default function CheckInDetailScreen() {
 
   const renderContent = (checkIn: CheckIn) => {
     const isOwner = checkIn.user_id === user?.id;
+    const canManagePhoto = canManageCheckInPhoto(checkIn, user?.id);
 
     return (
       <ScrollView>
@@ -54,10 +73,30 @@ export default function CheckInDetailScreen() {
           {checkIn.duration ? ` · ${formatDuration(checkIn.duration)}` : ""}
         </Text>
 
+        {checkIn.photo && (
+          <CheckInPhoto
+            checkInId={checkIn.id}
+            photo={checkIn.photo}
+            variant="full"
+            testID="check-in-photo-full"
+            onError={handlePhotoError}
+          />
+        )}
+
         {checkIn.description && (
           <Section title="Descrição">
             <Text style={styles.description}>{checkIn.description}</Text>
           </Section>
+        )}
+
+        {canManagePhoto && (
+          <View style={styles.photoActions}>
+            <CheckInPhotoControls
+              checkIn={checkIn}
+              onUpdated={handlePhotoUpdated}
+              onNotFound={() => router.back()}
+            />
+          </View>
         )}
 
         {isOwner && (
@@ -116,6 +155,9 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: theme.colors.label,
     lineHeight: 22,
+  },
+  photoActions: {
+    marginTop: 24,
   },
   actions: {
     marginTop: 24,

@@ -1,5 +1,6 @@
 import { Lucide } from "@react-native-vector-icons/lucide";
 import { StyleSheet, Text, View } from "react-native";
+import { CheckInPhoto } from "@/components/check-in-photo";
 import { Card } from "@/components/ui";
 import { habitCategoryIcons } from "@/config/habit-categories";
 import { theme } from "@/config/theme";
@@ -26,13 +27,21 @@ export function FeedCard({ item, category, isMine, onPress }: FeedCardProps) {
       style={styles.card}
     >
       <View style={styles.header}>
-        <View style={styles.icon}>
-          <Lucide
-            name={category ? habitCategoryIcons[category] : "sparkles"}
-            size={18}
-            color={theme.colors.primaryDark}
+        {item.photo ? (
+          <CheckInPhoto
+            checkInId={item.id}
+            photo={item.photo}
+            testID={`feed-thumbnail-${item.id}`}
           />
-        </View>
+        ) : (
+          <View style={styles.icon}>
+            <Lucide
+              name={category ? habitCategoryIcons[category] : "sparkles"}
+              size={18}
+              color={theme.colors.primaryDark}
+            />
+          </View>
+        )}
         <View style={styles.texts}>
           <Text style={styles.overline} numberOfLines={1}>
             {isMine ? "Você" : item.author.username} fez check-in em

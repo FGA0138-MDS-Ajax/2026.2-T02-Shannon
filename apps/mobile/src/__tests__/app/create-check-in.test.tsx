@@ -1,13 +1,14 @@
 import { fireEvent, render, waitFor } from "@testing-library/react-native";
 import { SWRConfig } from "swr";
 import CreateCheckInScreen from "@/app/(app)/check-ins/create";
-import { request } from "@/services/api";
-import { createCheckIn } from "@/services/check-ins-api";
+import { ApiError, request } from "@/services/api";
+import { createCheckIn, uploadCheckInPhoto } from "@/services/check-ins-api";
 import type {
   CheckInCreated,
   HabitOption,
   HabitProgress,
 } from "@/services/types/habits";
+import { pickPhoto, preparePhoto } from "@/utils/photo";
 
 jest.mock("expo-router", () => {
   const { useEffect } = jest.requireActual("react");
@@ -27,11 +28,24 @@ jest.mock("@/services/check-ins-api", () => ({
   ...jest.requireActual("@/services/check-ins-api"),
   createCheckIn: jest.fn(),
   listHabitOptions: jest.fn(),
+  uploadCheckInPhoto: jest.fn(),
+}));
+
+jest.mock("@/utils/photo", () => ({
+  pickPhoto: jest.fn(),
+  preparePhoto: jest.fn(),
 }));
 
 const mockRequest = request as jest.MockedFunction<typeof request>;
 const mockCreateCheckIn = createCheckIn as jest.MockedFunction<
   typeof createCheckIn
+>;
+const mockUploadPhoto = uploadCheckInPhoto as jest.MockedFunction<
+  typeof uploadCheckInPhoto
+>;
+const mockPickPhoto = pickPhoto as jest.MockedFunction<typeof pickPhoto>;
+const mockPreparePhoto = preparePhoto as jest.MockedFunction<
+  typeof preparePhoto
 >;
 const { router } = jest.requireMock("expo-router");
 
@@ -123,6 +137,18 @@ beforeEach(() => {
     }
     return { items: habitOptions, page: 1, has_more: false };
   });
+  mockPickPhoto.mockResolvedValue({
+    uri: "file:///tmp/original.heic",
+  } as never);
+  mockPreparePhoto.mockResolvedValue({
+    uri: "file:///tmp/foto.jpg",
+    name: "check-in.jpg",
+    type: "image/jpeg",
+  });
+  mockUploadPhoto.mockResolvedValue({
+    thumbnail_url: "https://cdn.example.com/thumb.jpg",
+    url: "https://cdn.example.com/full.jpg",
+  });
 });
 
 describe("CreateCheckInScreen", () => {
@@ -205,5 +231,89 @@ describe("CreateCheckInScreen", () => {
       screen.getByTestId("habit-h1").props.accessibilityState,
     ).toMatchObject({ checked: false });
     expect(screen.getByText("0/20 selecionados")).toBeTruthy();
+  });
+
+  it("does not upload a photo when none was chosen", async () => {
+    mockCreateCheckIn.mockResolvedValueOnce(makeCreated([makeProgress("h1")]));
+
+    const screen = await renderScreen();
+    await submitCheckIn(screen);
+
+    await screen.findByText("Check-in salvo! Seu progresso:");
+    expect(mockUploadPhoto).not.toHaveBeenCalled();
+  });
+
+  it("shows the chosen photo before sending", async () => {
+    const screen = await renderScreen();
+
+    await fireEvent.press(await screen.findByTestId("category-corrida"));
+    await fireEvent.press(await screen.findByTestId("habit-h1"));
+    await fireEvent.press(screen.getByTestId("continue-button"));
+    await fireEvent.press(screen.getByTestId("photo-field-library"));
+
+    expect(
+      await screen.findByTestId("check-in-photo-field-preview"),
+    ).toBeTruthy();
+    expect(mockPickPhoto).toHaveBeenCalledWith("library");
+    expect(mockPreparePhoto).toHaveBeenCalledWith({
+      uri: "file:///tmp/original.heic",
+    });
+  });
+
+  it("uploads the photo only after the check-in exists", async () => {
+    mockCreateCheckIn.mockResolvedValueOnce(makeCreated([makeProgress("h1")]));
+    const screen = await renderScreen();
+
+    await fireEvent.press(await screen.findByTestId("category-corrida"));
+    await fireEvent.press(await screen.findByTestId("habit-h1"));
+    await fireEvent.press(screen.getByTestId("continue-button"));
+    await fireEvent.press(screen.getByTestId("photo-field-library"));
+    await screen.findByTestId("check-in-photo-field-preview");
+    await fireEvent.changeText(
+      screen.getByTestId("check-in-title-input"),
+      "Treino",
+    );
+    await fireEvent.press(screen.getByTestId("submit-button"));
+
+    await waitFor(() => {
+      expect(mockUploadPhoto).toHaveBeenCalledWith("check-in-1", {
+        uri: "file:///tmp/foto.jpg",
+        name: "check-in.jpg",
+        type: "image/jpeg",
+      });
+    });
+    expect(mockCreateCheckIn.mock.invocationCallOrder[0]).toBeLessThan(
+      mockUploadPhoto.mock.invocationCallOrder[0],
+    );
+  });
+
+  it("keeps the check-in when the photo upload fails", async () => {
+    mockCreateCheckIn.mockResolvedValueOnce(makeCreated([makeProgress("h1")]));
+    mockUploadPhoto.mockRejectedValueOnce(
+      new ApiError("Não foi possível salvar a foto. Tente novamente.", 503),
+    );
+    const screen = await renderScreen();
+
+    await fireEvent.press(await screen.findByTestId("category-corrida"));
+    await fireEvent.press(await screen.findByTestId("habit-h1"));
+    await fireEvent.press(screen.getByTestId("continue-button"));
+    await fireEvent.press(screen.getByTestId("photo-field-library"));
+    await screen.findByTestId("check-in-photo-field-preview");
+    await fireEvent.changeText(
+      screen.getByTestId("check-in-title-input"),
+      "Treino",
+    );
+    await fireEvent.press(screen.getByTestId("submit-button"));
+
+    expect(
+      await screen.findByText("Check-in salvo! Seu progresso:"),
+    ).toBeTruthy();
+    expect(
+      screen.getByText("Não foi possível salvar a foto. Tente novamente."),
+    ).toBeTruthy();
+    expect(mockCreateCheckIn).toHaveBeenCalledTimes(1);
+    // O check-in criado continua disponível para abrir no detalhe.
+    await fireEvent.press(screen.getByTestId("view-check-in-button"));
+    expect(router.replace).toHaveBeenCalledWith("/check-ins/check-in-1");
   });
 });

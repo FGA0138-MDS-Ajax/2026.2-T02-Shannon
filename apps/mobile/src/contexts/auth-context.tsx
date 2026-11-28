@@ -18,6 +18,7 @@ import {
 import type {
   LoginRequest,
   SignupRequest,
+  TokenResponse,
   UserPublic,
 } from "@/services/types/auth";
 
@@ -29,6 +30,10 @@ export interface AuthContextType {
   signUp: (data: SignupRequest) => Promise<void>;
   signOut: () => Promise<void>;
   refreshSession: () => Promise<void>;
+  /** Aplica o usuário devolvido por PATCH /auth/session/me, sem novo login. */
+  updateUser: (user: UserPublic) => void;
+  /** Substitui os dois tokens guardados (ex.: depois de trocar a senha). */
+  replaceTokens: (tokens: TokenResponse) => Promise<void>;
 }
 
 export const AuthContext = createContext<AuthContextType>({
@@ -39,6 +44,8 @@ export const AuthContext = createContext<AuthContextType>({
   signUp: async () => {},
   signOut: async () => {},
   refreshSession: async () => {},
+  updateUser: () => {},
+  replaceTokens: async () => {},
 });
 
 export function SessionProvider({ children }: { children: ReactNode }) {
@@ -165,6 +172,16 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     if (!ok) await resetSession();
   }, [tryRefresh, resetSession]);
 
+  const updateUser = useCallback((nextUser: UserPublic) => {
+    setUser(nextUser);
+  }, []);
+
+  const replaceTokens = useCallback(async (tokenRes: TokenResponse) => {
+    const tokens = toStoredTokens(tokenRes);
+    await saveTokens(tokens);
+    setSession(tokens);
+  }, []);
+
   const value = useMemo(
     () => ({
       user,
@@ -174,8 +191,20 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       signUp,
       signOut,
       refreshSession,
+      updateUser,
+      replaceTokens,
     }),
-    [user, session, isLoading, signIn, signUp, signOut, refreshSession],
+    [
+      user,
+      session,
+      isLoading,
+      signIn,
+      signUp,
+      signOut,
+      refreshSession,
+      updateUser,
+      replaceTokens,
+    ],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

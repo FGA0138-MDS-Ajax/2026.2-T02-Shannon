@@ -125,6 +125,29 @@ describe("request: Bearer", () => {
   });
 });
 
+describe("request: multipart e 204", () => {
+  it("não fixa Content-Type quando o corpo é FormData", async () => {
+    mockFetch.mockResolvedValueOnce(makeResponse({ thumbnail_url: "t" }));
+
+    const form = new FormData();
+    form.append("photo", "arquivo" as unknown as Blob);
+    await request("/check-ins/1/photo", { method: "PUT", body: form });
+
+    const init = mockFetch.mock.calls[0][1];
+    expect(init.headers).not.toHaveProperty("Content-Type");
+    expect(init.headers.Accept).toBe("application/json");
+    expect(init.body).toBe(form);
+  });
+
+  it("devolve undefined no 204 sem tentar ler o corpo", async () => {
+    mockFetch.mockResolvedValueOnce(makeResponse(null, 204));
+
+    await expect(
+      request("/check-ins/1/photo", { method: "DELETE" }),
+    ).resolves.toBeUndefined();
+  });
+});
+
 describe("request: refresh on 401", () => {
   it("should refresh once, save the tokens and retry the request", async () => {
     await saveTokens(oldTokens);

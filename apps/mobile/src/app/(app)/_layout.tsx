@@ -8,6 +8,8 @@ export default function AppLayout() {
   return (
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="(tabs)" />
+      <Stack.Screen name="account/edit" />
+      <Stack.Screen name="account/password" />
       <Stack.Screen name="habits/create" />
       <Stack.Screen name="habits/[id]/index" />
       <Stack.Screen name="habits/[id]/edit" />

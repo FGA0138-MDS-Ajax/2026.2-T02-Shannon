@@ -5,8 +5,10 @@ import {
   CheckInFields,
   type CheckInFieldValues,
 } from "@/components/forms/check-in-fields";
+import { PhotoField } from "@/components/forms/photo-field";
 import { ErrorBanner } from "@/components/ui";
 import { theme } from "@/config/theme";
+import type { PhotoSource } from "@/utils/photo";
 
 export interface DetailsStepProps {
   values: CheckInFieldValues;
@@ -14,7 +16,12 @@ export interface DetailsStepProps {
   formError: string | null;
   habitCount: number;
   submitting: boolean;
+  photoPreview: string | null;
+  photoError: string | null;
+  photoPicking: boolean;
   onChange: (values: CheckInFieldValues) => void;
+  onPickPhoto: (source: PhotoSource) => void;
+  onRemovePhoto: () => void;
   onSubmit: () => void;
 }
 
@@ -25,7 +32,12 @@ export default function DetailsStep({
   formError,
   habitCount,
   submitting,
+  photoPreview,
+  photoError,
+  photoPicking,
   onChange,
+  onPickPhoto,
+  onRemovePhoto,
   onSubmit,
 }: DetailsStepProps) {
   return (
@@ -37,6 +49,13 @@ export default function DetailsStep({
         keyboardShouldPersistTaps="handled"
       >
         <CheckInFields values={values} errors={errors} onChange={onChange} />
+        <PhotoField
+          previewUri={photoPreview}
+          error={photoError}
+          disabled={submitting || photoPicking}
+          onPick={onPickPhoto}
+          onRemove={onRemovePhoto}
+        />
       </ScrollView>
 
       <View style={styles.footer}>

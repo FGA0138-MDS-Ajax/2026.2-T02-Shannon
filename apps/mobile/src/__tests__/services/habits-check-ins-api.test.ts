@@ -6,7 +6,9 @@ import {
   listCheckInCategories,
   listHabitOptions,
   listUserCheckIns,
+  removeCheckInPhoto,
   updateCheckIn,
+  uploadCheckInPhoto,
 } from "@/services/check-ins-api";
 import {
   createHabit,
@@ -173,5 +175,59 @@ describe("check-ins-api", () => {
 
     const [, init] = mockFetch.mock.calls[0];
     expect(init.headers.Authorization).toBe("Bearer acc");
+  });
+
+  it("uploads the photo as multipart in the `photo` field", async () => {
+    // No Jest o FormData global é o do Node, que transforma objetos em texto.
+    // Um FormData mínimo guarda o valor como o do React Native.
+    const OriginalFormData = global.FormData;
+    class RecordingFormData {
+      parts: [string, unknown][] = [];
+      append(name: string, value: unknown) {
+        this.parts.push([name, value]);
+      }
+      getAll(name: string) {
+        return this.parts.filter(([key]) => key === name).map(([, v]) => v);
+      }
+    }
+    global.FormData = RecordingFormData as unknown as typeof FormData;
+
+    try {
+      mockFetch.mockResolvedValueOnce(
+        makeResponse({ thumbnail_url: "thumb", url: "full" }),
+      );
+
+      await uploadCheckInPhoto("c1", {
+        uri: "file:///tmp/foto.jpg",
+        name: "check-in.jpg",
+        type: "image/jpeg",
+      });
+
+      const [url, init] = mockFetch.mock.calls[0];
+      expect(url.replace(API_URL, "")).toBe("/check-ins/c1/photo");
+      expect(init.method).toBe("PUT");
+      expect(init.body).toBeInstanceOf(RecordingFormData);
+      expect(init.headers).not.toHaveProperty("Content-Type");
+      expect(init.headers.Authorization).toBe("Bearer acc");
+
+      const [value] = init.body.getAll("photo");
+      expect(value).toEqual({
+        uri: "file:///tmp/foto.jpg",
+        name: "check-in.jpg",
+        type: "image/jpeg",
+      });
+    } finally {
+      global.FormData = OriginalFormData;
+    }
+  });
+
+  it("removes the photo with DELETE and resolves the 204", async () => {
+    mockFetch.mockResolvedValueOnce(makeResponse(null, 204));
+
+    await expect(removeCheckInPhoto("c1")).resolves.toBeUndefined();
+
+    const [url, init] = mockFetch.mock.calls[0];
+    expect(url.replace(API_URL, "")).toBe("/check-ins/c1/photo");
+    expect(init.method).toBe("DELETE");
   });
 });

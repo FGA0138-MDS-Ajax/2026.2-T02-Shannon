@@ -1,6 +1,6 @@
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import Button from "@/components/button";
-import { Card } from "@/components/ui";
+import { Card, ErrorBanner } from "@/components/ui";
 import {
   currentPeriodPhrases,
   describeProgressStatus,
@@ -11,16 +11,25 @@ import type { CheckInProgressItem } from "@/utils/check-in-progress";
 
 export interface ProgressSummaryProps {
   items: CheckInProgressItem[];
+  /** Aviso de falha no upload da foto: o check-in foi salvo mesmo assim. */
+  notice?: string | null;
   onViewCheckIn: () => void;
 }
 
 // Depois do envio: como ficou a meta de cada hábito com este check-in
 export default function ProgressSummary({
   items,
+  notice,
   onViewCheckIn,
 }: ProgressSummaryProps) {
   return (
     <>
+      {notice && (
+        <View style={styles.notice}>
+          <ErrorBanner message={notice} />
+        </View>
+      )}
+
       <ScrollView contentContainerStyle={styles.list}>
         {items.map(({ name, progress }) => {
           const { period } = progress.goal;
@@ -61,6 +70,9 @@ export default function ProgressSummary({
 }
 
 const styles = StyleSheet.create({
+  notice: {
+    marginTop: 16,
+  },
   list: {
     gap: 8,
     paddingVertical: 16,

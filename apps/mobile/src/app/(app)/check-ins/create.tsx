@@ -24,6 +24,7 @@ export default function CreateCheckInScreen() {
       return (
         <ProgressSummary
           items={flow.created.items}
+          notice={flow.photoNotice}
           onViewCheckIn={() => flow.created && openCheckIn(flow.created.id)}
         />
       );
@@ -69,7 +70,12 @@ export default function CreateCheckInScreen() {
             formError={flow.formError}
             habitCount={flow.selected.size}
             submitting={flow.submitting}
+            photoPreview={flow.photoPreview}
+            photoError={flow.photoError}
+            photoPicking={flow.photoPicking}
             onChange={flow.setFields}
+            onPickPhoto={flow.selectPhoto}
+            onRemovePhoto={flow.removePhoto}
             onSubmit={flow.submit}
           />
         );

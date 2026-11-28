@@ -131,8 +131,13 @@ export async function request<T>(
 ): Promise<T> {
   const url = `${API_URL}${endpoint}`;
 
+  // `FormData` precisa do boundary que o runtime gera sozinho. Fixar
+  // `multipart/form-data` na mão quebra o upload de fotos.
+  const isFormData =
+    typeof FormData !== "undefined" && options.body instanceof FormData;
+
   const headers: Record<string, string> = {
-    "Content-Type": "application/json",
+    ...(isFormData ? {} : { "Content-Type": "application/json" }),
     Accept: "application/json",
     ...((options.headers as Record<string, string>) || {}),
   };

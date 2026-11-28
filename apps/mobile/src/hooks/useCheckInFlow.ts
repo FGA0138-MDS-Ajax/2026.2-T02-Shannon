@@ -13,11 +13,14 @@ import {
   getRejectedHabitIds,
 } from "@/services/api-errors";
 import {
+  type CheckInPhotoFile,
   checkInKeys,
   createCheckIn,
   isAffectedByCheckIn,
   listHabitOptions,
+  uploadCheckInPhoto,
 } from "@/services/check-ins-api";
+import { getPhotoErrorInfo } from "@/services/photo-errors";
 import type {
   CheckInCategoriesResponse,
   CheckInCreate,
@@ -28,6 +31,7 @@ import {
   type CheckInProgressItem,
   matchCheckInProgress,
 } from "@/utils/check-in-progress";
+import { pickPhoto, preparePhoto, type PhotoSource } from "@/utils/photo";
 
 export type CheckInStep = "categories" | "habits" | "details";
 
@@ -80,11 +84,19 @@ export function useCheckInFlow({ onOpenCheckIn }: CheckInFlowParams) {
   const [fieldErrors, setFieldErrors] = useState<CheckInFieldErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  // Foto escolhida na etapa de detalhes: enviada só depois do POST /check-ins
+  const [photo, setPhoto] = useState<CheckInPhotoFile | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [photoError, setPhotoError] = useState<string | null>(null);
+  const [photoPicking, setPhotoPicking] = useState(false);
   // O GET do detalhe não traz o progresso: o resumo é mostrado aqui
   const [created, setCreated] = useState<{
     id: string;
     items: CheckInProgressItem[];
   } | null>(null);
+  // Falha no upload depois do check-in criado: o resumo avisa e o detalhe
+  // permite tentar de novo sem desfazer o check-in.
+  const [photoNotice, setPhotoNotice] = useState<string | null>(null);
 
   // ── Dados ─────────────────────────────────────────────────────────────────
   const categoriesQuery = useSWR<CheckInCategoriesResponse>(
@@ -192,6 +204,33 @@ export function useCheckInFlow({ onOpenCheckIn }: CheckInFlowParams) {
     setSelected(new Set(selected).add(id));
   };
 
+  // ── Foto ──────────────────────────────────────────────────────────────────
+  const selectPhoto = async (source: PhotoSource) => {
+    if (photoPicking) return;
+    setPhotoError(null);
+    try {
+      const asset = await pickPhoto(source);
+      if (!asset) return;
+
+      setPhotoPicking(true);
+      const file = await preparePhoto(asset);
+      setPhoto(file);
+      setPhotoPreview(file.uri);
+    } catch (err: unknown) {
+      setPhotoError(
+        err instanceof Error ? err.message : getErrorMessage(err),
+      );
+    } finally {
+      setPhotoPicking(false);
+    }
+  };
+
+  const removePhoto = () => {
+    setPhoto(null);
+    setPhotoPreview(null);
+    setPhotoError(null);
+  };
+
   // ── Envio ─────────────────────────────────────────────────────────────────
   const submit = async () => {
     if (submitting) return;
@@ -211,9 +250,22 @@ export function useCheckInFlow({ onOpenCheckIn }: CheckInFlowParams) {
     try {
       setSubmitting(true);
       setRejection(null);
+      setPhotoNotice(null);
       const checkIn = await createCheckIn(body);
       // A Home continua montada por baixo: recarrega o painel já agora
       globalMutate(isAffectedByCheckIn);
+
+      // O check-in já existe: uma falha no upload não pode desfazê-lo.
+      if (photo) {
+        try {
+          await uploadCheckInPhoto(checkIn.id, photo);
+        } catch (err: unknown) {
+          setPhotoNotice(getPhotoErrorInfo(err).message);
+        }
+        setPhoto(null);
+        setPhotoPreview(null);
+        setPhotoError(null);
+      }
 
       // Junta nome e progresso antes de zerar a categoria (e as opções)
       const chosen = (options ?? []).filter((habit) => selected.has(habit.id));
@@ -269,6 +321,12 @@ export function useCheckInFlow({ onOpenCheckIn }: CheckInFlowParams) {
     formError,
     submitting,
     submit,
+    photoPreview,
+    photoError,
+    photoPicking,
+    selectPhoto,
+    removePhoto,
+    photoNotice,
     created,
   };
 }

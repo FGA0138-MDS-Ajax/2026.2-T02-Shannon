@@ -120,6 +120,13 @@ export interface HabitUpdate {
   target_end_date?: string | null;
 }
 
+// Foto do check-in. `url` (tamanho cheio) só vem no detalhe; listas e feed
+// trazem apenas `thumbnail_url`, com `url: null`.
+export interface CheckInPhotoPublic {
+  thumbnail_url: string;
+  url: string | null;
+}
+
 export interface CheckIn {
   id: string;
   user_id: string;
@@ -130,6 +137,7 @@ export interface CheckIn {
   duration: string | null;
   // A ordem não é garantida.
   habit_ids: string[];
+  photo?: CheckInPhotoPublic | null;
 }
 
 export interface CheckInCreate {

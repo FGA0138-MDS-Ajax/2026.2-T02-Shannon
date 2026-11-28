@@ -5,10 +5,13 @@ const NETWORK_ERROR_MESSAGE =
 
 // Usadas quando o `detail` não vem como texto.
 const STATUS_MESSAGES: Record<number, string> = {
+  400: "Não foi possível concluir a ação.",
   401: "Sua sessão expirou. Entre novamente.",
   403: "Você não tem permissão para fazer isso.",
   404: "Não encontrado.",
   409: "Esta ação não pode ser feita agora.",
+  413: "A foto deve ter no máximo 4 MB.",
+  415: "Formato não suportado. Envie uma imagem JPEG ou PNG.",
   422: "Confira os campos destacados.",
 };
 

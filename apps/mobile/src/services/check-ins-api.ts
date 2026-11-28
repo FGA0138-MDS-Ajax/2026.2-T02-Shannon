@@ -6,6 +6,7 @@ import type {
   CheckInCategoriesResponse,
   CheckInCreate,
   CheckInCreated,
+  CheckInPhotoPublic,
   CheckInsPage,
   CheckInUpdate,
   HabitOptionsPage,
@@ -88,4 +89,43 @@ export function updateCheckIn(
 
 export function deleteCheckIn(id: string): Promise<void> {
   return request<void>(`/check-ins/${id}`, { method: "DELETE" });
+}
+
+/**
+ * Arquivo pronto para o upload. No celular o `FormData` recebe
+ * `{ uri, name, type }`; na web, o `File` devolvido pelo seletor.
+ */
+export interface CheckInPhotoFile {
+  uri: string;
+  name: string;
+  type: string;
+  file?: Blob;
+}
+
+/**
+ * Envia ou substitui a foto do check-in. O campo multipart é `photo` e o
+ * `Content-Type` não é definido na mão: o runtime precisa gerar o boundary.
+ */
+export function uploadCheckInPhoto(
+  id: string,
+  photo: CheckInPhotoFile,
+): Promise<CheckInPhotoPublic> {
+  const form = new FormData();
+  const value = photo.file ?? {
+    uri: photo.uri,
+    name: photo.name,
+    type: photo.type,
+  };
+  // O tipo do React Native para o campo nativo não é o `Blob` do DOM.
+  form.append("photo", value as unknown as Blob);
+
+  return request<CheckInPhotoPublic>(`/check-ins/${id}/photo`, {
+    method: "PUT",
+    body: form,
+  });
+}
+
+/** Remove a foto. A API responde 204 sem corpo, mesmo se não houver foto. */
+export function removeCheckInPhoto(id: string): Promise<void> {
+  return request<void>(`/check-ins/${id}/photo`, { method: "DELETE" });
 }
