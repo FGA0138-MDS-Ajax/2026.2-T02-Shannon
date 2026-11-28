@@ -1,5 +1,5 @@
 import { router, useLocalSearchParams } from "expo-router";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { StyleSheet, useWindowDimensions, View } from "react-native";
 import useSWR, { useSWRConfig } from "swr";
 import GroupAbout from "@/components/groups/group-about";
@@ -21,7 +21,7 @@ import { usePageTitle } from "@/hooks/usePageTitle";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { useRefreshOnFocus } from "@/hooks/useRefreshOnFocus";
 import { useSession } from "@/hooks/useSession";
-import { request } from "@/services/api";
+import { ApiError, request } from "@/services/api";
 import { groupKeys } from "@/services/groups-api";
 import type { GroupDetail } from "@/services/types/groups";
 import { memberColors } from "@/utils/group-period";
@@ -67,6 +67,13 @@ export default function GroupDetailScreen() {
   useRefreshOnFocus(refreshGroup);
   useRefreshOnFocus(refreshBoard);
   usePageTitle(group?.name);
+
+  // Grupo inexistente: mostra a mensagem e volta para a lista
+  useEffect(() => {
+    if (error instanceof ApiError && error.status === 404) {
+      router.replace("/(app)/(tabs)/groups");
+    }
+  }, [error]);
 
   const colorOf = useMemo(
     () => memberColors(group?.members ?? []),

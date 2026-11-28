@@ -9,9 +9,10 @@ import {
   rankingCriterionLabels,
 } from "@/config/group-labels";
 import { theme } from "@/config/theme";
-import { getFormErrors } from "@/services/api-errors";
+import { ApiError } from "@/services/api";
+import { getErrorMessage, getFieldErrors } from "@/services/api-errors";
 import type { RankingCriterion } from "@/services/types/groups";
-import { parseApiDate, toApiDate } from "@/utils/date";
+import { parseApiDate, startOfToday, toApiDate } from "@/utils/date";
 
 // Valores já validados, no formato da API
 export interface GroupFormValues {
@@ -64,6 +65,9 @@ export function GroupForm({
       errors.name = "Use no máximo 100 caracteres.";
     if (trimmedDescription.length > 500)
       errors.description = "Use no máximo 500 caracteres.";
+    // Data de término opcional, mas não pode ser anterior a hoje
+    if (endsOn && toApiDate(endsOn) < toApiDate(startOfToday()))
+      errors.ends_on = "A data de término não pode ser anterior à data atual.";
 
     setFieldErrors(errors);
     if (Object.keys(errors).length > 0) return;
@@ -77,9 +81,17 @@ export function GroupForm({
         ranking_criterion: criterion,
       });
     } catch (err: unknown) {
-      const result = getFormErrors(err);
-      setFieldErrors(result.fieldErrors);
-      setFormError(result.formError);
+      const fieldErrors = getFieldErrors(err);
+      if (Object.keys(fieldErrors).length > 0) {
+        setFieldErrors(fieldErrors);
+        setFormError(null);
+      } else if (err instanceof ApiError && err.status === 422) {
+        // 422 em texto da API (ex.: data de término) vai no campo `ends_on`
+        setFieldErrors({ ends_on: getErrorMessage(err) });
+        setFormError(null);
+      } else {
+        setFormError(getErrorMessage(err));
+      }
     } finally {
       setSubmitting(false);
     }

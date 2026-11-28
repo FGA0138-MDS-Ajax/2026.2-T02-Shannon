@@ -134,12 +134,18 @@ export interface RankingItem {
   score: number;
 }
 
+export interface RankingMe {
+  position: number;
+  score: number;
+}
+
 export interface Ranking {
   criterion: RankingCriterion;
   // Até onde foi calculado: hoje ou o `ends_on` do grupo encerrado.
   as_of: string;
   items: RankingItem[];
-  me: { position: number; score: number };
+  // Quem pediu: destaque do usuário atual vem daqui, não de comparação de id
+  me: RankingMe;
 }
 
 // Estatísticas ----------------------------------------------------------------

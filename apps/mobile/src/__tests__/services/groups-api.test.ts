@@ -1,4 +1,4 @@
-import { API_URL } from "@/services/api";
+import { API_URL, ApiError } from "@/services/api";
 import {
   addMember,
   createGroup,
@@ -175,5 +175,41 @@ describe("groups-api", () => {
       status: 409,
       message: "Grupo cheio.",
     });
+  });
+});
+
+describe("erros HTTP", () => {
+  it.each([403, 404, 409, 422])("rejeita com ApiError status %i e mensagem da API", async (status) => {
+    mockFetch.mockResolvedValue(makeResponse({ detail: `Erro ${status}.` }, status));
+    await expect(joinGroup("K7P4M9X2")).rejects.toMatchObject({
+      status,
+      message: `Erro ${status}.`,
+    });
+    await expect(joinGroup("K7P4M9X2")).rejects.toBeInstanceOf(ApiError);
+  });
+
+  it("204 resolve sem tentar ler JSON vazio", async () => {
+    mockFetch.mockResolvedValue({
+      ok: true, status: 204,
+      json: jest.fn().mockRejectedValue(new Error("no body")),
+    } as unknown as Response);
+    await expect(removeMember("g1", "u2")).resolves.toBeUndefined();
+  });
+});
+
+describe("hábitos de grupo", () => {
+  it("POST envia nome, descrição, categoria, data alvo e meta; sem is_public", async () => {
+    await createGroupHabit("g1", { name: "Ler", category: "leitura", description: "d", target_end_date: "2026-12-01", goal: { period: "day" } });
+    const body = JSON.parse((mockFetch.mock.calls[mockFetch.mock.calls.length - 1][1]).body);
+    expect(body).toMatchObject({ name: "Ler", category: "leitura", description: "d", target_end_date: "2026-12-01", goal: { period: "day" } });
+    expect(body.is_public).toBeUndefined();
+  });
+
+  it("PATCH não inclui meta; payload só nome/descrição/categoria/data alvo alterados", async () => {
+    await updateGroupHabit("g1", "h1", { name: "X", description: null });
+    const body = JSON.parse((mockFetch.mock.calls[mockFetch.mock.calls.length - 1][1]).body);
+    expect(body).toEqual({ name: "X", description: null });
+    expect(body.goal).toBeUndefined();
+    expect(body.is_public).toBeUndefined();
   });
 });

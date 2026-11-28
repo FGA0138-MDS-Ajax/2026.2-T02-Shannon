@@ -11,7 +11,7 @@ const formatApiDate = (value: string) => formatDate(parseApiDate(value));
 
 /** Grupo do hábito, ou se o hábito pessoal é público ou privado */
 function describeHabitOwner(habit: Habit): string {
-  if (habit.group) return `Grupo ${habit.group.name}`;
+  if (habit.group) return `Hábito do grupo ${habit.group.name}`;
   return habit.is_public ? "Público" : "Privado";
 }
 

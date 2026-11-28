@@ -9,7 +9,11 @@ import {
 } from "react-native";
 import { Avatar } from "@/components/ui";
 import { theme } from "@/config/theme";
-import type { RankingCriterion, RankingItem } from "@/services/types/groups";
+import type {
+  RankingCriterion,
+  RankingItem,
+  RankingMe,
+} from "@/services/types/groups";
 import { formatScore, podiumSlots } from "@/utils/group-ranking";
 
 type Slot = "left" | "center" | "right";
@@ -28,6 +32,9 @@ export interface RankingPodiumProps {
   items: RankingItem[];
   criterion: RankingCriterion;
   colorOf: (userId: string) => string;
+  /** Destaque do usuário atual, vindo da API (`me`); não calculado por id */
+  me?: RankingMe;
+  /** @deprecated Use `me`. Mantido só para compatibilidade */
   userId?: string;
   onOpenMember: (userId: string) => void;
 }
@@ -40,6 +47,7 @@ export default function RankingPodium({
   items,
   criterion,
   colorOf,
+  me,
   userId,
   onOpenMember,
 }: RankingPodiumProps) {
@@ -59,7 +67,9 @@ export default function RankingPodium({
         // Grupo com menos de 3 pessoas: o lugar fica vazio, o pódio não anda
         if (!item) return <View key={slot} style={styles.column} />;
         const first = item.position === 1;
-        const isMe = item.user.id === userId;
+        const isMe = me
+          ? item.position === me.position && item.score === me.score
+          : !!userId && item.user.id === userId;
         const name = isMe ? "Você" : item.user.username;
         return (
           <RiseIn key={slot} order={order.get(slot) ?? 0}>

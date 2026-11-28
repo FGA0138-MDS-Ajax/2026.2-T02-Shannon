@@ -40,13 +40,31 @@ export default function EditGroupScreen() {
   } = useSWR<GroupDetail>(groupKeys.detail(id), request);
   const { busy, run } = useAsyncAction();
 
-  const handleSubmit = async (values: GroupFormValues) => {
+  const applyChanges = async (changes: GroupUpdate) => {
     if (!group) return;
-    const changes = getChangedFields(group, values);
     if (Object.keys(changes).length > 0) {
       refreshGroup(await updateGroup(group.id, changes), { revalidate: false });
     }
     router.back();
+  };
+
+  const handleSubmit = async (values: GroupFormValues) => {
+    if (!group) return;
+    const changes = getChangedFields(group, values);
+    // Trocar o critério recalcula a classificação de todo o grupo: confirma
+    if (changes.ranking_criterion !== undefined) {
+      confirmAction({
+        title: "Trocar critério do ranking",
+        message:
+          "Isso altera a classificação de todo o grupo. Deseja continuar?",
+        confirmLabel: "Trocar",
+        onConfirm: () => {
+          void run("Não foi possível salvar", () => applyChanges(changes));
+        },
+      });
+      return;
+    }
+    await applyChanges(changes);
   };
 
   const setEndsOn = (endsOn: string | null, errorTitle: string) =>

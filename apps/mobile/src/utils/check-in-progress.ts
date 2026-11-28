@@ -24,3 +24,20 @@ export function matchCheckInProgress(
   }
   return items;
 }
+
+
+/**
+ * Contorno do bug L1: em hábito de grupo, `progress.status` pode chegar como
+ * `ended` por engano em `/goals/habits/{id}/progress`. A situação correta vem
+ * do item do usuário atual em `/groups/{group.id}/habits/{id}/stats`. Os
+ * demais números continuam vindo do progress normal. Retorna `progress`
+ * inalterado quando não há situação correta conhecida.
+ */
+export function applyGroupStatusFix(
+  progress: HabitProgress,
+  correctStatus: HabitProgress["status"] | null | undefined,
+): HabitProgress {
+  if (correctStatus == null) return progress;
+  if (progress.status === correctStatus) return progress;
+  return { ...progress, status: correctStatus };
+}
