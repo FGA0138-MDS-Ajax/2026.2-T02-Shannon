@@ -37,6 +37,9 @@ build = "python scripts/vercel_build.py"
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
+markers = [
+    "e2e: fluxo completo de ponta a ponta",
+]
 
 [tool.ruff]
 target-version = "py313"

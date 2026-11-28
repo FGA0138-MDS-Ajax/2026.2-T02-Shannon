@@ -24,25 +24,14 @@ from app.photos.sweep import sweep_orphan_photos
 from app.storage.dependencies import get_storage
 from tests.conftest import _auth_headers, at_noon
 from tests.group.fixtures import _add_member, _make_group, _make_group_habit
-
-
-def _encode(image: Image.Image, fmt: str, **params) -> bytes:
-  buffer = BytesIO()
-  image.save(buffer, fmt, **params)
-  return buffer.getvalue()
-
-
-def _jpeg(size: tuple[int, int] = (100, 100), **params) -> bytes:
-  return _encode(Image.new("RGB", size, (200, 30, 30)), "JPEG", **params)
-
-
-def _file(content: bytes, name: str = "foto.jpg", mime: str = "image/jpeg") -> dict:
-  return {"photo": (name, content, mime)}
+from tests.support.images import encode_image, jpeg_bytes, photo_files
 
 
 def _put(client, headers, check_in_id, content: bytes, **kwargs):
   return client.put(
-    f"/check-ins/{check_in_id}/photo", headers=headers, files=_file(content, **kwargs)
+    f"/check-ins/{check_in_id}/photo",
+    headers=headers,
+    files=photo_files(content, **kwargs),
   )
 
 
@@ -61,12 +50,14 @@ def test_fluxo_completo_enviar_substituir_e_remover(
   storage = get_storage()
   check_in = check_in_factory(habit_factory())
 
-  assert _put(client, auth_headers, check_in.id, _jpeg()).status_code == 200
+  assert _put(client, auth_headers, check_in.id, jpeg_bytes()).status_code == 200
   photo = _photo_of(client, auth_headers, check_in.id)
   assert photo["thumbnail_url"] and photo["url"]
   assert len(storage.objects) == 2
 
-  assert _put(client, auth_headers, check_in.id, _jpeg((300, 200))).status_code == 200
+  assert (
+    _put(client, auth_headers, check_in.id, jpeg_bytes((300, 200))).status_code == 200
+  )
   assert len(storage.objects) == 2  # a nova entrou e a antiga saiu
 
   response = client.delete(f"/check-ins/{check_in.id}/photo", headers=auth_headers)
@@ -88,7 +79,7 @@ def test_arquivos_maliciosos_nao_alteram_o_check_in(
 ):
   storage = get_storage()
   check_in = check_in_factory(habit_factory())
-  png_gigante = _encode(Image.new("1", (10_000, 10_000)), "PNG")
+  png_gigante = encode_image(Image.new("1", (10_000, 10_000)), "PNG")
 
   texto = _put(client, auth_headers, check_in.id, b"<?php echo 1; ?>")
   assert (texto.status_code, texto.json()["detail"]) == (415, MSG_PHOTO_UNSUPPORTED)
@@ -96,7 +87,7 @@ def test_arquivos_maliciosos_nao_alteram_o_check_in(
   grande = _put(client, auth_headers, check_in.id, b"x" * (6 * 1024 * 1024))
   assert (grande.status_code, grande.json()["detail"]) == (413, MSG_PHOTO_TOO_LARGE)
 
-  truncado = _put(client, auth_headers, check_in.id, _jpeg()[:80])
+  truncado = _put(client, auth_headers, check_in.id, jpeg_bytes()[:80])
   assert (truncado.status_code, truncado.json()["detail"]) == (400, MSG_PHOTO_INVALID)
 
   bomba = _put(
@@ -115,7 +106,7 @@ def test_jpeg_com_php_no_fim_e_aceito_sem_o_codigo(
   check_in = check_in_factory(habit_factory())
 
   response = _put(
-    client, auth_headers, check_in.id, _jpeg() + b"<?php system($_GET['c']); ?>"
+    client, auth_headers, check_in.id, jpeg_bytes() + b"<?php system($_GET['c']); ?>"
   )
 
   assert response.status_code == 200
@@ -135,7 +126,7 @@ def test_foto_com_gps_no_exif_e_gravada_sem_exif(
   gps = exif.get_ifd(ExifTags.IFD.GPSInfo)
   gps[ExifTags.GPS.GPSLatitudeRef] = "S"
   gps[ExifTags.GPS.GPSLatitude] = (15.0, 47.0, 0.0)
-  data = _jpeg((640, 480), exif=exif)
+  data = jpeg_bytes((640, 480), exif=exif)
   assert Image.open(BytesIO(data)).getexif().get_ifd(ExifTags.IFD.GPSInfo)
   check_in = check_in_factory(habit_factory())
 
@@ -160,16 +151,16 @@ def test_check_in_de_ontem_e_de_outros_usuarios(
   visivel = check_in_factory(habit_factory(is_public=True))
   invisivel = check_in_factory(habit_factory(is_public=False))
 
-  de_ontem = _put(client, auth_headers, ontem.id, _jpeg())
+  de_ontem = _put(client, auth_headers, ontem.id, jpeg_bytes())
   assert (de_ontem.status_code, de_ontem.json()["detail"]) == (409, MSG_PHOTO_NOT_TODAY)
 
-  de_outro = _put(client, other_auth_headers, visivel.id, _jpeg())
+  de_outro = _put(client, other_auth_headers, visivel.id, jpeg_bytes())
   assert (de_outro.status_code, de_outro.json()["detail"]) == (
     403,
     MSG_CHECK_IN_FORBIDDEN,
   )
 
-  escondido = _put(client, other_auth_headers, invisivel.id, _jpeg())
+  escondido = _put(client, other_auth_headers, invisivel.id, jpeg_bytes())
   assert (escondido.status_code, escondido.json()["detail"]) == (
     404,
     MSG_CHECK_IN_NOT_FOUND,
@@ -195,8 +186,10 @@ def test_visibilidade_autor_membro_habito_publico_e_quem_saiu(
   misto = check_in_factory([habit_factory(), _make_group_habit(test_engine, group)])
   publico = habit_factory(is_public=True)
   do_habito_publico = check_in_factory(publico)
-  assert _put(client, auth_headers, misto.id, _jpeg()).status_code == 200
-  assert _put(client, auth_headers, do_habito_publico.id, _jpeg()).status_code == 200
+  assert _put(client, auth_headers, misto.id, jpeg_bytes()).status_code == 200
+  assert (
+    _put(client, auth_headers, do_habito_publico.id, jpeg_bytes()).status_code == 200
+  )
   outro = _auth_headers(other_user)
 
   assert _photo_of(client, auth_headers, misto.id)["url"]  # autor
@@ -219,7 +212,7 @@ def test_listas_trazem_so_a_miniatura_e_o_detalhe_as_duas(
   _add_member(test_engine, group, user)
   habit = _make_group_habit(test_engine, group)
   check_in = check_in_factory(habit, user=user)
-  assert _put(client, auth_headers, check_in.id, _jpeg()).status_code == 200
+  assert _put(client, auth_headers, check_in.id, jpeg_bytes()).status_code == 200
 
   agrupada = client.get("/check-ins", headers=auth_headers).json()["items"][0]
   historico = client.get(f"/habits/{habit.id}/check-ins", headers=auth_headers).json()
@@ -245,7 +238,7 @@ def test_excluir_check_in_apaga_os_objetos(
   client, auth_headers, habit_factory, check_in_factory
 ):
   check_in = check_in_factory(habit_factory())
-  assert _put(client, auth_headers, check_in.id, _jpeg()).status_code == 200
+  assert _put(client, auth_headers, check_in.id, jpeg_bytes()).status_code == 200
 
   response = client.delete(f"/check-ins/{check_in.id}", headers=auth_headers)
 
@@ -258,7 +251,7 @@ def test_excluir_check_in_com_falha_no_bucket_deixa_os_objetos_para_o_varredor(
 ):
   storage = get_storage()
   check_in = check_in_factory(habit_factory())
-  assert _put(client, auth_headers, check_in.id, _jpeg()).status_code == 200
+  assert _put(client, auth_headers, check_in.id, jpeg_bytes()).status_code == 200
   storage.fail_on_delete = True
 
   response = client.delete(f"/check-ins/{check_in.id}", headers=auth_headers)
@@ -280,7 +273,7 @@ def test_varredor_apaga_so_o_orfao_antigo(
 ):
   storage = get_storage()
   check_in = check_in_factory(habit_factory())
-  assert _put(client, auth_headers, check_in.id, _jpeg()).status_code == 200
+  assert _put(client, auth_headers, check_in.id, jpeg_bytes()).status_code == 200
   registrados = set(storage.objects)
   storage.save("check-ins/orfao-antigo.jpg", b"a", "image/jpeg")
   storage.save("check-ins/orfao-recente.jpg", b"b", "image/jpeg")
