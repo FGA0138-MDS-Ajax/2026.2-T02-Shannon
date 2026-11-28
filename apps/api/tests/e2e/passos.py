@@ -108,6 +108,51 @@ def login(api: Client, usuario: Usuario) -> Usuario:
   )
 
 
+def renovar(api: Client, usuario: Usuario) -> Usuario:
+  """`POST /auth/refresh`. Devolve o usuário com o par de tokens novo.
+
+  O refresh token do `usuario` deixa de valer: usá-lo de novo derruba a sessão.
+  """
+  corpo = _checar(
+    api.post("/auth/refresh", json={"refresh_token": usuario.refresh_token}), 200
+  ).json()
+  return replace(
+    usuario,
+    access_token=corpo["access_token"],
+    refresh_token=corpo["refresh_token"],
+  )
+
+
+def sair(api: Client, usuario: Usuario) -> None:
+  """`POST /auth/logout`: encerra a sessão do refresh token. Responde 204."""
+  _checar(api.post("/auth/logout", json={"refresh_token": usuario.refresh_token}), 204)
+
+
+def trocar_senha(api: Client, usuario: Usuario, nova_senha: str) -> Usuario:
+  """`PUT /auth/session/me/password`: troca a senha e devolve tokens novos.
+
+  A API encerra todas as sessões do usuário e abre uma nova para este aparelho.
+  """
+  corpo = _checar(
+    api.put(
+      "/auth/session/me/password",
+      headers=usuario.headers,
+      json={
+        "current_password": usuario.password,
+        "new_password": nova_senha,
+        "new_password_confirmation": nova_senha,
+      },
+    ),
+    200,
+  ).json()
+  return replace(
+    usuario,
+    password=nova_senha,
+    access_token=corpo["access_token"],
+    refresh_token=corpo["refresh_token"],
+  )
+
+
 def perfil(api: Client, usuario: Usuario) -> dict[str, Any]:
   """`GET /auth/session/me`: o usuário como a API o enxerga."""
   return _checar(api.get("/auth/session/me", headers=usuario.headers), 200).json()
@@ -134,6 +179,11 @@ def criar_habito(
 def listar_habitos(api: Client, usuario: Usuario) -> list[dict[str, Any]]:
   """`GET /habits`: os hábitos do usuário, com o progresso de cada um."""
   return _checar(api.get("/habits", headers=usuario.headers), 200).json()
+
+
+def detalhe_habito(api: Client, usuario: Usuario, habit_id: str) -> dict[str, Any]:
+  """`GET /habits/{id}`: o hábito, se ele for visível ao usuário."""
+  return _checar(api.get(f"/habits/{habit_id}", headers=usuario.headers), 200).json()
 
 
 def definir_meta(
@@ -210,3 +260,30 @@ def progresso(api: Client, usuario: Usuario, habit_id: str) -> dict[str, Any]:
 def estatisticas(api: Client, usuario: Usuario) -> dict[str, Any]:
   """`GET /user/statistics`: os totais do usuário."""
   return _checar(api.get("/user/statistics", headers=usuario.headers), 200).json()
+
+
+def criar_grupo(
+  api: Client,
+  usuario: Usuario,
+  nome: str = "Corredores",
+  criterio: str = "check_ins",
+) -> dict[str, Any]:
+  """`POST /groups`. Quem cria vira administrador. O corpo traz o `invite_code`."""
+  return _checar(
+    api.post(
+      "/groups",
+      headers=usuario.headers,
+      json={"name": nome, "ranking_criterion": criterio},
+    ),
+    201,
+  ).json()
+
+
+def listar_grupos(api: Client, usuario: Usuario) -> list[dict[str, Any]]:
+  """`GET /groups`: os grupos de que o usuário é membro."""
+  return _checar(api.get("/groups", headers=usuario.headers), 200).json()
+
+
+def detalhe_grupo(api: Client, usuario: Usuario, group_id: str) -> dict[str, Any]:
+  """`GET /groups/{id}`: o grupo, para quem é membro."""
+  return _checar(api.get(f"/groups/{group_id}", headers=usuario.headers), 200).json()
