@@ -71,8 +71,10 @@ async function fileSize(uri: string): Promise<number> {
 
 async function toJpeg(photo: PickedPhoto, longSide: number, compress: number) {
   const context = ImageManipulator.manipulate(photo.uri);
-  // Só reduz: foto menor que o limite fica do tamanho que está
-  if (Math.max(photo.width, photo.height) > longSide) {
+  // Só reduz: foto menor que o limite fica do tamanho que está. Sem as
+  // medidas (o picker pode mandar 0), reduz pela largura para garantir
+  const unknownSize = !photo.width || !photo.height;
+  if (unknownSize || Math.max(photo.width, photo.height) > longSide) {
     context.resize(
       photo.width >= photo.height
         ? { width: longSide, height: null }

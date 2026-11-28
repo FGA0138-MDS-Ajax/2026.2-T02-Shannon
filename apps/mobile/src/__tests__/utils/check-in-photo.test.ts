@@ -112,6 +112,12 @@ describe("preparePhoto", () => {
     expect(mockResize).not.toHaveBeenCalled();
   });
 
+  it("still reduces a photo when the picker sends no size", async () => {
+    await preparePhoto({ uri: "file:///a.jpg", width: 0, height: 0 });
+
+    expect(mockResize).toHaveBeenCalledWith({ width: 1600, height: null });
+  });
+
   it("compresses more until the file fits in 4 MB", async () => {
     mockSavedSizes = [PHOTO_MAX_BYTES + 1, PHOTO_MAX_BYTES];
 

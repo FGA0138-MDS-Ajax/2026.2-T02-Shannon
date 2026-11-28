@@ -11,7 +11,6 @@ import {
 } from "@/services/check-ins-api";
 import {
   localPhotoErrorMessage,
-  PhotoError,
   type PhotoSource,
   type PreparedPhoto,
   pickPhoto,
@@ -41,20 +40,17 @@ export function useCheckInPhoto(checkInId: string) {
   const [locked, setLocked] = useState(false);
 
   const handleError = (err: unknown) => {
-    const message =
-      err instanceof PhotoError ? err.message : getErrorMessage(err);
     const status = err instanceof ApiError ? err.status : null;
 
     if (status === 403 || status === 409) setLocked(true);
     if (status === 404) router.back();
 
     // Falha no armazenamento ou na rede: o mesmo arquivo pode ir de novo
-    const retryable =
-      status === null ? !(err instanceof PhotoError) : status >= 500;
+    const retryable = status === null || status >= 500;
     setCanRetry(retryable);
     if (!retryable) setPending(null);
 
-    Alert.alert("Não foi possível salvar a foto", message);
+    Alert.alert("Não foi possível salvar a foto", getErrorMessage(err));
   };
 
   const send = (photo: PreparedPhoto) =>
