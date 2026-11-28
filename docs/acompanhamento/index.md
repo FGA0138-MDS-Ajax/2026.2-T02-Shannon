@@ -17,7 +17,7 @@ flowchart LR
     S3["Sprint 3\n25/10 – 01/11\nBE: Metas & Streaks\nFE: Hábitos & Check-ins"]
     S4["Sprint 4\n02/11 – 10/11\nBE: Estatísticas & Alembic\nFE: Metas, Progresso & SWR"]
     S5["Sprint 5\n10/11 – 17/11\nBE: Grupos, Feed & Ranking\nFE: Estatísticas na Home"]
-    S6["Sprint 6 (Atual)\n18/11 – em andamento\nBE: Fotos (R2) & Perfil\nFE: Home & Grupos"]
+    S6["Sprint 6 (Atual)\n18/11 – em andamento\nBE: Fotos (R2) & Perfil (concluído)\nFE: Home & Grupos (concluídos)"]
 
     S1 --> S2 --> S3 --> S4 --> S5 --> S6
 ```
@@ -33,7 +33,7 @@ flowchart LR
 | **[Sprint 3](sprints/sprint-03.md)** | `25/10` – `01/11` | Metas e Motor de Streaks (`GOAL-1`–`GOAL-8` + `PR #81`) | Hábitos e Check-ins mobile (`#49`–`#54`) | **100,0%** (14/14) | **14,3%** (2/14) | **1** | Concluída ✅ |
 | **[Sprint 4](sprints/sprint-04.md)** | `02/11` – `10/11` | Estatísticas, Calendário e Alembic (`STAT-1`–`STAT-9`) | Metas, Progresso e SWR (`#92`–`#98` + `PR #91`) | **93,8%** (15/16) | **13,3%** (2/15) | **1** | Concluída ✅ |
 | **[Sprint 5](sprints/sprint-05.md)** | `10/11` – `17/11` | Grupos, Feed, Ranking e Stats (`GRP-1`–`GRP-12`) | Estatísticas na Home (`#132`–`#134`, `#141`) | **87,5%** (14/16) | **14,3%** (2/14) | **2** | Parcial ⚠️ |
-| **[Sprint 6](sprints/sprint-06.md)** | `18/11` – *atual* | Fotos no Check-in (Cloudflare R2) e Perfil (`FOTO-1`–`7`, `PERF-1`–`3`, `QA-1`) | Pendências da Home + consumo de Grupos | *Em andamento* | *Em apuração* | *Em redução* | Em andamento 🔄 |
+| **[Sprint 6](sprints/sprint-06.md)** | `18/11` – *atual* | Fotos no Check-in (Cloudflare R2) e Perfil (`FOTO-1`–`7`, `PERF-1`–`3`, `QA-1`) — 11/11 issues fechadas, integradas pelo [PR #191](https://github.com/FGA0138-MDS-Ajax/2026.2-T02-Shannon/pull/191) | Pendências da Home (`#134`, `#141`) e Grupos no mobile (`#174`–`#181`), concluídos; fotos e perfil no app em andamento | *Em andamento* | *Em apuração* | *Em redução* | Em andamento 🔄 |
 
 Para análise detalhada dos indicadores, histórico completo de débitos técnicos (`DT-01` a `DT-05`) e tomada de decisão gerencial, consulte o **[Painel Consolidado de Métricas GQM](metricas-coletas.md)**.
 
@@ -50,3 +50,5 @@ Ao longo das cinco primeiras sprints concluídas, a suíte de testes automatizad
 | **Sprint 3** | **111** funções de teste (com testes parametrizados de `goals`) | Fluxos de hábitos e check-ins (`check-in`, `habits-check-ins-api`, `duration`) | Testes unitários puros para o motor de streaks (`day`, `week`, `month`) e relógio fixo. |
 | **Sprint 4** | **196** funções (**233** casos coletados) | Metas, progresso, `user` e `calendar` | Testes automatizados de migrações Alembic (`test_migrations.py`) e limite fixo de queries SQL. |
 | **Sprint 5** | **452** funções (**64** arquivos de teste na API) | **152** casos de teste em **25** arquivos (`statistics-panel`, `useUserStatistics`, etc.) | Testes de concorrência (`SELECT ... FOR UPDATE`), cursor opaco de feed, ranking e matriz de permissões. |
+
+**Estado atual da base de testes (28/11/2026, branch `developer`):** **578** funções de teste em **81** arquivos na API (`pytest`) e **39** arquivos de teste no mobile (`jest`, **233** casos por contagem estática de `it`/`test`). Entre as novidades estão as suítes de fotos (`tests/photos/`), armazenamento (`tests/storage/`), conta e senha (`tests/session/`) e, no mobile, grupos, check-in rápido e utilitários de ranking e feed.

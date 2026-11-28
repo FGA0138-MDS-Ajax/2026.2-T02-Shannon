@@ -50,8 +50,8 @@ A Sprint 5 representou o maior salto de escopo do semestre (`US-18` a `US-24`, a
 | **[#127](https://github.com/FGA0138-MDS-Ajax/2026.2-T02-Shannon/issues/127)** | `US-22` | `[GRP-12]` Estatísticas de um hábito de grupo por integrante (`.../habits/{id}/stats`) | Back-end | [#145](https://github.com/FGA0138-MDS-Ajax/2026.2-T02-Shannon/pull/145) | Pedro Melo | Concluída ✅ |
 | **[#132](https://github.com/FGA0138-MDS-Ajax/2026.2-T02-Shannon/issues/132)** | `US-16`, `US-17` | Camada de dados das estatísticas na Home | Front-end | [#140](https://github.com/FGA0138-MDS-Ajax/2026.2-T02-Shannon/pull/140) | Isaque Palhares | Concluída ✅ |
 | **[#133](https://github.com/FGA0138-MDS-Ajax/2026.2-T02-Shannon/issues/133)** | `US-16`, `US-17` | Camada visual do painel de estatísticas da Home | Front-end | [#142](https://github.com/FGA0138-MDS-Ajax/2026.2-T02-Shannon/pull/142) | Breno Gomes | Concluída ✅ |
-| **[#134](https://github.com/FGA0138-MDS-Ajax/2026.2-T02-Shannon/issues/134)** | QA | Testes das features de estatísticas na Home | Front-end / QA | — | Isaque Esteves | Pendente 🟡 |
-| **[#141](https://github.com/FGA0138-MDS-Ajax/2026.2-T02-Shannon/issues/141)** | `US-15`, `US-16` | Histórico de 28 dias e check-in rápido nos cards de hábito da Home | Front-end | — | Equipe Front-end | Pendente 🟡 |
+| **[#134](https://github.com/FGA0138-MDS-Ajax/2026.2-T02-Shannon/issues/134)** | QA | Testes das features de estatísticas na Home | Front-end / QA | — | Isaque Esteves | Pendente 🟡 *(fechada em 24/11, na Sprint 6)* |
+| **[#141](https://github.com/FGA0138-MDS-Ajax/2026.2-T02-Shannon/issues/141)** | `US-15`, `US-16` | Histórico de 28 dias e check-in rápido nos cards de hábito da Home | Front-end | — | Equipe Front-end | Pendente 🟡 *(fechada em 24/11, na Sprint 6)* |
 
 ---
 

@@ -10,7 +10,7 @@ A estratégia de testes automatizados do **HABBIT** estrutura-se em **três nív
 
 ```mermaid
 flowchart TB
-    L3["Nível 3: Testes de Componentes e Telas Mobile (Jest + RNTL + Storybook)\nTelas, formulários, calendário, AuthContext, interceptors Axios e durações"]
+    L3["Nível 3: Testes de Componentes e Telas Mobile (Jest + RNTL + Storybook)\nTelas, formulários, calendário, AuthContext, cliente HTTP (`fetch`) e durações"]
     L2["Nível 2: Testes de Integração Back-end (Pytest + FastAPI TestClient + Testcontainers)\nRotas REST, autorização, transações PostgreSQL 17 real em contêiner e migrações Alembic"]
     L1["Nível 1: Testes Unitários Puros (Pytest / Jest)\nMotores matemáticos de streaks (day/week/month), estatísticas, calendário, bcrypt, JWT e validadores"]
 
@@ -21,7 +21,7 @@ flowchart TB
 | :--- | :--- | :--- |
 | **1. Unitário** | Funções matemáticas e utilitárias isoladas de banco e rede: cálculo de progresso e streaks (`day`, `week`, `month`), taxas de cumprimento, séries e calendário mensal, hashing de senhas com `bcrypt`, emissão/decodificação de JWT, validadores Pydantic e formatação de durações ISO 8601. | **Pytest** (`apps/api/tests/goals/unit/`, `apps/api/tests/statistics/unit/`, `apps/api/tests/auth/`) e **Jest** (`apps/mobile/src/__tests__/utils/`) |
 | **2. Integração** | Comunicação completa entre rotas FastAPI (`TestClient`), injeção de dependências (`SessionDep`, `get_current_user`), regras de negócio nos `services` e persistência real no **PostgreSQL 17** provisionado automaticamente em contêiner via **Testcontainers**, além da verificação de migrações **Alembic** (`test_migrations.py`). | **Pytest** + **FastAPI TestClient** + **Testcontainers (`postgres:17`)** |
-| **3. Componente / Interface** | Renderização, estados visuais, interações de toque, armazenamento de tokens (`expo-secure-store` / `localStorage`), fila de refresh no Axios e fluxos em etapas (como o check-in guiado por categorias) no React Native, além da documentação visual isolada no **Storybook**. | **Jest (`jest-expo`)** + **React Native Testing Library** + **Storybook React Native** |
+| **3. Componente / Interface** | Renderização, estados visuais, interações de toque, armazenamento de tokens (`expo-secure-store` / `localStorage`), renovação de token com *refresh* em voo único e fluxos em etapas (como o check-in guiado por categorias) no React Native, além da documentação visual isolada no **Storybook**. | **Jest (`jest-expo`)** + **React Native Testing Library** + **Storybook React Native** |
 
 !!! note "Decisão sobre Testes Automatizados E2E (End-to-End)"
     O projeto **não adota testes automatizados de ponta a ponta (E2E)** por meio de frameworks como Maestro, Appium ou Cypress, visando manter a suíte de testes rápida, confiável e livre de instabilidades (*flakiness*) em emuladores móveis na pipeline de CI. 
@@ -61,7 +61,11 @@ flowchart TB
 | `tests/group/unit/test_*.py` | Regras puras de grupos: estado (`active`/`ended`), sucessão de admin, convite, cursor opaco de feed, ranking (`check_ins`/`goals`), data de referência e stats (7 arquivos). | Unitário |
 | `tests/group/test_*.py` | Integração completa de grupos: CRUD, membros, convites, hábitos de grupo, feed, ranking, `GRP-12`, concorrência (`SELECT ... FOR UPDATE`), número de queries e adaptação de rotas existentes (18 arquivos). | Integração |
 
-*(Total consolidado no Back-end até a Sprint 5: **452 funções de teste** em **64 arquivos**.)*
+| `tests/session/test_account_update.py`, `test_password_change.py` e `tests/auth/test_update_account_*.py`, `test_user_update_schema.py` | Edição da conta (`PATCH /auth/session/me`) e troca de senha (`PUT /auth/session/me/password`, encerramento de sessões e `400` em senha errada) (`US-26`). | Unitário / Integração |
+| `tests/photos/test_photo_routes.py`, `test_photo_flow.py`, `test_photo_in_responses.py`, `test_photo_queries.py`, `test_cleanup.py`, `test_repository.py` | Rotas `PUT`/`DELETE /check-ins/{id}/photo`, fluxo de envio e troca, `photo` nas respostas de check-ins e feed, número fixo de consultas e limpeza nas exclusões (`US-28`, `US-29`). | Integração |
+| `tests/photos/unit/test_processing.py`, `test_service.py`, `test_sweep.py`, `test_visibility.py` e `tests/storage/unit/test_storage.py` | Processamento da imagem (JPEG/PNG, sem metadados, versão cheia e miniatura), regras de serviço, varredor de órfãos, visibilidade e camada `Storage` (`FakeStorage`/`S3Storage`). | Unitário |
+
+*(Total consolidado no Back-end em 28/11/2026, na branch `developer`: **578 funções de teste** em **81 arquivos** `test_*.py`.)*
 
 ---
 
@@ -70,7 +74,7 @@ flowchart TB
 | Caminho do Arquivo de Teste | Domínio / Funcionalidade Coberta | Tipo |
 | :--- | :--- | :---: |
 | `src/__tests__/contexts/auth-context.test.tsx` | Ciclo de vida de autenticação, hidratação de sessão, login, signup e logout no `AuthContext`. | Componente / Contexto |
-| `src/__tests__/services/api.test.ts` | Cliente Axios, injeção de `Bearer token` e fila de renovação automática em caso de `HTTP 401`. | Integração de Serviço |
+| `src/__tests__/services/api.test.ts` | Cliente HTTP (`fetch`), injeção de `Bearer token` e renovação automática em caso de `HTTP 401`, com *refresh* em voo único. | Integração de Serviço |
 | `src/__tests__/services/token-storage.test.ts` | Persistência e limpeza segura de tokens (`expo-secure-store` e web). | Unitário |
 | `src/__tests__/services/habits-check-ins-api.test.ts` e `statistics-api.test.ts` | Chamadas aos serviços de hábitos, metas, check-ins e estatísticas. | Unitário / Serviço |
 | `src/__tests__/services/api-errors.test.ts` | Extração e formatação amigável de mensagens de erro da API. | Unitário |
@@ -81,7 +85,11 @@ flowchart TB
 | `src/__tests__/app/user.test.tsx` | Tela de perfil do usuário com SWR, exibição de dados e logout (`US-27`). | Componente / Tela |
 | `src/__tests__/components/calendar.test.tsx`, `goal-progress.test.tsx`, `habit-card.test.tsx`, `statistics-panel.test.tsx`, `statistics.test.tsx`, `button.test.tsx` | Componentes visuais de calendário, progresso de meta, cartões de hábito e painel estatístico da Home. | Componente |
 
-*(Total consolidado no Front-end até a Sprint 5: **152 casos de teste** em **25 arquivos**.)*
+| `src/__tests__/app/groups.test.tsx` e `src/__tests__/services/groups-api.test.ts` | Telas e serviço de grupos (lista, criação, entrada, detalhe). | Componente / Serviço |
+| `src/__tests__/components/quick-check-in.test.tsx`, `group-highlights.test.tsx`, `ranking-podium.test.tsx`, `ui-hero.test.tsx` e `members-circle-geometry.test.ts` | Check-in rápido da Home e componentes de grupo (destaques, pódio do ranking, círculo de membros). | Componente |
+| `src/__tests__/utils/group-feed.test.ts`, `group-period.test.ts`, `group-ranking.test.ts`, `date.test.ts`, `check-in-title.test.ts` e `src/__tests__/services/check-in-keys.test.ts`, `src/__tests__/config/page-titles.test.ts` | Utilitários de feed, período e ranking de grupo, datas, título de check-in, chaves de cache e títulos de página. | Unitário |
+
+*(Total consolidado no Front-end em 28/11/2026, na branch `developer`: **39 arquivos de teste** e **233 casos** — contagem estática de chamadas `it`/`test`.)*
 
 ---
 

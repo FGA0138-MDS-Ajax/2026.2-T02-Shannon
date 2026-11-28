@@ -1,6 +1,6 @@
 # Acompanhamento de Métricas (GQM) — Coletas e Evidências
 
-Esta página consolida as **medições reais** do programa **GQM (*Goal-Question-Metric*)** definido em [Seção 4 — Métricas e Medições (GQM)](../visao-produto/metricas-gqm.md), cobrindo as **Sprints 1 a 5 concluídas** e o acompanhamento parcial da **Sprint 6**, com rastreabilidade direta para Issues, Pull Requests, commits e relatórios de QA do repositório.
+Esta página consolida as **medições reais** do programa **GQM (*Goal-Question-Metric*)** definido em [Seção 4 — Métricas e Medições (GQM)](../visao-produto/metricas-gqm.md), cobrindo as **Sprints 1 a 5 concluídas** e o acompanhamento parcial da **Sprint 6** (ainda em apuração), com rastreabilidade direta para Issues, Pull Requests, commits e relatórios de QA do repositório.
 
 ---
 
@@ -25,7 +25,7 @@ Para garantir consistência e transparência sem introduzir sobrecarga operacion
 | **[Sprint 3](sprints/sprint-03.md)** | `25/10` – `01/11` | `14` (8 BE + 6 FE) | `14` | **100,0%** | **14,3%** (2/14) | **1** (`DT-01`) | Atendido ✅ |
 | **[Sprint 4](sprints/sprint-04.md)** | `02/11` – `10/11` | `16` (9 BE + 7 FE) | `15` | **93,8%** | **13,3%** (2/15) | **1** (`DT-03`) | Atendido ✅ |
 | **[Sprint 5](sprints/sprint-05.md)** | `10/11` – `17/11` | `16` (12 BE + 4 FE) | `14` | **87,5%** | **14,3%** (2/14) | **2** (`DT-04`, `DT-05`) | Atenção ⚠️ |
-| **[Sprint 6](sprints/sprint-06.md)** | `18/11` – *atual* | `11` BE *(+ pendências FE)* | `2` *(parcial)* | *Em andamento* | *Em apuração* | *Em redução* | Em andamento 🔄 |
+| **[Sprint 6](sprints/sprint-06.md)** | `18/11` – *atual* | `11` BE *(+ pendências FE)* | `11` BE concluídas *(apuração final em aberto)* | *Em andamento* | *Em apuração* | *Em redução* | Em andamento 🔄 |
 | **Acumulado (S1–S5)** | `07/10` – `17/11` | **`67` issues** | **`64` entregues** | **95,5%** | **14,1%** (9/64) | **2 em aberto** | **Controlado** |
 
 ### Evolução Gráfica de M1 (TCS) e M2 (TRT)
@@ -67,7 +67,7 @@ xychart-beta
 | **DT-02** | Cobertura reduzida de testes automatizados para casos de borda de hábitos e check-ins (apenas 10 testes na S2, com validações manuais). | Testes pendentes | **Sprint 2** | **Sprint 3** ([PR #76](https://github.com/FGA0138-MDS-Ajax/2026.2-T02-Shannon/pull/76) — expansão das suítes de integração) | Quitado ✅ |
 | **DT-03** | Suíte automatizada de testes de metas e streaks no Front-end pendente ([Issue #98](https://github.com/FGA0138-MDS-Ajax/2026.2-T02-Shannon/issues/98)). | Testes pendentes | **Sprint 4** | **Sprint 5** ([PR #129](https://github.com/FGA0138-MDS-Ajax/2026.2-T02-Shannon/pull/129)) | Quitado ✅ |
 | **DT-04** | Refatoração estrutural dos arquivos híbridos de `app/group/` (`groups.py`, `members.py`, etc. para separação estrita `service.py`/`router.py`) + correção dos bugs `L1` e `L2` encontrados no QA da S5. | Refatoração / Correção | **Sprint 5** | *Prevista na Sprint 6* | Em aberto ⚠️ |
-| **DT-05** | Testes automatizados do painel de estatísticas na Home mobile ([Issue #134](https://github.com/FGA0138-MDS-Ajax/2026.2-T02-Shannon/issues/134)). | Testes pendentes | **Sprint 5** | *Prevista na Sprint 6* | Em aberto ⚠️ |
+| **DT-05** | Testes automatizados do painel de estatísticas na Home mobile ([Issue #134](https://github.com/FGA0138-MDS-Ajax/2026.2-T02-Shannon/issues/134)). | Testes pendentes | **Sprint 5** | **Sprint 6** ([Issue #134](https://github.com/FGA0138-MDS-Ajax/2026.2-T02-Shannon/issues/134), fechada em 24/11) | Quitado ✅ |
 
 ---
 
