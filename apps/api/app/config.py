@@ -1,6 +1,6 @@
 from typing import Literal, Self
 
-from pydantic import model_validator
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -25,7 +25,13 @@ class Settings(BaseSettings):
   ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
   REFRESH_TOKEN_EXPIRE_DAYS: int = 7
   JWT_ALGORITHM: str = "HS256"
-  JWT_SECRET_KEY: str
+  # HS256 pede um segredo longo: abaixo de 32 caracteres fica fácil de quebrar.
+  JWT_SECRET_KEY: str = Field(min_length=32)
+
+  # Definida pela própria Vercel em cada deploy ("production", "preview"...).
+  VERCEL_ENV: str = ""
+  # Reabre /docs, /redoc e /openapi.json em produção
+  ENABLE_DOCS: bool = False
 
   # Armazenamento de fotos (FOTO-2). `memory` serve para rodar sem credenciais.
   storage_backend: Literal["r2", "memory"] = "memory"
@@ -53,6 +59,16 @@ class Settings(BaseSettings):
           f"STORAGE_BACKEND=r2 exige as variáveis: {', '.join(missing)}."
         )
     return self
+
+  @model_validator(mode="after")
+  def _require_cors_in_production(self) -> Self:
+    if self.is_production and self.cors_origins_list == ["*"]:
+      raise ValueError('CORS_ORIGINS é obrigatória em produção e não pode ser "*".')
+    return self
+
+  @property
+  def is_production(self) -> bool:
+    return self.VERCEL_ENV == "production"
 
   @property
   def database_url_sync(self) -> str:

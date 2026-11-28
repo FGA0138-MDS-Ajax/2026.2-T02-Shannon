@@ -106,7 +106,12 @@ Além das variáveis de autenticação e do R2 (ver `.env.example`), produção 
 |---|---|
 | `DATABASE_URL` | URL do Neon **com `-pooler`** e `sslmode=require`, usada pela API em execução (com `pool_pre_ping=True` para reconexão após suspensão do Neon). |
 | `DIRECT_DATABASE_URL` | URL direta do Neon (**sem `-pooler`**, com `sslmode=require`), usada pelo Alembic nas migrações em produção. Localmente é opcional (fallback para `DATABASE_URL`). |
-| `CORS_ORIGINS` | Origens permitidas no CORS separadas por vírgula, sem barra no final (ex.: endereço da PWA na Vercel). Vazio localmente mantém `["*"]`. |
+| `CORS_ORIGINS` | **Obrigatória em produção.** Origens permitidas no CORS separadas por vírgula, sem barra no final (ex.: endereço da PWA na Vercel). Vazia ou `*` em produção impede a API de iniciar; localmente e em preview, vazio mantém `["*"]`. |
+| `JWT_SECRET_KEY` | Segredo de assinatura dos JWT, com **no mínimo 32 caracteres** (gere com `python -c "import secrets; print(secrets.token_urlsafe(48))"`). |
+| `ENABLE_DOCS` | Opcional. Com `true`, reabre `/docs`, `/redoc` e `/openapi.json` em produção (ex.: apresentações). Mantenha desligada no uso normal. |
+| `VERCEL_ENV` | Definida pela própria Vercel (`production`, `preview`...). **Não cadastre manualmente.** Com `production`, a API exige `CORS_ORIGINS` e fecha a documentação. |
+
+> Em produção a API **recusa iniciar** se `CORS_ORIGINS` estiver vazia ou for `*`, ou se `JWT_SECRET_KEY` tiver menos de 32 caracteres. Se a API não subir após um deploy, confira essas variáveis no escopo **Production** do projeto na Vercel.
 
 ### Fluxo de migrações em produção
 
@@ -252,6 +257,8 @@ O FastAPI gera automaticamente documentações interativas da API:
 - **Swagger UI:** [http://localhost:8000/docs](http://localhost:8000/docs)
 - **ReDoc:** [http://localhost:8000/redoc](http://localhost:8000/redoc)
 - **Healthcheck:** `GET http://localhost:8000/` (retorna `"OK"`)
+
+> Em **produção** (`VERCEL_ENV=production`), `/docs`, `/redoc` e `/openapi.json` ficam desligados e respondem 404. Para reabri-los temporariamente (ex.: apresentações), cadastre `ENABLE_DOCS=true` na Vercel e faça um novo deploy; remova a variável depois.
 
 ---
 

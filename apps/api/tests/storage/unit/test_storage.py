@@ -18,7 +18,7 @@ BUCKET = "habbit-photos-dev"
 def _s3() -> tuple[S3Storage, Stubber]:
   settings = Settings(
     DATABASE_URL="postgresql://x:x@localhost/x",
-    JWT_SECRET_KEY="x",
+    JWT_SECRET_KEY="x" * 32,
     storage_backend="r2",
     r2_endpoint_url="https://conta-falsa.r2.cloudflarestorage.com",
     r2_access_key_id="chave-falsa",
