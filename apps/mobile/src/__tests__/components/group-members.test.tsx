@@ -196,7 +196,7 @@ describe("sair do grupo", () => {
   // ÚNICO INTEGRANTE
   it("único integrante: botão 'Sair e apagar o grupo' + 'Grupo apagado' + volta e recarrega", async () => {
     mockLeave.mockResolvedValue({ group_deleted: true, promoted_user_id: null });
-    const { getByTestId, getByText, onChanged } = await renderMembers(makeGroup({ members: [meAdmin], members_count: 1 }));
+    const { getByTestId, getByText } = await renderMembers(makeGroup({ members: [meAdmin], members_count: 1 }));
 
     expect(getByText("Sair e apagar o grupo")).toBeTruthy();
 
@@ -213,7 +213,7 @@ describe("sair do grupo", () => {
   // ÚNICO ADMIN COM OUTROS MEMBROS
   it("único admin com outros membros: 'Sair do grupo' + aviso + 'X agora é admin'", async () => {
     mockLeave.mockResolvedValue({ group_deleted: false, promoted_user_id: "user-2" });
-    const { getByTestId, getByText, onChanged } = await renderMembers(makeGroup({ members: [meAdmin, otherMember], members_count: 2 }));
+    const { getByTestId, getByText } = await renderMembers(makeGroup({ members: [meAdmin, otherMember], members_count: 2 }));
 
     expect(getByText("Sair do grupo")).toBeTruthy();
 

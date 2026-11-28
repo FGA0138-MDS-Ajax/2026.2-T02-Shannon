@@ -1,6 +1,5 @@
 import { Alert } from "react-native";
 import { fireEvent, render } from "@testing-library/react-native";
-import { router } from "expo-router";
 import { SWRConfig } from "swr";
 import GroupHabits from "@/components/groups/group-habits";
 import GroupHabitDetailScreen from "@/app/(app)/groups/[id]/habits/[habitId]/index";

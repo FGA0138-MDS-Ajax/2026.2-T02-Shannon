@@ -1,8 +1,7 @@
 import { act, renderHook, waitFor } from "@testing-library/react-native";
 import { AppState } from "react-native";
-import { router } from "expo-router";
 import { useGroupFeed, dedupeById } from "@/hooks/useGroupFeed";
-import { ApiError, request } from "@/services/api";
+import { request } from "@/services/api";
 import type { FeedItem, FeedPage } from "@/services/types/groups";
 
 jest.mock("expo-router", () => ({ router: { replace: jest.fn(), back: jest.fn(), push: jest.fn() } }));

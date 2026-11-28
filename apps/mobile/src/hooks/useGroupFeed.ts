@@ -39,10 +39,34 @@ export function useGroupFeed(groupId: string) {
   const nextCursorRef = useRef<string | null>(null);
   const stoppedRef = useRef(false);
   const foregroundRef = useRef(true);
+  const reloadRef = useRef<() => Promise<void>>(async () => {});
 
   const setItemsSafe = useCallback((next: FeedItem[]) => {
     itemsRef.current = next;
     setItems(next);
+  }, []);
+
+  const handleFeedError = useCallback((err: unknown) => {
+    if (err instanceof ApiError && err.status === 422) {
+      // Cursor inválido: recarrega o feed do zero
+      if (
+        err.message === MSG_INVALID_CURSOR ||
+        /cursor inválido/i.test(err.message)
+      ) {
+        void reloadRef.current();
+        return;
+      }
+      setError(err);
+      return;
+    }
+    if (err instanceof ApiError && err.status === 404) {
+      // Grupo sumiu: para a atualização e volta para a lista
+      stoppedRef.current = true;
+      router.replace("/(app)/(tabs)/groups");
+      return;
+    }
+    // Outros erros não destroem o que já carregou
+    setError(err);
   }, []);
 
   /** Recarrega tudo do zero (abertura, foco, cursor inválido). */
@@ -60,8 +84,8 @@ export function useGroupFeed(groupId: string) {
     } catch (err) {
       handleFeedError(err);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [groupId, setItemsSafe]);
+  }, [groupId, setItemsSafe, handleFeedError]);
+  reloadRef.current = reload;
 
   /** Atualização em segundo plano: `after` o cursor do item mais novo. */
   const refresh = useCallback(async () => {
@@ -90,8 +114,7 @@ export function useGroupFeed(groupId: string) {
     } catch (err) {
       handleFeedError(err);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [groupId, reload, setItemsSafe]);
+  }, [groupId, reload, setItemsSafe, handleFeedError]);
 
   /** Página anterior (mais antiga): `before`, nunca junto com `after`. */
   const loadMore = useCallback(async () => {
@@ -111,31 +134,7 @@ export function useGroupFeed(groupId: string) {
     } finally {
       setLoadingMore(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [groupId, hasMore, loadingMore, setItemsSafe]);
-
-  function handleFeedError(err: unknown) {
-    if (err instanceof ApiError && err.status === 422) {
-      // Cursor inválido: recarrega o feed do zero
-      if (
-        err.message === MSG_INVALID_CURSOR ||
-        /cursor inválido/i.test(err.message)
-      ) {
-        void reload();
-        return;
-      }
-      setError(err);
-      return;
-    }
-    if (err instanceof ApiError && err.status === 404) {
-      // Grupo sumiu: para a atualização e volta para a lista
-      stoppedRef.current = true;
-      router.replace("/(app)/(tabs)/groups");
-      return;
-    }
-    // Outros erros não destroem o que já carregou
-    setError(err);
-  }
+  }, [groupId, hasMore, loadingMore, setItemsSafe, handleFeedError]);
 
   // Abertura / foco: recarrega; também quando volta ao primeiro plano
   useEffect(() => {
@@ -150,7 +149,7 @@ export function useGroupFeed(groupId: string) {
       if (active && !stoppedRef.current) void refresh();
     });
     return () => sub?.remove?.();
-  }, [groupId, reload, refresh]);
+  }, [reload, refresh]);
 
   // Atualização automática em primeiro plano com a tela aberta
   useEffect(() => {

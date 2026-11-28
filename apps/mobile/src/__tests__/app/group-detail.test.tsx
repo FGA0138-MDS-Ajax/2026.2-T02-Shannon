@@ -1,4 +1,4 @@
-import { fireEvent, render, within } from "@testing-library/react-native";
+import { fireEvent, render } from "@testing-library/react-native";
 import { router } from "expo-router";
 import { SWRConfig } from "swr";
 import GroupDetailScreen from "@/app/(app)/groups/[id]/index";
